@@ -1,4 +1,4 @@
-// Permission system for AeroSchool LMS
+// Permission system for inPhysic LMS
 export type PermissionLevel = 'none' | 'view' | 'create' | 'edit' | 'delete' | 'full';
 
 export interface ModulePermissions {

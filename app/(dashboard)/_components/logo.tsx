@@ -3,7 +3,7 @@ export const Logo = () => {
     <div className="flex items-center space-x-2">
       <span className="text-2xl">✈️</span>
       <h1 className="text-2xl font-bold text-primary">
-        AeroSchool
+        inPhysic
       </h1>
     </div>
   )

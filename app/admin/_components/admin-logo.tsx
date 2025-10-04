@@ -7,7 +7,7 @@ export const AdminLogo = () => {
         <Shield className="h-6 w-6 text-white" />
       </div>
       <div>
-        <p className="text-xl font-semibold">AeroSchool</p>
+        <p className="text-xl font-semibold">inPhysic</p>
         <p className="text-xs text-muted-foreground">Admin Panel</p>
       </div>
     </div>

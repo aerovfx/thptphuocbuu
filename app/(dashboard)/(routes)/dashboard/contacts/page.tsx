@@ -260,7 +260,7 @@ export default function ContactsModule() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <BookOpen className="h-8 w-8 text-blue-600" />
-            Danh bạ AeroSchool
+            Danh bạ inPhysic
           </h1>
           <p className="text-muted-foreground">
             Kết nối và liên lạc với giáo viên, học sinh trong hệ thống

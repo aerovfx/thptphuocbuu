@@ -90,10 +90,39 @@ export function QuizletStyleLearning({
     }, 1500);
   };
 
+  // Update XP when lesson is completed
+  const updateUserXP = async () => {
+    try {
+      const response = await fetch('/api/user/xp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          xp: totalXP,
+          subject: subject,
+          lessonTitle: question.term
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('XP updated successfully:', data);
+      } else {
+        console.error('Failed to update XP');
+      }
+    } catch (error) {
+      console.error('Error updating XP:', error);
+    }
+  };
+
   // Trigger confetti and sound when lesson is completed
   useEffect(() => {
     if (isCompleted && !showCelebration) {
       setShowCelebration(true);
+      
+      // Update user XP
+      updateUserXP();
       
       // Play celebration sound
       playCelebrationSound();
@@ -147,7 +176,7 @@ export function QuizletStyleLearning({
         }, 1000);
       }, 2000);
     }
-  }, [isCompleted, showCelebration]);
+  }, [isCompleted, showCelebration, totalXP, subject, question.term]);
 
   const handleOptionClick = (optionId: string) => {
     if (!showResult) {

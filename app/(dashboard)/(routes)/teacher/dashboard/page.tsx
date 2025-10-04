@@ -165,7 +165,7 @@ const mockDashboardData = {
       rating: 4.9,
       chapters: 12,
       lastUpdated: "2024-01-20",
-      category: "AeroSchool"
+      category: "inPhysic"
     },
     {
       id: 2,
@@ -178,7 +178,7 @@ const mockDashboardData = {
       rating: 4.7,
       chapters: 15,
       lastUpdated: "2024-01-18",
-      category: "AeroSchool"
+      category: "inPhysic"
     },
     {
       id: 3,
@@ -191,7 +191,7 @@ const mockDashboardData = {
       rating: 4.6,
       chapters: 10,
       lastUpdated: "2024-01-15",
-      category: "AeroSchool"
+      category: "inPhysic"
     }
   ],
   assignments: [

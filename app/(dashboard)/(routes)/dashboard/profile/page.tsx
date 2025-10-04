@@ -173,7 +173,7 @@ export default function ProfileModule() {
         email: session.user.email || "",
         phone: "",
         avatar: "",
-        bio: "Chào mừng bạn đến với AeroSchool! Hãy cập nhật thông tin cá nhân của bạn.",
+        bio: "Chào mừng bạn đến với inPhysic! Hãy cập nhật thông tin cá nhân của bạn.",
         location: "",
         dateOfBirth: undefined,
         role: session.user.role || "STUDENT",
@@ -206,7 +206,7 @@ export default function ProfileModule() {
           {
             id: "1",
             type: "welcome",
-            description: "Chào mừng bạn đến với AeroSchool!",
+            description: "Chào mừng bạn đến với inPhysic!",
             timestamp: new Date(),
             icon: "🎉"
           }

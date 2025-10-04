@@ -197,7 +197,7 @@ const AdminPage = () => {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Quản trị hệ thống AeroSchool
+                Quản trị hệ thống inPhysic
               </h1>
               <p className="text-gray-600">
                 Trung tâm điều khiển và quản lý toàn bộ hệ thống

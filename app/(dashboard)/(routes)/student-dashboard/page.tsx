@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +8,7 @@ import { SpecialActivities } from "@/components/special-activities";
 import { Trophy, Target, Clock, BookOpen, Zap } from "lucide-react";
 
 export default function StudentDashboard() {
-  // Mock data - trong thực tế sẽ lấy từ API
-  const studentStats = {
+  const [studentStats, setStudentStats] = useState({
     totalXP: 245,
     level: 2,
     gems: 12,
@@ -16,7 +16,34 @@ export default function StudentDashboard() {
     streak: 3,
     coursesCompleted: 2,
     totalCourses: 5
-  };
+  });
+  const [loading, setLoading] = useState(true);
+
+  // Fetch user XP data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/user/xp');
+        if (response.ok) {
+          const data = await response.json();
+          setStudentStats(prev => ({
+            ...prev,
+            totalXP: data.xp,
+            level: data.level,
+            gems: data.gems,
+            hearts: data.hearts,
+            streak: data.streak
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const recentProgress = [
     {
@@ -79,6 +106,26 @@ export default function StudentDashboard() {
       xp: 100
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="space-y-0 pb-2">
+                <div className="h-4 bg-gray-200 rounded w-20"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-24"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-8">

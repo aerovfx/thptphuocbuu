@@ -967,7 +967,7 @@ export default function AdminDashboard() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="system-name">System Name</Label>
-                  <Input id="system-name" defaultValue="AeroSchool LMS" />
+                  <Input id="system-name" defaultValue="inPhysic LMS" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="timezone">Timezone</Label>
