@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, Compass, Layout, List, Trophy, BookOpen, FileEdit, FileText } from "lucide-react";
+import { BarChart, Compass, Layout, List, Trophy, BookOpen, FileEdit, FileText, GraduationCap, StickyNote, Kanban, BookOpenCheck, Zap, Award, MessageSquare, Palette, Map } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -26,6 +26,26 @@ const studentRoutes = [
     href: "/dashboard",
   },
   {
+    icon: Trophy,
+    label: "Bảng điều khiển",
+    href: "/student-dashboard",
+  },
+  {
+    icon: Map,
+    label: "Lộ trình học tập",
+    href: "/learning-paths",
+  },
+  {
+    icon: Map,
+    label: "Demo Learning Paths",
+    href: "/learning-paths-demo",
+  },
+  {
+    icon: GraduationCap,
+    label: "Học tập",
+    href: "/dashboard/learning",
+  },
+  {
     icon: BookOpen,
     label: "My Courses",
     href: "/dashboard/courses",
@@ -41,9 +61,39 @@ const studentRoutes = [
     href: "/dashboard/quizzes",
   },
   {
-    icon: Trophy,
-    label: "Achievements",
-    href: "/dashboard/achievements",
+    icon: Award,
+    label: "Cuộc thi",
+    href: "/dashboard/competition",
+  },
+  // {
+  //   icon: MessageSquare,
+  //   label: "Live Chat",
+  //   href: "/dashboard/chat",
+  // },
+  {
+    icon: Zap,
+    label: "STEM Projects",
+    href: "/dashboard/stem",
+  },
+  {
+    icon: StickyNote,
+    label: "Ghi chú",
+    href: "/dashboard/notes",
+  },
+  {
+    icon: Kanban,
+    label: "Scrum Board",
+    href: "/dashboard/scrumboard",
+  },
+  {
+    icon: BookOpenCheck,
+    label: "Danh bạ",
+    href: "/dashboard/contacts",
+  },
+  {
+    icon: Palette,
+    label: "Theme Demo",
+    href: "/dashboard/theme",
   },
   {
     icon: Compass,
@@ -72,6 +122,36 @@ const teacherRoutes = [
     icon: BarChart,
     label: "Analytics",
     href: "/teacher/analytics",
+  },
+  // {
+  //   icon: MessageSquare,
+  //   label: "Live Chat",
+  //   href: "/dashboard/chat",
+  // },
+  {
+    icon: Zap,
+    label: "STEM Projects",
+    href: "/teacher/stem",
+  },
+  {
+    icon: StickyNote,
+    label: "Ghi chú",
+    href: "/dashboard/notes",
+  },
+  {
+    icon: Kanban,
+    label: "Scrum Board",
+    href: "/dashboard/scrumboard",
+  },
+  {
+    icon: BookOpenCheck,
+    label: "Danh bạ",
+    href: "/dashboard/contacts",
+  },
+  {
+    icon: Palette,
+    label: "Theme Demo",
+    href: "/dashboard/theme",
   },
 ]
 
