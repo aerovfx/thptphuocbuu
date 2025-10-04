@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { DataSyncStatus } from "@/components/data-sync-status";
 import { 
   Dialog, 
   DialogContent, 
@@ -163,7 +165,7 @@ const mockDashboardData = {
       rating: 4.9,
       chapters: 12,
       lastUpdated: "2024-01-20",
-      category: "Mathematics"
+      category: "AeroSchool"
     },
     {
       id: 2,
@@ -176,7 +178,7 @@ const mockDashboardData = {
       rating: 4.7,
       chapters: 15,
       lastUpdated: "2024-01-18",
-      category: "Mathematics"
+      category: "AeroSchool"
     },
     {
       id: 3,
@@ -189,7 +191,7 @@ const mockDashboardData = {
       rating: 4.6,
       chapters: 10,
       lastUpdated: "2024-01-15",
-      category: "Mathematics"
+      category: "AeroSchool"
     }
   ],
   assignments: [
@@ -260,8 +262,30 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 export default function TeacherDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTab, setSelectedTab] = useState("overview");
+  const [teacherStats, setTeacherStats] = useState({
+    overview: {
+      totalStudents: 0,
+      totalCourses: 0,
+      totalRevenue: 0,
+      averageRating: 0,
+      completionRate: 0,
+      activeStudents: 0,
+      newEnrollments: 0,
+      pendingAssignments: 0
+    },
+    courses: {
+      total: 0,
+      published: 0,
+      draft: 0,
+      archived: 0,
+      totalStudents: 0,
+      totalRevenue: 0
+    },
+    coursePerformance: []
+  });
 
   useEffect(() => {
     if (status === "loading") return;
@@ -277,6 +301,25 @@ export default function TeacherDashboard() {
     }
   }, [session, status, router]);
 
+  // Fetch teacher statistics
+  useEffect(() => {
+    const fetchTeacherStats = async () => {
+      try {
+        const response = await fetch('/api/teacher/stats');
+        if (response.ok) {
+          const data = await response.json();
+          setTeacherStats(data);
+        }
+      } catch (error) {
+        console.error('Error fetching teacher stats:', error);
+      }
+    };
+
+    if (session?.user?.role === "TEACHER") {
+      fetchTeacherStats();
+    }
+  }, [session]);
+
   if (status === "loading") {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -289,7 +332,8 @@ export default function TeacherDashboard() {
     return null;
   }
 
-  const { overview, studentGrowth, coursePerformance, students, courses, assignments, recentSubmissions } = mockDashboardData;
+  const { overview, coursePerformance } = teacherStats;
+  const { studentGrowth, students, courses, assignments, recentSubmissions } = mockDashboardData; // Keep some mock data for now
 
   const filteredStudents = students.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -317,55 +361,68 @@ export default function TeacherDashboard() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('teacher.students')}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{overview.totalStudents.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              +{overview.newEnrollments} new this month
+              +{overview.newEnrollments} {t('teacher.new-this-month')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Courses</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('teacher.courses')}</CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{overview.totalCourses}</div>
             <p className="text-xs text-muted-foreground">
-              {courses.filter(c => c.status === "Published").length} published
+              {teacherStats.courses.published} {t('common.published')} • {teacherStats.courses.draft} {t('common.draft')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Grading</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('teacher.pending-grading')}</CardTitle>
             <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{overview.pendingAssignments}</div>
             <p className="text-xs text-muted-foreground">
-              Assignments to grade
+              {t('teacher.assignments-to-grade')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('teacher.revenue')}</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{overview.totalRevenue.toLocaleString()} VND</div>
+            <p className="text-xs text-muted-foreground">
+              {t('teacher.from-students').replace('{count}', overview.totalStudents.toString())}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('teacher.average-rating')}</CardTitle>
             <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{overview.averageRating}/5.0</div>
             <p className="text-xs text-muted-foreground">
-              Across all courses
+              {t('teacher.all-courses')}
             </p>
           </CardContent>
         </Card>
@@ -384,6 +441,9 @@ export default function TeacherDashboard() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
+          {/* Data Sync Status */}
+          <DataSyncStatus />
+          
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Student Growth Chart */}
             <Card>
@@ -702,7 +762,12 @@ export default function TeacherDashboard() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => alert(`Delete ${course.title}?`) && window.confirm("Are you sure?")}
+                        onClick={() => {
+                          alert(`Delete ${course.title}?`);
+                          if (window.confirm("Are you sure?")) {
+                            // Handle delete logic here
+                          }
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -805,7 +870,12 @@ export default function TeacherDashboard() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => alert(`Delete ${assignment.title}?`) && window.confirm("Are you sure?")}
+                        onClick={() => {
+                          alert(`Delete ${assignment.title}?`);
+                          if (window.confirm("Are you sure?")) {
+                            // Handle delete logic here
+                          }
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

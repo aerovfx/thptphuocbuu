@@ -81,7 +81,7 @@ export const ChapterQuizForm = ({
   });
 
   // Question creation state
-  const [selectedQuiz, setSelectedQuiz] = useState(null);
+  const [selectedQuiz, setSelectedQuiz] = useState<any>(null);
   const [currentQuestion, setCurrentQuestion] = useState({
     question: "",
     type: "multiple-choice",
@@ -117,7 +117,7 @@ export const ChapterQuizForm = ({
     if (!selectedQuiz) return;
     
     const newQuestion = {
-      id: selectedQuiz.questions.length + 1,
+      id: (selectedQuiz.questions?.length || 0) + 1,
       ...currentQuestion
     };
     

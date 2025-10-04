@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       success: true,
       presignedUrl,
       fileKey,
-      publicUrl: `https://${process.env.AWS_S3_BUCKET_NAME || "lmsmath-uploads"}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com/${fileKey}`,
+      publicUrl: `https://${process.env.AWS_S3_BUCKET_NAME || "aeroschool-uploads"}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com/${fileKey}`,
     });
 
   } catch (error) {

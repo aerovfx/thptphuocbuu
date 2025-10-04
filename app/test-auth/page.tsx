@@ -50,6 +50,13 @@ export default function TestAuthPage() {
                 >
                   Sign in as Student
                 </Button>
+                <Button 
+                  onClick={() => signIn("google")}
+                  className="w-full"
+                  variant="secondary"
+                >
+                  Sign in with Google
+                </Button>
               </div>
             </div>
           )}

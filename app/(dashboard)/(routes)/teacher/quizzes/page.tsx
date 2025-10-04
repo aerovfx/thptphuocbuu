@@ -151,18 +151,19 @@ const mockCategories = [
 export default function QuizzesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [quizzes, setQuizzes] = useState(mockQuizzes);
+  const [quizzes, setQuizzes] = useState<any[]>(mockQuizzes);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newQuiz, setNewQuiz] = useState({
     title: "",
     description: "",
     courseId: "",
+    categoryId: "",
     timeLimit: 30,
     questions: []
   });
   
   // Question creation state
-  const [selectedQuiz, setSelectedQuiz] = useState(null);
+  const [selectedQuiz, setSelectedQuiz] = useState<any>(null);
   const [currentQuestion, setCurrentQuestion] = useState({
     question: "",
     type: "multiple-choice",
@@ -181,14 +182,14 @@ export default function QuizzesPage() {
   
   // PDF import state
   const [isPdfImportDialogOpen, setIsPdfImportDialogOpen] = useState(false);
-  const [pdfFile, setPdfFile] = useState(null);
-  const [extractedQuestions, setExtractedQuestions] = useState([]);
+  const [pdfFile, setPdfFile] = useState<any>(null);
+  const [extractedQuestions, setExtractedQuestions] = useState<any[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [pdfQuestions, setPdfQuestions] = useState([]);
+  const [pdfQuestions, setPdfQuestions] = useState<any[]>([]);
   
   // Edit quiz state
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingQuiz, setEditingQuiz] = useState(null);
+  const [editingQuiz, setEditingQuiz] = useState<any>(null);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -220,6 +221,9 @@ export default function QuizzesPage() {
     const quiz = {
       id: quizzes.length + 1,
       ...newQuiz,
+      courseTitle: "New Course", // Default value
+      categoryId: newQuiz.categoryId || "default",
+      categoryName: "Default Category", // Default value
       totalQuestions: newQuiz.questions.length,
       totalAttempts: 0,
       averageScore: 0,
@@ -232,6 +236,7 @@ export default function QuizzesPage() {
       title: "",
       description: "",
       courseId: "",
+      categoryId: "",
       timeLimit: 30,
       questions: []
     });
@@ -251,7 +256,7 @@ export default function QuizzesPage() {
   };
 
   // Question management functions
-  const handleSelectQuiz = (quiz) => {
+  const handleSelectQuiz = (quiz: any) => {
     setSelectedQuiz(quiz);
   };
 
@@ -283,7 +288,7 @@ export default function QuizzesPage() {
     });
   };
 
-  const handleEditQuestion = (questionIndex) => {
+  const handleEditQuestion = (questionIndex: number) => {
     const question = selectedQuiz.questions[questionIndex];
     setCurrentQuestion({
       question: question.question,
@@ -309,7 +314,7 @@ export default function QuizzesPage() {
       quiz.id === selectedQuiz.id 
         ? { 
             ...quiz, 
-            questions: quiz.questions.map((q, index) => 
+             questions: quiz.questions.map((q: any, index: number) => 
               index === editingQuestionIndex ? updatedQuestion : q
             )
           }
@@ -328,14 +333,14 @@ export default function QuizzesPage() {
     });
   };
 
-  const handleDeleteQuestion = (questionIndex) => {
+  const handleDeleteQuestion = (questionIndex: number) => {
     if (!selectedQuiz) return;
     
     setQuizzes(quizzes.map(quiz => 
       quiz.id === selectedQuiz.id 
         ? { 
             ...quiz, 
-            questions: quiz.questions.filter((_, index) => index !== questionIndex),
+             questions: quiz.questions.filter((_: any, index: number) => index !== questionIndex),
             totalQuestions: quiz.questions.length - 1
           }
         : quiz
@@ -384,14 +389,14 @@ export default function QuizzesPage() {
     }
   };
 
-  const handleFileImport = (event) => {
+  const handleFileImport = (event: any) => {
     const file = event.target.files[0];
     if (!file) return;
     
     if (file.type === "application/json") {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setImportData(e.target.result);
+        setImportData((e.target?.result as string) || "");
       };
       reader.readAsText(file);
     } else {
@@ -400,7 +405,7 @@ export default function QuizzesPage() {
   };
 
   // Edit quiz functions
-  const handleEditQuiz = (quiz) => {
+  const handleEditQuiz = (quiz: any) => {
     setEditingQuiz(quiz);
     setIsEditDialogOpen(true);
   };
@@ -418,17 +423,17 @@ export default function QuizzesPage() {
     setEditingQuiz(null);
   };
 
-  const handlePreviewQuiz = (quiz) => {
+  const handlePreviewQuiz = (quiz: any) => {
     // For now, show an alert with quiz details
     const questionsText = quiz.questions.length > 0 
-      ? `\n\nQuestions:\n${quiz.questions.map((q, i) => `${i + 1}. ${q.question}`).join('\n')}`
+      ? `\n\nQuestions:\n${quiz.questions.map((q: any, i: number) => `${i + 1}. ${q.question}`).join('\n')}`
       : '\n\nNo questions added yet.';
     
     alert(`Quiz Preview: ${quiz.title}\n\nDescription: ${quiz.description}\nTime Limit: ${quiz.timeLimit} minutes\nQuestions: ${quiz.questions.length}${questionsText}`);
   };
 
   // PDF import functions
-  const handlePdfFileUpload = (event) => {
+  const handlePdfFileUpload = (event: any) => {
     const file = event.target.files[0];
     if (!file) return;
     
@@ -469,7 +474,7 @@ export default function QuizzesPage() {
     setIsPdfImportDialogOpen(true);
   };
 
-  const handleAnswerSelection = (questionIndex, answerIndex) => {
+  const handleAnswerSelection = (questionIndex: number, answerIndex: number) => {
     const updatedQuestions = [...pdfQuestions];
     updatedQuestions[questionIndex].correctAnswer = answerIndex;
     setPdfQuestions(updatedQuestions);
@@ -703,7 +708,7 @@ export default function QuizzesPage() {
                   {/* Answer Selection */}
                   <div className="space-y-2">
                     <h4 className="font-medium">Select Correct Answer:</h4>
-                    {pdfQuestions[currentQuestionIndex]?.options.map((option, index) => (
+                     {pdfQuestions[currentQuestionIndex]?.options.map((option: any, index: number) => (
                       <button
                         key={index}
                         className={`w-full p-3 border-2 rounded-lg text-left ${
@@ -1232,7 +1237,7 @@ export default function QuizzesPage() {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {selectedQuiz.questions.map((question, index) => (
+                         {selectedQuiz.questions.map((question: any, index: number) => (
                           <div key={question.id} className="border rounded-lg p-4">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
@@ -1241,7 +1246,7 @@ export default function QuizzesPage() {
                                 </h4>
                                 {question.type === "multiple-choice" && (
                                   <div className="space-y-1">
-                                    {question.options.map((option, optIndex) => (
+                                    {question.options.map((option: any, optIndex: number) => (
                                       <div key={optIndex} className="flex items-center gap-2 text-sm">
                                         <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs ${
                                           optIndex === question.correctAnswer 

@@ -1,116 +1,103 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
 generator client {
-  provider = "prisma-client-js"
-  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextIndex", "fullTextSearch"]
 }
 
 generator seed {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model Course {
-  id String @id @default(uuid())
-  userId String
-  title String
+  id          String       @id @default(uuid())
+  userId      String
+  schoolId    String       @default("default-school")
+  title       String
   description String?
-  imageUrl String?
-  price Float?
-  isPublished Boolean @default(false)
-
-  categoryId String?
-  category Category? @relation(fields: [categoryId], references: [id])
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  chapters Chapter[]
+  imageUrl    String?
+  price       Float?
+  isPublished Boolean      @default(false)
+  categoryId  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   attachments Attachment[]
-  purchases Purchase[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  chapters    Chapter[]
+  category    Category?    @relation(fields: [categoryId], references: [id])
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purchases   Purchase[]
 
   @@index([categoryId])
+  @@index([schoolId])
 }
 
 model Category {
-  id String @id @default(uuid())
-  name String @unique
+  id      String   @id @default(uuid())
+  name    String   @unique
   courses Course[]
 }
 
 model Attachment {
-  id String @id @default(uuid())
-  name String
-  url String
-
-  courseId String
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
+  id        String   @id @default(uuid())
+  name      String
+  url       String
+  courseId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@index([courseId])
 }
 
 model Chapter {
-  id String @id @default(uuid())
-  title String
-  description String?
-  videoUrl String?
-  position Int
-  isPublished Boolean @default(false)
-  isFree Boolean @default(false)
-
-  muxData MuxData?
-
-  courseId String
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
+  id           String         @id @default(uuid())
+  title        String
+  description  String?
+  videoUrl     String?
+  position     Int
+  isPublished  Boolean        @default(false)
+  isFree       Boolean        @default(false)
+  courseId     String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  course       Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  muxData      MuxData?
   userProgress UserProgress[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   @@index([courseId])
 }
 
 model MuxData {
-  id String @id @default(uuid())
-  assetId String
+  id         String  @id @default(uuid())
+  assetId    String
   playbackId String?
-
-  chapterId String @unique
-  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  chapterId  String  @unique
+  chapter    Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 }
 
 model UserProgress {
-  id String @id @default(uuid())
-  userId String
+  id          String   @id @default(uuid())
+  userId      String
+  chapterId   String
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
-  chapterId String
-  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-
-  isCompleted Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([chapterId])
   @@unique([userId, chapterId])
+  @@index([chapterId])
 }
 
 model Purchase {
-  id String @id @default(uuid())
-  userId String
-
-  courseId String
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
+  id        String   @id @default(uuid())
+  userId    String
+  courseId  String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt()
+  updatedAt DateTime @updatedAt
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
   @@index([courseId])
@@ -122,15 +109,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -144,19 +130,24 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          String    @default("STUDENT")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               String            @id @default(cuid())
+  name             String?
+  email            String            @unique
+  emailVerified    DateTime?
+  image            String?
+  password         String?
+  role             String            @default("STUDENT")
+  schoolId         String            @default("default-school")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  accounts         Account[]
+  chatMessages     ChatMessage[]
+  chatParticipants ChatParticipant[]
+  courses          Course[]
+  debateVotes      DebateVote[]
+  sessions         Session[]
 
-  accounts Account[]
-  sessions Session[]
-  courses  Course[]
+  @@index([schoolId])
 }
 
 model VerificationToken {
@@ -168,10 +159,97 @@ model VerificationToken {
 }
 
 model StripeCustomer {
-  id String @id @default(uuid())
-  userId String @unique
-  stripeCustomerId String @unique
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  stripeCustomerId String   @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model ChatRoom {
+  id              String            @id @default(uuid())
+  name            String
+  description     String?
+  type            String            @default("1-1")
+  status          String            @default("active")
+  maxParticipants Int               @default(2)
+  schoolId        String?
+  createdBy       String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  messages        ChatMessage[]
+  participants    ChatParticipant[]
+  debateTopic     DebateTopic?
+}
+
+model ChatParticipant {
+  id       String    @id @default(uuid())
+  roomId   String
+  userId   String
+  role     String    @default("participant")
+  isActive Boolean   @default(true)
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
+  room     ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+}
+
+model ChatMessage {
+  id        String        @id @default(uuid())
+  roomId    String
+  senderId  String
+  content   String
+  type      String        @default("text")
+  replyToId String?
+  isDeleted Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  replyTo   ChatMessage?  @relation("MessageReply", fields: [replyToId], references: [id])
+  replies   ChatMessage[] @relation("MessageReply")
+  room      ChatRoom      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender    User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model DebateTopic {
+  id              String         @id @default(uuid())
+  title           String
+  description     String?
+  category        String?
+  difficulty      String         @default("medium")
+  timeLimit       Int            @default(300)
+  maxParticipants Int            @default(2)
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  results         DebateResult[]
+  room            ChatRoom       @relation(fields: [id], references: [id])
+  votes           DebateVote[]
+}
+
+model DebateVote {
+  id            String      @id @default(uuid())
+  topicId       String
+  voterId       String
+  participantId String
+  score         Int
+  comment       String?
+  createdAt     DateTime    @default(now())
+  topic         DebateTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  voter         User        @relation(fields: [voterId], references: [id], onDelete: Cascade)
+
+  @@unique([topicId, voterId, participantId])
+}
+
+model DebateResult {
+  id            String      @id @default(uuid())
+  topicId       String
+  participantId String
+  totalScore    Float
+  averageScore  Float
+  voteCount     Int
+  rank          Int
+  createdAt     DateTime    @default(now())
+  topic         DebateTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
 }

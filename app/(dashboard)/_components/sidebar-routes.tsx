@@ -33,11 +33,6 @@ const studentRoutes = [
   {
     icon: Map,
     label: "Lộ trình học tập",
-    href: "/learning-paths",
-  },
-  {
-    icon: Map,
-    label: "Demo Learning Paths",
     href: "/learning-paths-demo",
   },
   {

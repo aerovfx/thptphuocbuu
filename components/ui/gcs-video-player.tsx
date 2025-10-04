@@ -12,6 +12,7 @@ interface GCSVideoPlayerProps {
   className?: string;
   autoPlay?: boolean;
   controls?: boolean;
+  onEnded?: () => void;
 }
 
 export const GCSVideoPlayer = ({ 
@@ -20,7 +21,8 @@ export const GCSVideoPlayer = ({
   useSignedUrl = false, 
   className = "",
   autoPlay = false,
-  controls = true
+  controls = true,
+  onEnded
 }: GCSVideoPlayerProps) => {
   const [currentVideoUrl, setCurrentVideoUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -167,6 +169,7 @@ export const GCSVideoPlayer = ({
         onLoadedMetadata={handleLoadedMetadata}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
+        onEnded={onEnded}
         autoPlay={autoPlay}
         controls={controls}
         preload="metadata"

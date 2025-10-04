@@ -10,7 +10,7 @@ const s3Client = new S3Client({
   },
 });
 
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || "lmsmath-uploads";
+const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || "aeroschool-uploads";
 
 export interface UploadConfig {
   key: string;

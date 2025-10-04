@@ -221,7 +221,7 @@ const educationQuizData = {
 };
 
 export default function DemoEducationQuizPage() {
-  const handleQuizSubmit = (answers: Record<number, number>) => {
+  const handleQuizSubmit = (answers: Record<number, number | boolean>) => {
     console.log("Quiz submitted with answers:", answers);
     alert(`Bài thi đã được nộp thành công! Bạn đã trả lời ${Object.keys(answers).length}/40 câu hỏi.`);
   };

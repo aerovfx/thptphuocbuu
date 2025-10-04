@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Attachment, Chapter } from "@prisma/client";
+import { getChapterAccess } from "@/lib/chapter-access";
 
 interface GetChapterProps {
   userId: string;
@@ -85,6 +86,27 @@ export const getChapter = async ({
       }
     });
 
+    // Get all chapters to check access
+    const allChapters = await db.chapter.findMany({
+      where: {
+        courseId: courseId,
+        isPublished: true,
+      },
+      include: {
+        userProgress: {
+          where: {
+            userId: userId,
+          }
+        }
+      },
+      orderBy: {
+        position: "asc"
+      }
+    });
+
+    // Check if user has access to this chapter
+    const chapterAccess = getChapterAccess(allChapters, chapterId, !!purchase);
+
     return {
       chapter,
       course,
@@ -93,6 +115,7 @@ export const getChapter = async ({
       nextChapter,
       userProgress,
       purchase,
+      isLocked: chapterAccess.isLocked,
     };
   } catch (error) {
     console.log("[GET_CHAPTER]", error);
@@ -104,6 +127,7 @@ export const getChapter = async ({
       nextChapter: null,
       userProgress: null,
       purchase: null,
+      isLocked: true,
     }
   }
 }

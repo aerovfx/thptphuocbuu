@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
+import { canManageCourses, isAdmin } from "@/lib/permissions";
 
 export async function POST(
   req: Request,
@@ -11,7 +12,7 @@ export async function POST(
     const session = await getServerSession(authOptions);
     const { title } = await req.json();
 
-    if (!session?.user?.id || session.user.role !== "TEACHER") {
+    if (!session?.user?.id || !canManageCourses(session.user.role)) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 

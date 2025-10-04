@@ -113,13 +113,13 @@ const FormControl = React.forwardRef<
       ? `${formDescriptionId}`
       : `${formDescriptionId} ${formMessageId}`;
     
-    return React.cloneElement(children, {
+    return React.cloneElement(children as React.ReactElement, {
       ...props,
       id: formItemId,
       'aria-describedby': ariaDescribedBy,
       'aria-invalid': !!error,
       ref: ref,
-    })
+    } as any)
   }
 
   return (

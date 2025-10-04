@@ -103,7 +103,7 @@ export function S3Upload({
       <div className="space-y-2">
         <Label htmlFor="s3-file-upload">Upload File</Label>
         <div className="flex items-center gap-4">
-          <Input
+          <input
             ref={fileInputRef}
             id="s3-file-upload"
             type="file"

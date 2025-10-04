@@ -1,31 +1,38 @@
 import Mux from "@mux/mux-node";
 import { getServerSession } from "next-auth/next";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
+import { checkCourseManagementPermission } from "@/lib/permission-middleware";
 
-const { Video } = new Mux(
-  process.env.MUX_TOKEN_ID!,
-  process.env.MUX_TOKEN_SECRET!,
-);
+let Video: any = null;
+try {
+  const mux = new Mux(
+    process.env.MUX_TOKEN_ID || '',
+    process.env.MUX_TOKEN_SECRET || '',
+  );
+  Video = mux.Video;
+} catch (error) {
+  console.warn('Mux not configured, video features disabled');
+}
 
 export async function DELETE(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ courseId: string }> }
 ) {
   try {
     const { courseId } = await params;
+    
+    // Check permission using middleware
+    const permissionCheck = await checkCourseManagementPermission(req as NextRequest, courseId);
+    if (permissionCheck) return permissionCheck;
+
     const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
     const course = await db.course.findUnique({
       where: {
         id: courseId,
-        userId: session.user.id,
+        userId: session?.user?.id,
       },
       include: {
         chapters: {
@@ -41,8 +48,12 @@ export async function DELETE(
     }
 
     for (const chapter of course.chapters) {
-      if (chapter.muxData?.assetId) {
-        await Video.Assets.del(chapter.muxData.assetId);
+      if (chapter.muxData?.assetId && Video) {
+        try {
+          await Video.Assets.del(chapter.muxData.assetId);
+        } catch (error) {
+          console.warn('Failed to delete Mux asset:', error);
+        }
       }
     }
 
@@ -60,22 +71,23 @@ export async function DELETE(
 }
 
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ courseId: string }> }
 ) {
   try {
     const { courseId } = await params;
+    
+    // Check permission using middleware
+    const permissionCheck = await checkCourseManagementPermission(req as NextRequest, courseId);
+    if (permissionCheck) return permissionCheck;
+    
     const session = await getServerSession(authOptions);
     const values = await req.json();
-
-    if (!session?.user?.id) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
 
     const course = await db.course.update({
       where: {
         id: courseId,
-        userId: session.user.id
+        userId: session?.user?.id
       },
       data: {
         ...values,

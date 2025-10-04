@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 import { CourseProgress } from "@/components/course-progress";
+import { getChapterAccess } from "@/lib/chapter-access";
 
 import { CourseSidebarItem } from "./course-sidebar-item";
 
@@ -52,16 +53,25 @@ export const CourseSidebar = async ({
         )}
       </div>
       <div className="flex flex-col w-full">
-        {course.chapters.map((chapter) => (
-          <CourseSidebarItem
-            key={chapter.id}
-            id={chapter.id}
-            label={chapter.title}
-            isCompleted={!!chapter.userProgress?.[0]?.isCompleted}
-            courseId={course.id}
-            isLocked={!chapter.isFree && !purchase}
-          />
-        ))}
+        {course.chapters.map((chapter) => {
+          const chapterAccess = getChapterAccess(
+            course.chapters,
+            chapter.id,
+            !!purchase
+          );
+          
+          return (
+            <CourseSidebarItem
+              key={chapter.id}
+              id={chapter.id}
+              label={chapter.title}
+              isCompleted={!!chapter.userProgress?.[0]?.isCompleted}
+              courseId={course.id}
+              isLocked={chapterAccess.isLocked}
+              lockReason={chapterAccess.reason}
+            />
+          );
+        })}
       </div>
     </div>
   )

@@ -4,11 +4,13 @@ import { Inter } from 'next/font/google'
 import { AuthSessionProvider } from '@/components/providers/session-provider'
 import { ToastProvider } from '@/components/providers/toaster-provider'
 import { ConfettiProvider } from '@/components/providers/confetti-provider'
+import { LanguageProvider } from '@/contexts/LanguageContext'
+import { XPProvider } from '@/contexts/XPContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Math LMS - Learning Management System',
+  title: 'Aeroschool - Learning Management System',
   description: 'A comprehensive learning management system for mathematics education',
 }
 
@@ -21,9 +23,13 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthSessionProvider>
-          <ConfettiProvider />
-          <ToastProvider />
-          {children}
+          <LanguageProvider>
+            <XPProvider>
+              <ConfettiProvider />
+              <ToastProvider />
+              {children}
+            </XPProvider>
+          </LanguageProvider>
         </AuthSessionProvider>
       </body>
     </html>

@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -119,7 +120,7 @@ export default function StudentAssignmentsPage() {
   const router = useRouter();
   const [assignments, setAssignments] = useState(mockStudentAssignments);
   const [selectedTab, setSelectedTab] = useState("all");
-  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const [submissionText, setSubmissionText] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -150,7 +151,9 @@ export default function StudentAssignmentsPage() {
     return null;
   }
 
-  const handleSubmitAssignment = (assignmentId) => {
+  const handleSubmitAssignment = (assignmentId: number) => {
+    if (!assignmentId) return;
+    
     setAssignments(assignments.map(assignment => 
       assignment.id === assignmentId 
         ? {
@@ -167,6 +170,8 @@ export default function StudentAssignmentsPage() {
           }
         : assignment
     ));
+    
+    // Close dialog and reset state
     setIsSubmitDialogOpen(false);
     setSubmissionText("");
     setUploadedFiles([]);
@@ -187,7 +192,7 @@ export default function StudentAssignmentsPage() {
   const gradedCount = assignments.filter(a => a.submission.status === "Graded").length;
   const averageScore = assignments
     .filter(a => a.submission.score !== null)
-    .reduce((sum, a) => sum + a.submission.score, 0) / 
+    .reduce((sum, a) => sum + (a.submission.score || 0), 0) / 
     assignments.filter(a => a.submission.score !== null).length || 0;
 
   return (
@@ -357,17 +362,32 @@ export default function StudentAssignmentsPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Button>
+                      <Link href={`/dashboard/courses`}>
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </Button>
+                      </Link>
                       
                       {assignment.status === "Assigned" && (
-                        <Dialog>
+                        <Dialog open={isSubmitDialogOpen && selectedAssignment?.id === assignment.id} onOpenChange={(open) => {
+                          if (open) {
+                            setSelectedAssignment(assignment);
+                            setIsSubmitDialogOpen(true);
+                          } else {
+                            setSelectedAssignment(null);
+                            setIsSubmitDialogOpen(false);
+                            setSubmissionText("");
+                            setUploadedFiles([]);
+                          }
+                        }}>
                           <DialogTrigger asChild>
                             <Button 
                               size="sm"
-                              onClick={() => setSelectedAssignment(assignment)}
+                              onClick={() => {
+                                setSelectedAssignment(assignment);
+                                setIsSubmitDialogOpen(true);
+                              }}
                             >
                               <Send className="h-4 w-4 mr-2" />
                               Submit Assignment
@@ -375,7 +395,7 @@ export default function StudentAssignmentsPage() {
                           </DialogTrigger>
                           <DialogContent className="max-w-2xl">
                             <DialogHeader>
-                              <DialogTitle>Submit Assignment: {assignment.title}</DialogTitle>
+                              <DialogTitle>Submit Assignment: {selectedAssignment?.title}</DialogTitle>
                               <DialogDescription>
                                 Upload your assignment files and add any additional comments
                               </DialogDescription>
@@ -386,7 +406,7 @@ export default function StudentAssignmentsPage() {
                                   Assignment Instructions
                                 </label>
                                 <div className="p-3 bg-gray-50 border rounded-lg">
-                                  <p className="text-sm text-gray-700">{assignment.instructions}</p>
+                                  <p className="text-sm text-gray-700">{selectedAssignment?.instructions}</p>
                                 </div>
                               </div>
                               
@@ -423,10 +443,18 @@ export default function StudentAssignmentsPage() {
                               </div>
                               
                               <div className="flex justify-end gap-2">
-                                <Button variant="outline">
+                                <Button 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedAssignment(null);
+                                    setIsSubmitDialogOpen(false);
+                                    setSubmissionText("");
+                                    setUploadedFiles([]);
+                                  }}
+                                >
                                   Cancel
                                 </Button>
-                                <Button onClick={() => handleSubmitAssignment(assignment.id)}>
+                                <Button onClick={() => handleSubmitAssignment(selectedAssignment?.id)}>
                                   <Send className="h-4 w-4 mr-2" />
                                   Submit Assignment
                                 </Button>

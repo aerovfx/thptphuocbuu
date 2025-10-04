@@ -6,10 +6,18 @@ let storage: Storage;
 try {
   if (process.env.GOOGLE_CLOUD_CREDENTIALS) {
     // Use credentials from environment variable
-    storage = new Storage({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-      credentials: JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS),
-    });
+    try {
+      const credentials = JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS);
+      storage = new Storage({
+        projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+        credentials,
+      });
+    } catch (parseError) {
+      console.warn('[GCS_CONFIG_WARNING] Invalid JSON in GOOGLE_CLOUD_CREDENTIALS, using default auth');
+      storage = new Storage({
+        projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+      });
+    }
   } else if (process.env.GOOGLE_CLOUD_KEY_FILE) {
     // Use key file path
     storage = new Storage({
@@ -19,7 +27,7 @@ try {
   } else {
     // Fallback for local development with gcloud auth application-default login
     storage = new Storage({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || 'default-project',
     });
   }
 } catch (error) {

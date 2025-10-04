@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { isTeacher } from "@/lib/teacher";
+import { checkFileUploadPermission } from "@/lib/permission-middleware";
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id || !isTeacher(session?.user?.role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Check file upload permission
+    const permissionCheck = await checkFileUploadPermission(request);
+    if (permissionCheck) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: permissionCheck.status });
     }
 
     const formData = await request.formData();

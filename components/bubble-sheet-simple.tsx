@@ -207,10 +207,10 @@ const BubbleSheetSimple: React.FC = () => {
             <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
               <h3 className="font-bold text-green-800 mb-2 text-sm">🧪 Test Cases</h3>
               <ul className="text-xs text-green-700 space-y-1">
-                <li>✅ Dòng 1 cột 2 → Ô 1 = "-"</li>
-                <li>✅ Dòng 2 cột 3 → Ô 2 = ","</li>
-                <li>✅ Dòng 9 cột 3 → Ô 2 = "6"</li>
-                <li>✅ Dòng 12 cột 5 → Ô 4 = "9"</li>
+                <li>✅ Dòng 1 cột 2 → Ô 1 = &quot;-&quot;</li>
+                <li>✅ Dòng 2 cột 3 → Ô 2 = &quot;,&quot;</li>
+                <li>✅ Dòng 9 cột 3 → Ô 2 = &quot;6&quot;</li>
+                <li>✅ Dòng 12 cột 5 → Ô 4 = &quot;9&quot;</li>
               </ul>
             </div>
           </div>

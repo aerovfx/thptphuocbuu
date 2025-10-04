@@ -33,6 +33,7 @@ const ChapterIdPage = async ({
     nextChapter,
     userProgress,
     purchase,
+    isLocked,
   } = await getChapter({
     userId,
     chapterId,
@@ -42,9 +43,6 @@ const ChapterIdPage = async ({
   if (!chapter || !course) {
     return redirect("/")
   }
-
-
-  const isLocked = !chapter.isFree && !purchase;
   const completeOnEnd = !!purchase && !userProgress?.isCompleted;
 
   return ( 
@@ -52,13 +50,13 @@ const ChapterIdPage = async ({
       {userProgress?.isCompleted && (
         <Banner
           variant="success"
-          label="You already completed this chapter."
+          label="🎉 Bạn đã hoàn thành bài học này!"
         />
       )}
       {isLocked && (
         <Banner
           variant="warning"
-          label="You need to purchase this course to watch this chapter."
+          label="Bài học này đã bị khóa. Bạn cần hoàn thành các bài học trước đó để mở khóa bài này."
         />
       )}
       <div className="flex flex-col max-w-4xl mx-auto pb-20">
@@ -68,6 +66,7 @@ const ChapterIdPage = async ({
             title={chapter.title}
             courseId={courseId}
             nextChapterId={nextChapter?.id}
+            nextChapterTitle={nextChapter?.title}
             playbackId={muxData?.playbackId!}
             isLocked={isLocked}
             completeOnEnd={completeOnEnd}
@@ -83,6 +82,8 @@ const ChapterIdPage = async ({
                 chapterId={chapterId}
                 courseId={courseId}
                 nextChapterId={nextChapter?.id}
+                nextChapterTitle={nextChapter?.title}
+                currentChapterTitle={chapter.title}
                 isCompleted={!!userProgress?.isCompleted}
               />
             ) : (

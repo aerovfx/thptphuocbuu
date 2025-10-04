@@ -299,10 +299,10 @@ const AdvancedBubbleSheet: React.FC<AdvancedBubbleSheetProps> = () => {
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
               <h3 className="font-bold text-purple-800 mb-3">🧪 Test Cases</h3>
               <div className="space-y-1 text-xs text-purple-700">
-                <div>✅ Dòng 1 cột 2 → Ô 1 = "-"</div>
-                <div>✅ Dòng 2 cột 3 → Ô 2 = ","</div>
-                <div>✅ Dòng 9 cột 3 → Ô 2 = "6"</div>
-                <div>✅ Dòng 12 cột 5 → Ô 4 = "9"</div>
+                <div>✅ Dòng 1 cột 2 → Ô 1 = &quot;-&quot;</div>
+                <div>✅ Dòng 2 cột 3 → Ô 2 = &quot;,&quot;</div>
+                <div>✅ Dòng 9 cột 3 → Ô 2 = &quot;6&quot;</div>
+                <div>✅ Dòng 12 cột 5 → Ô 4 = &quot;9&quot;</div>
               </div>
             </div>
           </div>

@@ -35,7 +35,7 @@ async function main() {
       email: 'admin@example.com',
       name: 'Admin User',
       password: 'admin123',
-      role: 'TEACHER' as const,
+      role: 'ADMIN' as const,
     },
     {
       email: 'teacher@example.com',

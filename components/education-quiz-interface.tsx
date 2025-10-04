@@ -32,7 +32,7 @@ interface EducationQuizInterfaceProps {
     totalQuestions: number;
     questions: Question[];
   };
-  onSubmit: (answers: Record<number, number>) => void;
+  onSubmit: (answers: Record<number, number | boolean>) => void;
   onBack?: () => void;
 }
 
@@ -41,9 +41,9 @@ export const EducationQuizInterface = ({
   onSubmit,
   onBack
 }: EducationQuizInterfaceProps) => {
-  const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [part2Answers, setPart2Answers] = useState<Record<string, number>>({});
-  const [part3Answers, setPart3Answers] = useState<Record<string, number>>({});
+  const [answers, setAnswers] = useState<Record<number, number | boolean>>({});
+  const [part2Answers, setPart2Answers] = useState<Record<string, number | boolean>>({});
+  const [part3Answers, setPart3Answers] = useState<Record<string, number | boolean>>({});
   const [timeLeft, setTimeLeft] = useState(quizData.timeLimit * 60); // Convert to seconds
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -59,7 +59,7 @@ export const EducationQuizInterface = ({
     }
   }, [timeLeft, isSubmitted]);
 
-  const handleAnswerSelect = (questionId: string | number, answerIndex: number) => {
+  const handleAnswerSelect = (questionId: string | number, answerIndex: number | boolean) => {
     if (typeof questionId === 'string') {
       if (questionId.startsWith('part2_')) {
         // PHẦN II: Mutually exclusive per column (like PHẦN III)
@@ -79,7 +79,7 @@ export const EducationQuizInterface = ({
           });
           
           // Set the new answer
-          newAnswers[questionId] = answerIndex;
+          newAnswers[questionId] = answerIndex as number | boolean;
           
           return newAnswers;
         });
@@ -105,7 +105,7 @@ export const EducationQuizInterface = ({
           
           // Toggle behavior: Click vào ô đã chọn → bỏ chọn ô đó
           if (!isCurrentlySelected) {
-            newAnswers[questionId] = answerIndex;
+            newAnswers[questionId] = answerIndex as number | boolean;
           }
           
           // Debug: Simple log
@@ -413,7 +413,7 @@ export const EducationQuizInterface = ({
                               <div className="flex justify-center">
                                 <div 
                                   className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
-                                    part2Answers[`part2_${index}_${optIndex}_true`] === true ? 'bg-black' : 'bg-white'
+                                    part2Answers[`part2_${index}_${optIndex}_true`] !== undefined ? 'bg-black' : 'bg-white'
                                   }`}
                                   onClick={() => handleAnswerSelect(`part2_${index}_${optIndex}_true`, true)}
                                 ></div>
@@ -421,7 +421,7 @@ export const EducationQuizInterface = ({
                               <div className="flex justify-center">
                                 <div 
                                   className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
-                                    part2Answers[`part2_${index}_${optIndex}_false`] === false ? 'bg-black' : 'bg-white'
+                                    part2Answers[`part2_${index}_${optIndex}_false`] !== undefined ? 'bg-black' : 'bg-white'
                                   }`}
                                   onClick={() => handleAnswerSelect(`part2_${index}_${optIndex}_false`, false)}
                                 ></div>

@@ -250,10 +250,10 @@ const BubbleSheet: React.FC<BubbleSheetProps> = () => {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="font-bold text-blue-800 mb-2">✅ Test Mapping Accuracy</h3>
               <ul className="text-sm text-blue-700 space-y-1">
-                <li>• Tô dòng 1 cột 2 → Ô vuông 1 = "-"</li>
-                <li>• Tô dòng 2 cột 3 → Ô vuông 2 = ","</li>
-                <li>• Tô dòng 9 cột 3 → Ô vuông 2 = "6"</li>
-                <li>• Tô dòng 12 cột 5 → Ô vuông 4 = "9"</li>
+                <li>• Tô dòng 1 cột 2 → Ô vuông 1 = &quot;-&quot;</li>
+                <li>• Tô dòng 2 cột 3 → Ô vuông 2 = &quot;,&quot;</li>
+                <li>• Tô dòng 9 cột 3 → Ô vuông 2 = &quot;6&quot;</li>
+                <li>• Tô dòng 12 cột 5 → Ô vuông 4 = &quot;9&quot;</li>
               </ul>
             </div>
             

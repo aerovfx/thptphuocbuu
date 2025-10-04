@@ -77,19 +77,39 @@ const ImprovedBubbleSheet: React.FC<ImprovedBubbleSheetProps> = () => {
     });
   };
 
-  // 🎯 Tính giá trị ô vuông (squareIndex: 0,1,2,3 → cột 2,3,4,5)
-  const getSquareValue = (squareIndex: number) => {
-    const column = squareIndex + 2; // 2,3,4,5
-    
-    // Tìm dòng được chọn trong cột này
-    for (let row = 1; row <= 12; row++) {
-      const cellKey = `${row}-${column}`;
-      if (selectedCells[cellKey]) {
-        return mappingData[row as keyof typeof mappingData].char;
+  // 🎯 Tính giá trị ô vuông cho PHẦN III (squareIndex: 0,1,2,3 → cột 2,3,4,5)
+  const getSquareValue = (squareIndex: number, questionIndex?: number) => {
+    if (questionIndex !== undefined) {
+      // PHẦN III: Sử dụng part3Answers
+      const columnPosition = squareIndex + 1; // 1,2,3,4
+      
+      // Tìm trong part3Answers
+      for (const [key, value] of Object.entries(part3Answers)) {
+        if (key.startsWith(`part3_${questionIndex}_`) && key.endsWith(`_${columnPosition}`)) {
+          const parts = key.split('_');
+          const type = parts[2];
+          const digitIndex = parts[3];
+          
+          if (type === 'minus') return '-';
+          if (type === 'comma') return ',';
+          if (type === 'digit') return digitIndex;
+        }
       }
+      
+      return ''; // Không tô gì → ô vuông hiển thị trống
+    } else {
+      // Fallback cho bubble sheet gốc
+      const column = squareIndex + 2; // 2,3,4,5
+      
+      for (let row = 1; row <= 12; row++) {
+        const cellKey = `${row}-${column}`;
+        if (selectedCells[cellKey]) {
+          return mappingData[row as keyof typeof mappingData].char;
+        }
+      }
+      
+      return '';
     }
-    
-    return ''; // Không tô gì → ô vuông hiển thị trống
   };
 
   // 🎯 Reset tất cả
@@ -126,11 +146,11 @@ const ImprovedBubbleSheet: React.FC<ImprovedBubbleSheetProps> = () => {
         return newAnswers;
       });
     } else if (questionId.startsWith('part3_')) {
-      // PHẦN III: Numerical answers - copy logic from Education Quiz Interface
+      // PHẦN III: Numerical answers - FIXED logic for mutually exclusive per column
       const parts = questionId.split('_');
       const questionIndex = parts[1];
       const type = parts[2];
-      const columnPosition = parts[3];
+      const columnPosition = parts[3]; // This is the actual column position (0,1,2,3)
       
       setPart3Answers(prev => {
         const newAnswers = { ...prev };
@@ -138,7 +158,10 @@ const ImprovedBubbleSheet: React.FC<ImprovedBubbleSheetProps> = () => {
         // Check if the clicked cell is already selected
         const isCurrentlySelected = prev[questionId] === answerIndex;
         
-        // Clear all selections in the same column first (Advanced Bubble Sheet logic)
+        // CRITICAL FIX: Clear ALL selections in the same column for this question
+        // For digits: bubbleIndex (0,1,2,3) maps to column (1,2,3,4)
+        // For minus: position 0 maps to column 1  
+        // For comma: position 2,3 maps to column 3,4
         Object.keys(newAnswers).forEach(key => {
           if (key.startsWith(`part3_${questionIndex}_`) && key.endsWith(`_${columnPosition}`)) {
             delete newAnswers[key];
@@ -149,6 +172,12 @@ const ImprovedBubbleSheet: React.FC<ImprovedBubbleSheetProps> = () => {
         if (!isCurrentlySelected) {
           newAnswers[questionId] = answerIndex;
         }
+        
+        // Debug log
+        const selectedInColumn = Object.keys(newAnswers).filter(k => 
+          k.startsWith(`part3_${questionIndex}_`) && k.endsWith(`_${columnPosition}`)
+        ).length;
+        console.log(`🎯 PHẦN III: ${questionId} | Column: ${columnPosition} | Selected in Column: ${selectedInColumn}`);
         
         return newAnswers;
       });
@@ -308,8 +337,8 @@ const ImprovedBubbleSheet: React.FC<ImprovedBubbleSheetProps> = () => {
                       <div className="text-center font-medium text-red-600">D</div>
                     </div>
                     {Array.from({ length: 20 }, (_, index) => {
-                      const questionId = index + 1;
-                      const selectedAnswer = answers[questionId];
+                      const questionId = (index + 1).toString();
+                      const selectedAnswer = answers[parseInt(questionId)];
                       
                       return (
                         <div key={index} className="grid grid-cols-5 gap-1 text-xs">
@@ -343,8 +372,8 @@ const ImprovedBubbleSheet: React.FC<ImprovedBubbleSheetProps> = () => {
                       <div className="text-center font-medium text-red-600">D</div>
                     </div>
                     {Array.from({ length: 20 }, (_, index) => {
-                      const questionId = index + 21;
-                      const selectedAnswer = answers[questionId];
+                      const questionId = (index + 21).toString();
+                      const selectedAnswer = answers[parseInt(questionId)];
                       
                       return (
                         <div key={index} className="grid grid-cols-5 gap-1 text-xs">
@@ -370,250 +399,222 @@ const ImprovedBubbleSheet: React.FC<ImprovedBubbleSheetProps> = () => {
               </div>
 
               {/* PHẦN II - Câu đúng/sai (4 câu) */}
-              <div className="bg-pink-50 border-2 border-pink-300 p-3 rounded">
+              <div className="bg-pink-100 border-2 border-pink-300 p-3 rounded">
                 <div className="text-center text-sm font-bold mb-3 text-blue-600">PHẦN II</div>
                 <div className="text-xs text-center mb-3">(Câu đúng/sai - 4 câu)</div>
                 
-                <div className="space-y-2">
-                  {Array.from({ length: 4 }, (_, index) => {
-                    const questionId = index + 41;
-                    const part2Key = `part2_${index}`;
-                    const selectedAnswer = part2Answers[part2Key];
-                    
-                    return (
-                      <div key={index} className="grid grid-cols-4 gap-2 text-xs">
-                        <div className="text-center font-medium">{index + 1}.</div>
-                        <div className="flex justify-center">
-                          <div
-                            className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer transition-all ${
-                              selectedAnswer === 0
-                                ? 'bg-black'
-                                : 'bg-white hover:bg-gray-200'
-                            }`}
-                            onClick={() => handleAnswerSelect(questionId, 0)}
-                          >
-                          </div>
+                <div className="grid grid-cols-4 gap-4">
+                  {Array.from({ length: 4 }, (_, index) => (
+                    <div key={index} className="border border-red-500 p-2 rounded">
+                      <div className="text-center text-xs font-bold mb-2">Câu {index + 1}</div>
+                      <div className="text-xs">
+                        <div className="grid grid-cols-3 gap-1 mb-2">
+                          <div className="text-center font-medium text-red-600"></div>
+                          <div className="text-center font-medium text-red-600">Đúng</div>
+                          <div className="text-center font-medium text-red-600">Sai</div>
                         </div>
-                        <div className="text-center text-red-600 font-medium">Đúng</div>
-                        <div className="flex justify-center">
-                          <div
-                            className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer transition-all ${
-                              selectedAnswer === 1
-                                ? 'bg-black'
-                                : 'bg-white hover:bg-gray-200'
-                            }`}
-                            onClick={() => handleAnswerSelect(questionId, 1)}
-                          >
+                        {['a)', 'b)', 'c)', 'd)'].map((option, optIndex) => (
+                          <div key={option} className="grid grid-cols-3 gap-1 mb-1">
+                            <div className="text-center">{option}</div>
+                            <div className="flex justify-center">
+                              <div 
+                                className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
+                                  part2Answers[`part2_${index}_${optIndex}_true`] === true ? 'bg-black' : 'bg-white'
+                                }`}
+                                onClick={() => handleAnswerSelect(`part2_${index}_${optIndex}_true`, true)}
+                              ></div>
+                            </div>
+                            <div className="flex justify-center">
+                              <div 
+                                className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
+                                  part2Answers[`part2_${index}_${optIndex}_false`] === false ? 'bg-black' : 'bg-white'
+                                }`}
+                                onClick={() => handleAnswerSelect(`part2_${index}_${optIndex}_false`, false)}
+                              ></div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-center text-red-600 font-medium">Sai</div>
+                        ))}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {/* PHẦN III - Đáp án số (6 câu) */}
-              <div className="bg-green-50 border-2 border-green-300 p-3 rounded">
-                <div className="text-center text-sm font-bold mb-3 text-blue-600">PHẦN III</div>
-                <div className="text-xs text-center mb-3">(Đáp án số - 6 câu)</div>
+              <div className="bg-pink-100 border-2 border-pink-300 p-3 rounded">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="text-sm font-bold text-blue-600">PHẦN III</div>
+                  <div className="text-xs text-gray-600">Hướng dẫn điền</div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Row 1: Câu 1-3 */}
+                  {Array.from({ length: 3 }, (_, index) => (
+                    <div key={index} className="text-center">
+                      <div className="text-xs font-bold mb-2">Câu {index + 1}</div>
+                      <div className="space-y-1">
+                        {/* 4 ô vuông ở trên - bố trí từ cột 2 đến cột 5 */}
+                        <div className="flex justify-center space-x-1 mb-2">
+                          {[0, 1, 2, 3].map((squareIndex) => (
+                            <div key={squareIndex} className="w-6 h-6 border border-red-500 bg-white rounded flex items-center justify-center text-xs font-bold text-red-600">
+                              {getSquareValue(squareIndex, index)}
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Header row với số cột */}
+                        <div className="grid grid-cols-5 gap-1 mb-1">
+                          <div className="text-center text-xs font-medium"></div>
+                          <div className="text-center text-xs font-medium">2</div>
+                          <div className="text-center text-xs font-medium">3</div>
+                          <div className="text-center text-xs font-medium">4</div>
+                          <div className="text-center text-xs font-medium">5</div>
+                        </div>
+                        
+                        {/* Dấu trừ - chỉ cột 1 (position 0) */}
+                        <div className="grid grid-cols-5 gap-1">
+                          <div className="text-center text-xs">-</div>
+                          <div className="flex justify-center">
+                            <div 
+                              className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
+                                part3Answers[`part3_${index}_minus_0`] !== undefined ? 'bg-black' : 'bg-white'
+                              }`}
+                              onClick={() => handleAnswerSelect(`part3_${index}_minus_0`, 0)}
+                            ></div>
+                          </div>
+                          <div className="w-3 h-3"></div>
+                          <div className="w-3 h-3"></div>
+                          <div className="w-3 h-3"></div>
+                        </div>
+
+                        {/* Dấu phẩy - chỉ cột 3,4 (position 2,3) */}
+                        <div className="grid grid-cols-5 gap-1">
+                          <div className="text-center text-xs">,</div>
+                          <div className="w-3 h-3"></div>
+                          <div className="w-3 h-3"></div>
+                          <div className="flex justify-center">
+                            <div 
+                              className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
+                                part3Answers[`part3_${index}_comma_2`] !== undefined ? 'bg-black' : 'bg-white'
+                              }`}
+                              onClick={() => handleAnswerSelect(`part3_${index}_comma_2`, 2)}
+                            ></div>
+                          </div>
+                          <div className="flex justify-center">
+                            <div 
+                              className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
+                                part3Answers[`part3_${index}_comma_3`] !== undefined ? 'bg-black' : 'bg-white'
+                              }`}
+                              onClick={() => handleAnswerSelect(`part3_${index}_comma_3`, 3)}
+                            ></div>
+                          </div>
+                        </div>
+                        
+                        {/* Số 0-9 - tất cả 4 cột */}
+                        {Array.from({ length: 10 }, (_, digitIndex) => (
+                          <div key={digitIndex} className="grid grid-cols-5 gap-1">
+                            <div className="text-center text-xs">{digitIndex}</div>
+                            {Array.from({ length: 4 }, (_, bubbleIndex) => (
+                              <div key={bubbleIndex} className="flex justify-center">
+                                <div 
+                                  className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
+                                    part3Answers[`part3_${index}_digit_${digitIndex}_${bubbleIndex}`] !== undefined ? 'bg-black' : 'bg-white'
+                                  }`}
+                                  onClick={() => handleAnswerSelect(`part3_${index}_digit_${digitIndex}_${bubbleIndex}`, bubbleIndex)}
+                                ></div>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Questions 1-3 */}
-                  <div className="space-y-2">
-                    {Array.from({ length: 3 }, (_, index) => (
-                      <div key={index} className="border border-gray-300 p-2 rounded">
-                        <div className="text-center text-xs font-medium mb-2">Câu {index + 1}</div>
-                        
-                        {/* Result Squares */}
-                        <div className="flex justify-center space-x-1 mb-2">
-                          {[0, 1, 2, 3].map((squareIndex) => (
-                            <div key={squareIndex} className="w-6 h-6 border border-red-500 bg-white rounded flex items-center justify-center text-xs font-bold text-red-600">
-                              {getSquareValue(squareIndex)}
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {/* Column Headers */}
-                        <div className="grid grid-cols-5 gap-1 mb-1">
-                          <div className="text-center text-xs font-medium"></div>
-                          <div className="text-center text-xs font-medium">2</div>
-                          <div className="text-center text-xs font-medium">3</div>
-                          <div className="text-center text-xs font-medium">4</div>
-                          <div className="text-center text-xs font-medium">5</div>
-                        </div>
-                        
-                        {/* Selection Table */}
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  {/* Row 2: Câu 4-6 */}
+                  {Array.from({ length: 3 }, (_, index) => {
+                    const actualIndex = index + 3;
+                    return (
+                      <div key={actualIndex} className="text-center">
+                        <div className="text-xs font-bold mb-2">Câu {actualIndex + 1}</div>
                         <div className="space-y-1">
-                          {/* Dấu trừ */}
+                          {/* 4 ô vuông ở trên - bố trí từ cột 2 đến cột 5 */}
+                          <div className="flex justify-center space-x-1 mb-2">
+                            {[0, 1, 2, 3].map((squareIndex) => (
+                              <div key={squareIndex} className="w-6 h-6 border border-red-500 bg-white rounded flex items-center justify-center text-xs font-bold text-red-600">
+                                {getSquareValue(squareIndex, index)}
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {/* Header row với số cột */}
+                          <div className="grid grid-cols-5 gap-1 mb-1">
+                            <div className="text-center text-xs font-medium"></div>
+                            <div className="text-center text-xs font-medium">2</div>
+                            <div className="text-center text-xs font-medium">3</div>
+                            <div className="text-center text-xs font-medium">4</div>
+                            <div className="text-center text-xs font-medium">5</div>
+                          </div>
+                          
+                          {/* Dấu trừ - chỉ cột 1 (position 0) */}
                           <div className="grid grid-cols-5 gap-1">
                             <div className="text-center text-xs">-</div>
                             <div className="flex justify-center">
-                              <div
-                                className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer transition-all ${
-                                  isCellSelected(1, 2)
-                                    ? 'bg-black'
-                                    : 'bg-white hover:bg-gray-200'
+                              <div 
+                                className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
+                                  part3Answers[`part3_${actualIndex}_minus_0`] !== undefined ? 'bg-black' : 'bg-white'
                                 }`}
-                                onClick={() => handleCellClick(1, 2)}
-                              >
-                              </div>
+                                onClick={() => handleAnswerSelect(`part3_${actualIndex}_minus_0`, 0)}
+                              ></div>
                             </div>
                             <div className="w-3 h-3"></div>
                             <div className="w-3 h-3"></div>
                             <div className="w-3 h-3"></div>
                           </div>
-                          
-                          {/* Dấu phẩy */}
+
+                          {/* Dấu phẩy - chỉ cột 3,4 (position 2,3) */}
                           <div className="grid grid-cols-5 gap-1">
                             <div className="text-center text-xs">,</div>
                             <div className="w-3 h-3"></div>
                             <div className="w-3 h-3"></div>
                             <div className="flex justify-center">
-                              <div
-                                className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer transition-all ${
-                                  isCellSelected(2, 4)
-                                    ? 'bg-black'
-                                    : 'bg-white hover:bg-gray-200'
+                              <div 
+                                className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
+                                  part3Answers[`part3_${actualIndex}_comma_2`] !== undefined ? 'bg-black' : 'bg-white'
                                 }`}
-                                onClick={() => handleCellClick(2, 4)}
-                              >
-                              </div>
+                                onClick={() => handleAnswerSelect(`part3_${actualIndex}_comma_2`, 2)}
+                              ></div>
                             </div>
                             <div className="flex justify-center">
-                              <div
-                                className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer transition-all ${
-                                  isCellSelected(2, 5)
-                                    ? 'bg-black'
-                                    : 'bg-white hover:bg-gray-200'
+                              <div 
+                                className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
+                                  part3Answers[`part3_${actualIndex}_comma_3`] !== undefined ? 'bg-black' : 'bg-white'
                                 }`}
-                                onClick={() => handleCellClick(2, 5)}
-                              >
-                              </div>
+                                onClick={() => handleAnswerSelect(`part3_${actualIndex}_comma_3`, 3)}
+                              ></div>
                             </div>
                           </div>
                           
-                          {/* Số 0-9 */}
+                          {/* Số 0-9 - tất cả 4 cột */}
                           {Array.from({ length: 10 }, (_, digitIndex) => (
                             <div key={digitIndex} className="grid grid-cols-5 gap-1">
                               <div className="text-center text-xs">{digitIndex}</div>
-                              {[2, 3, 4, 5].map((col) => (
-                                <div key={col} className="flex justify-center">
-                                  <div
-                                    className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer transition-all ${
-                                      isCellSelected(digitIndex + 3, col)
-                                        ? 'bg-black'
-                                        : 'bg-white hover:bg-gray-200'
+                              {Array.from({ length: 4 }, (_, bubbleIndex) => (
+                                <div key={bubbleIndex} className="flex justify-center">
+                                  <div 
+                                    className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer hover:bg-gray-200 ${
+                                      part3Answers[`part3_${actualIndex}_digit_${digitIndex}_${bubbleIndex}`] !== undefined ? 'bg-black' : 'bg-white'
                                     }`}
-                                    onClick={() => handleCellClick(digitIndex + 3, col)}
-                                  >
-                                  </div>
+                                    onClick={() => handleAnswerSelect(`part3_${actualIndex}_digit_${digitIndex}_${bubbleIndex}`, bubbleIndex)}
+                                  ></div>
                                 </div>
                               ))}
                             </div>
                           ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                  
-                  {/* Questions 4-6 */}
-                  <div className="space-y-2">
-                    {Array.from({ length: 3 }, (_, index) => (
-                      <div key={index + 3} className="border border-gray-300 p-2 rounded">
-                        <div className="text-center text-xs font-medium mb-2">Câu {index + 4}</div>
-                        
-                        {/* Result Squares */}
-                        <div className="flex justify-center space-x-1 mb-2">
-                          {[0, 1, 2, 3].map((squareIndex) => (
-                            <div key={squareIndex} className="w-6 h-6 border border-red-500 bg-white rounded flex items-center justify-center text-xs font-bold text-red-600">
-                              {getSquareValue(squareIndex)}
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {/* Column Headers */}
-                        <div className="grid grid-cols-5 gap-1 mb-1">
-                          <div className="text-center text-xs font-medium"></div>
-                          <div className="text-center text-xs font-medium">2</div>
-                          <div className="text-center text-xs font-medium">3</div>
-                          <div className="text-center text-xs font-medium">4</div>
-                          <div className="text-center text-xs font-medium">5</div>
-                        </div>
-                        
-                        {/* Selection Table */}
-                        <div className="space-y-1">
-                          {/* Dấu trừ */}
-                          <div className="grid grid-cols-5 gap-1">
-                            <div className="text-center text-xs">-</div>
-                            <div className="flex justify-center">
-                              <div
-                                className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer transition-all ${
-                                  isCellSelected(1, 2)
-                                    ? 'bg-black'
-                                    : 'bg-white hover:bg-gray-200'
-                                }`}
-                                onClick={() => handleCellClick(1, 2)}
-                              >
-                              </div>
-                            </div>
-                            <div className="w-3 h-3"></div>
-                            <div className="w-3 h-3"></div>
-                            <div className="w-3 h-3"></div>
-                          </div>
-                          
-                          {/* Dấu phẩy */}
-                          <div className="grid grid-cols-5 gap-1">
-                            <div className="text-center text-xs">,</div>
-                            <div className="w-3 h-3"></div>
-                            <div className="w-3 h-3"></div>
-                            <div className="flex justify-center">
-                              <div
-                                className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer transition-all ${
-                                  isCellSelected(2, 4)
-                                    ? 'bg-black'
-                                    : 'bg-white hover:bg-gray-200'
-                                }`}
-                                onClick={() => handleCellClick(2, 4)}
-                              >
-                              </div>
-                            </div>
-                            <div className="flex justify-center">
-                              <div
-                                className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer transition-all ${
-                                  isCellSelected(2, 5)
-                                    ? 'bg-black'
-                                    : 'bg-white hover:bg-gray-200'
-                                }`}
-                                onClick={() => handleCellClick(2, 5)}
-                              >
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Số 0-9 */}
-                          {Array.from({ length: 10 }, (_, digitIndex) => (
-                            <div key={digitIndex} className="grid grid-cols-5 gap-1">
-                              <div className="text-center text-xs">{digitIndex}</div>
-                              {[2, 3, 4, 5].map((col) => (
-                                <div key={col} className="flex justify-center">
-                                  <div
-                                    className={`w-3 h-3 rounded-full border border-red-500 cursor-pointer transition-all ${
-                                      isCellSelected(digitIndex + 3, col)
-                                        ? 'bg-black'
-                                        : 'bg-white hover:bg-gray-200'
-                                    }`}
-                                    onClick={() => handleCellClick(digitIndex + 3, col)}
-                                  >
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
 

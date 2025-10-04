@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import {
   Download,
   FileText,
   Video,
+  Award,
   Users
 } from "lucide-react";
 
@@ -322,12 +324,16 @@ export default function MyCoursesPage() {
                   Last accessed: {course.lastAccessed}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
-                  <Button size="sm">
-                    Continue Learning
-                  </Button>
+                  <Link href={`/dashboard/courses`}>
+                    <Button variant="outline" size="sm">
+                      View Details
+                    </Button>
+                  </Link>
+                  <Link href={`/dashboard/learning`}>
+                    <Button size="sm">
+                      Continue Learning
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </CardContent>

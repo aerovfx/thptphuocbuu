@@ -1,3 +1,5 @@
+import { isTeacher as checkIsTeacher } from "./permissions";
+
 export const isTeacher = (role?: string | null) => {
-  return role === "TEACHER";
+  return checkIsTeacher(role);
 }

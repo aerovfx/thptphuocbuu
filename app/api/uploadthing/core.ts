@@ -21,19 +21,16 @@ export const ourFileRouter = {
     .middleware(async () => await handleAuth())
     .onUploadComplete(({ file }) => {
       console.log("Course image uploaded:", file);
-      return { uploadedBy: "mock-user" };
     }),
   courseAttachment: f(["text", "image", "video", "audio", "pdf"])
     .middleware(async () => await handleAuth())
     .onUploadComplete(({ file }) => {
       console.log("Course attachment uploaded:", file);
-      return { uploadedBy: "mock-user" };
     }),
   chapterVideo: f({ video: { maxFileCount: 1, maxFileSize: "512GB" } })
     .middleware(async () => await handleAuth())
     .onUploadComplete(({ file }) => {
       console.log("Chapter video uploaded:", file);
-      return { uploadedBy: "mock-user" };
     })
 } satisfies FileRouter;
  

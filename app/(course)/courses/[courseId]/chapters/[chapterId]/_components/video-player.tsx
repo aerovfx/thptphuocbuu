@@ -9,12 +9,15 @@ import { Loader2, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConfettiStore } from "@/hooks/use-confetti-store";
 import { GCSVideoPlayer } from "@/components/ui/gcs-video-player";
+import { LessonCompletionModal } from "./lesson-completion-modal";
+import { useXP } from "@/contexts/XPContext";
 
 interface VideoPlayerProps {
   playbackId: string;
   courseId: string;
   chapterId: string;
   nextChapterId?: string;
+  nextChapterTitle?: string;
   isLocked: boolean;
   completeOnEnd: boolean;
   title: string;
@@ -26,14 +29,18 @@ export const VideoPlayer = ({
   courseId,
   chapterId,
   nextChapterId,
+  nextChapterTitle,
   isLocked,
   completeOnEnd,
   title,
   videoUrl,
 }: VideoPlayerProps) => {
   const [isReady, setIsReady] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [earnedXP, setEarnedXP] = useState(0);
   const router = useRouter();
   const confetti = useConfettiStore();
+  const { completeLesson, updateStreak } = useXP();
 
   const onEnd = async () => {
     try {
@@ -42,19 +49,24 @@ export const VideoPlayer = ({
           isCompleted: true,
         });
 
+        // Award XP for video completion
+        const xpReward = 25; // Slightly more XP for watching full video
+        setEarnedXP(xpReward);
+        
+        // Add XP and update streak
+        completeLesson(chapterId, xpReward);
+        updateStreak();
+
         if (!nextChapterId) {
           confetti.onOpen();
         }
 
-        toast.success("Progress updated");
+        // Show completion modal instead of immediate redirect
+        setShowCompletionModal(true);
         router.refresh();
-
-        if (nextChapterId) {
-          router.push(`/courses/${courseId}/chapters/${nextChapterId}`)
-        }
       }
     } catch {
-      toast.error("Something went wrong");
+      toast.error("Có lỗi xảy ra khi cập nhật tiến độ");
     }
   }
 
@@ -83,6 +95,16 @@ export const VideoPlayer = ({
           onEnded={onEnd}
         />
       )}
+
+      <LessonCompletionModal
+        isOpen={showCompletionModal}
+        onClose={() => setShowCompletionModal(false)}
+        nextChapterId={nextChapterId}
+        nextChapterTitle={nextChapterTitle}
+        courseId={courseId}
+        currentChapterTitle={title}
+        earnedXP={earnedXP}
+      />
     </div>
   )
 }

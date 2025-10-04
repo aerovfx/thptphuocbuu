@@ -1,6 +1,8 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, use } from "react";
 import { StudentQuizInterface } from "@/components/student-quiz-interface";
 
 // Mock quiz data - replace with real API call
@@ -208,31 +210,57 @@ interface QuizPageProps {
   params: Promise<{ quizId: string }>;
 }
 
-const QuizPage = async ({ params }: QuizPageProps) => {
-  const { quizId } = await params;
-  const session = await getServerSession(authOptions);
+const QuizPage = ({ params }: QuizPageProps) => {
+  const resolvedParams = use(params);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [quizData, setQuizData] = useState<any>(null);
 
-  if (!session?.user) {
-    return redirect("/");
-  }
+  useEffect(() => {
+    if (status === "loading") return;
+    
+    if (!session) {
+      router.push("/sign-in");
+      return;
+    }
 
-  // Check if user is student
-  if (session.user.role !== "STUDENT") {
-    return redirect("/teacher");
-  }
+    if (session.user.role !== "STUDENT") {
+      router.push("/teacher/dashboard");
+      return;
+    }
 
-  const quizData = await getQuizData(quizId);
+    // Load quiz data
+    const loadQuizData = async () => {
+      const data = await getQuizData(resolvedParams.quizId);
+      setQuizData(data);
+    };
+    
+    loadQuizData();
+  }, [session, status, router, resolvedParams.quizId]);
 
   const handleQuizSubmit = (answers: Record<number, number>) => {
     // Handle quiz submission
     console.log("Quiz submitted with answers:", answers);
     // Redirect to results page or show success message
+    router.push("/dashboard/quizzes");
   };
 
   const handleBack = () => {
     // Navigate back to course or dashboard
-    window.history.back();
+    router.back();
   };
+
+  if (status === "loading" || !quizData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (!session || session.user.role !== "STUDENT") {
+    return null;
+  }
 
   return (
     <StudentQuizInterface

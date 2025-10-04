@@ -78,7 +78,7 @@ export function SimpleUpload({
       <div className="space-y-2">
         <Label htmlFor="file-upload">Upload File</Label>
         <div className="flex items-center gap-4">
-          <Input
+          <input
             ref={fileInputRef}
             id="file-upload"
             type="file"
