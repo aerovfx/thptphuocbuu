@@ -109,8 +109,10 @@ export default function SinhHocLearnPage() {
       setShowResult(false);
       setSelectedAnswer(null);
     } else {
-      // Quiz completed - show celebration
-      // The celebration will be handled by the component
+      // Quiz completed - redirect to learning path page
+      setTimeout(() => {
+        window.location.href = '/learning-paths-demo/sinh-hoc';
+      }, 3000); // Wait 3 seconds to show celebration
     }
   };
 

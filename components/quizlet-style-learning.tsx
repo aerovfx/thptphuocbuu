@@ -46,6 +46,7 @@ export function QuizletStyleLearning({
 }: QuizletStyleLearningProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   // Play celebration sound
   const playCelebrationSound = () => {
@@ -131,6 +132,20 @@ export function QuizletStyleLearning({
           origin: { y: 0.5 }
         });
       }, 2000);
+
+      // Start countdown after 2 seconds
+      setTimeout(() => {
+        setCountdown(3);
+        const countdownInterval = setInterval(() => {
+          setCountdown(prev => {
+            if (prev === null || prev <= 1) {
+              clearInterval(countdownInterval);
+              return null;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }, 2000);
     }
   }, [isCompleted, showCelebration]);
 
@@ -160,7 +175,7 @@ export function QuizletStyleLearning({
           className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold px-6 py-2 rounded-lg"
           onClick={onNext}
         >
-          {isCompleted ? "Hoàn thành" : showResult ? "Continue" : "Start"}
+          {isCompleted ? "Bài tiếp theo" : showResult ? "Continue" : "Start"}
         </Button>
       </div>
 
@@ -196,11 +211,16 @@ export function QuizletStyleLearning({
                 <Trophy className="h-8 w-8 text-yellow-200" />
               </div>
               <p className="text-lg mb-2">Bạn đã hoàn thành bài học!</p>
-              <div className="flex items-center justify-center gap-2 text-yellow-200">
+              <div className="flex items-center justify-center gap-2 text-yellow-200 mb-3">
                 <Star className="h-5 w-5" />
                 <span className="text-xl font-bold">+{totalXP} XP</span>
                 <Star className="h-5 w-5" />
               </div>
+              {countdown && (
+                <div className="text-sm text-yellow-200">
+                  Chuyển trang trong {countdown} giây...
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
