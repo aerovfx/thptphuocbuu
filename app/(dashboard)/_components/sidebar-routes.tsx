@@ -60,11 +60,11 @@ const studentRoutes = [
     label: "Cuộc thi",
     href: "/dashboard/competition",
   },
-  // {
-  //   icon: MessageSquare,
-  //   label: "Live Chat",
-  //   href: "/dashboard/chat",
-  // },
+  {
+    icon: MessageSquare,
+    label: "Chat",
+    href: "/dashboard/chat",
+  },
   {
     icon: Zap,
     label: "STEM Projects",
