@@ -109,14 +109,17 @@ export default function VatLyLearnPage() {
       setShowResult(false);
       setSelectedAnswer(null);
     } else {
-      // Quiz completed
-      alert(`Quiz hoàn thành! Điểm số: ${score}/${questions.length}`);
+      // Quiz completed - show celebration
+      // The celebration will be handled by the component
     }
   };
 
   const handleSkip = () => {
     handleNext();
   };
+
+  const isCompleted = currentQuestionIndex === questions.length - 1 && showResult;
+  const totalXP = score * 10; // 10 XP per correct answer
 
   return (
     <QuizletStyleLearning
@@ -130,6 +133,8 @@ export default function VatLyLearnPage() {
       showResult={showResult}
       selectedAnswer={selectedAnswer}
       isCorrect={isCorrect}
+      isCompleted={isCompleted}
+      totalXP={totalXP}
     />
   );
 }

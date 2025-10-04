@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ChevronDown, Flag, Play, CheckCircle, XCircle } from "lucide-react";
+import { ChevronDown, Flag, Play, CheckCircle, XCircle, Star, Trophy } from "lucide-react";
+import confetti from "canvas-confetti";
 
 interface QuizletStyleLearningProps {
   subject: string;
@@ -25,6 +26,8 @@ interface QuizletStyleLearningProps {
   showResult?: boolean;
   selectedAnswer?: string;
   isCorrect?: boolean;
+  isCompleted?: boolean;
+  totalXP?: number;
 }
 
 export function QuizletStyleLearning({
@@ -37,9 +40,99 @@ export function QuizletStyleLearning({
   onSkip,
   showResult = false,
   selectedAnswer,
-  isCorrect
+  isCorrect,
+  isCompleted = false,
+  totalXP = 0
 }: QuizletStyleLearningProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+
+  // Play celebration sound
+  const playCelebrationSound = () => {
+    // Create audio context for web audio API
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    // Kahoot-style victory melody
+    const playNote = (frequency: number, startTime: number, duration: number) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+      
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration);
+    };
+
+    const now = audioContext.currentTime;
+    
+    // Victory melody (C major scale ascending)
+    const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25]; // C4 to C5
+    
+    notes.forEach((freq, index) => {
+      playNote(freq, now + index * 0.15, 0.3);
+    });
+    
+    // Final triumphant chord
+    setTimeout(() => {
+      const chordTime = now + 1.5;
+      playNote(261.63, chordTime, 0.5); // C
+      playNote(329.63, chordTime, 0.5); // E
+      playNote(392.00, chordTime, 0.5); // G
+    }, 1500);
+  };
+
+  // Trigger confetti and sound when lesson is completed
+  useEffect(() => {
+    if (isCompleted && !showCelebration) {
+      setShowCelebration(true);
+      
+      // Play celebration sound
+      playCelebrationSound();
+      
+      // Fire confetti
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+
+      // Additional confetti bursts
+      setTimeout(() => {
+        confetti({
+          particleCount: 50,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 }
+        });
+      }, 250);
+
+      setTimeout(() => {
+        confetti({
+          particleCount: 50,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 }
+        });
+      }, 400);
+
+      // Final confetti burst
+      setTimeout(() => {
+        confetti({
+          particleCount: 200,
+          spread: 90,
+          origin: { y: 0.5 }
+        });
+      }, 2000);
+    }
+  }, [isCompleted, showCelebration]);
 
   const handleOptionClick = (optionId: string) => {
     if (!showResult) {
@@ -67,7 +160,7 @@ export function QuizletStyleLearning({
           className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold px-6 py-2 rounded-lg"
           onClick={onNext}
         >
-          {showResult ? "Continue" : "Start"}
+          {isCompleted ? "Hoàn thành" : showResult ? "Continue" : "Start"}
         </Button>
       </div>
 
@@ -91,6 +184,27 @@ export function QuizletStyleLearning({
           </div>
         </div>
       </div>
+
+      {/* Completion Celebration */}
+      {isCompleted && showCelebration && (
+        <div className="px-6 mb-6">
+          <Card className="bg-gradient-to-r from-yellow-500 to-orange-500 border-yellow-400 shadow-2xl">
+            <CardContent className="p-6 text-center text-white">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Trophy className="h-8 w-8 text-yellow-200" />
+                <h2 className="text-2xl font-bold">Chúc mừng!</h2>
+                <Trophy className="h-8 w-8 text-yellow-200" />
+              </div>
+              <p className="text-lg mb-2">Bạn đã hoàn thành bài học!</p>
+              <div className="flex items-center justify-center gap-2 text-yellow-200">
+                <Star className="h-5 w-5" />
+                <span className="text-xl font-bold">+{totalXP} XP</span>
+                <Star className="h-5 w-5" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Main Content Card */}
       <div className="px-6">
