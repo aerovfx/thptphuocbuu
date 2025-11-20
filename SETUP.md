@@ -1,99 +1,64 @@
-# Math LMS - Setup Guide
+# Hướng dẫn Cài đặt
 
-## Prerequisites
-
-1. Node.js 18+ 
-2. PostgreSQL database
-3. Git
-
-## Setup Instructions
-
-### 1. Environment Variables
-
-Create a `.env.local` file in the root directory with the following variables:
-
-```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/lmsmath"
-
-# NextAuth.js
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-key-here"
-
-# UploadThing (optional)
-UPLOADTHING_SECRET="your-uploadthing-secret"
-UPLOADTHING_APP_ID="your-uploadthing-app-id"
-
-# Mux (optional)
-MUX_TOKEN_ID="your-mux-token-id"
-MUX_TOKEN_SECRET="your-mux-token-secret"
-
-# Stripe (optional)
-STRIPE_API_KEY="your-stripe-api-key"
-STRIPE_WEBHOOK_SECRET="your-stripe-webhook-secret"
-```
-
-### 2. Database Setup
-
-1. Create a PostgreSQL database named `lmsmath`
-2. Update the `DATABASE_URL` in your `.env.local` file with your PostgreSQL credentials
-3. Run the following commands:
+## Bước 1: Cài đặt Dependencies
 
 ```bash
-# Install dependencies
 npm install
-
-# Generate Prisma client
-npx prisma generate
-
-# Run database migrations
-npx prisma migrate dev --name init
-
-# (Optional) Seed the database
-npx prisma db seed
 ```
 
-### 3. Run the Application
+## Bước 2: Thiết lập Database
+
+1. Tạo file `.env` từ `.env.example`:
+```bash
+cp .env.example .env
+```
+
+2. Chỉnh sửa file `.env` và thêm NEXTAUTH_SECRET:
+```
+DATABASE_URL="file:./dev.db"
+NEXTAUTH_SECRET="your-random-secret-key-here"
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+Để tạo NEXTAUTH_SECRET, bạn có thể chạy:
+```bash
+openssl rand -base64 32
+```
+
+3. Tạo database và schema:
+```bash
+npm run db:generate
+npm run db:push
+```
+
+## Bước 3: Chạy ứng dụng
 
 ```bash
-# Start the development server
 npm run dev
 ```
 
-The application will be available at `http://localhost:3000`
+Ứng dụng sẽ chạy tại `http://localhost:3000`
 
-## Features
+## Bước 4: Tạo tài khoản đầu tiên
 
-- ✅ Next.js 15 with App Router
-- ✅ NextAuth.js authentication
-- ✅ Prisma ORM with MySQL
-- ✅ Role-based access (Student/Teacher)
-- ✅ Course management
-- ✅ Chapter management
-- ✅ User progress tracking
-- ✅ Modern UI with Tailwind CSS
+1. Truy cập `http://localhost:3000/register`
+2. Đăng ký tài khoản với vai trò ADMIN hoặc TEACHER
+3. Đăng nhập và bắt đầu sử dụng
 
-## Default Users
+## Lưu ý
 
-After running the application, you can:
-
-1. Sign up as a Student or Teacher
-2. Create courses (Teacher role)
-3. Enroll in courses (Student role)
-4. Track progress
+- Database SQLite sẽ được tạo tự động tại `prisma/dev.db`
+- Để xem database, chạy: `npm run db:studio`
+- Để reset database, xóa file `prisma/dev.db` và chạy lại `npm run db:push`
 
 ## Troubleshooting
 
-### Database Connection Issues
-- Ensure PostgreSQL is running
-- Check your DATABASE_URL format (should start with postgresql://)
-- Verify database credentials
-- Make sure the database `lmsmath` exists
+### Lỗi "Cannot find module"
+- Chạy lại `npm install`
 
-### Authentication Issues
-- Make sure NEXTAUTH_SECRET is set
-- Check NEXTAUTH_URL matches your domain
+### Lỗi database
+- Xóa `prisma/dev.db` và chạy lại `npm run db:push`
 
-### Build Issues
-- Run `npm install` to ensure all dependencies are installed
-- Check for TypeScript errors with `npm run build`
+### Lỗi authentication
+- Kiểm tra NEXTAUTH_SECRET trong file `.env`
+

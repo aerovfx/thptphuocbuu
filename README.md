@@ -1,117 +1,113 @@
-# LMS Platform with Next.js 15, Prisma, Google Cloud
+# Hệ thống LMS Trường học với Tính năng Mạng xã hội
 
-## 🚀 Tech Stack
-- **Frontend & API**: Next.js 15 (App Router, React, TailwindCSS, shadcn/ui)
-- **Auth**: NextAuth.js
-- **Database**: Cloud SQL (Postgres/MySQL) + Prisma ORM
-- **Storage**: Google Cloud Storage (file/video upload, streaming)
-- **Deployment**: Google Cloud Run (containerized)
-- **Optional**: Stripe for payments, Cloud CDN for faster video delivery
+Dự án website trường học dựa trên kiến trúc LMS (Learning Management System) với các tính năng mạng xã hội giống Facebook và quản lý văn bản.
 
----
+## Tính năng chính
 
-## ✨ Key Features
-- Browse & Filter Courses
-- Purchase Courses (Stripe integration optional)
-- Mark Chapters as Completed/Uncompleted
-- Progress Tracking for each Course
-- Student Dashboard & Teacher Dashboard
-- Create & Manage Courses and Chapters
-- Drag & Drop reordering of chapters
-- Upload thumbnails, attachments & videos → **GCS**
-- Stream videos from **GCS + HLS**
-- Rich text editor (TipTap) for content
-- Authentication with **NextAuth**
-- Deployment on **Google Cloud Run**
+### 1. Hệ thống LMS
+- **Quản lý lớp học**: Tạo và quản lý lớp học, môn học
+- **Đăng ký lớp**: Học sinh có thể đăng ký vào các lớp học
+- **Bài tập**: Giáo viên tạo bài tập, học sinh nộp bài
+- **Chấm điểm**: Giáo viên chấm điểm và đưa ra phản hồi
+- **Thông báo**: Thông báo lớp học và hệ thống
 
----
+### 2. Mạng xã hội
+- **Đăng bài**: Tạo và chia sẻ bài viết
+- **Bình luận**: Bình luận trên các bài viết
+- **Thích**: Thích và bỏ thích bài viết
+- **Kết bạn**: Gửi và chấp nhận lời mời kết bạn
+- **Timeline**: Xem dòng thời gian hoạt động
 
-## ⚙️ Prerequisites
-- Node.js **18+**
-- Google Cloud SDK (`gcloud`) installed & authenticated
-- Google Cloud Project with:
-  - Cloud Run
-  - Cloud SQL Admin
-  - Cloud Storage
-  - Cloud Build
+### 3. Quản lý văn bản
+- **Tải lên**: Tải lên các loại văn bản (thông báo, chính sách, báo cáo, biểu mẫu)
+- **Phân loại**: Phân loại văn bản theo loại và danh mục
+- **Quyền truy cập**: Quản lý quyền xem và tải xuống
+- **Tìm kiếm**: Tìm kiếm văn bản theo tiêu đề, loại, người tải lên
 
----
+### 4. Quản lý người dùng
+- **Đăng ký/Đăng nhập**: Hệ thống xác thực người dùng
+- **Vai trò**: Quản trị viên, Giáo viên, Học sinh, Phụ huynh
+- **Hồ sơ**: Quản lý thông tin cá nhân
 
-## 🛠️ Setup
+## Công nghệ sử dụng
 
-### Clone repository
-```bash
-git clone https://github.com/your-username/next15-lms-platform.git
-cd next15-lms-platform
-```
+- **Frontend**: Next.js 14 (App Router), React, TypeScript
+- **Styling**: Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Database**: Prisma ORM với SQLite
+- **Authentication**: NextAuth.js
+- **UI Components**: Radix UI, Lucide Icons
 
-### Install dependencies
+## Cài đặt
+
+1. **Cài đặt dependencies**:
 ```bash
 npm install
 ```
 
-### Environment variables
-Create a `.env` file:
-```env
-# NextAuth
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key
-
-# Database
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB_NAME
-
-# Google Cloud
-GOOGLE_CLOUD_PROJECT=your-gcp-project-id
-GOOGLE_CLOUD_BUCKET=your-gcs-bucket-name
-GOOGLE_CLOUD_KEY_FILE=./service-account-key.json
-
-# Stripe (optional)
-STRIPE_API_KEY=
-STRIPE_WEBHOOK_SECRET=
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-### Prisma setup
+2. **Thiết lập database**:
 ```bash
-npx prisma generate
-npx prisma migrate dev --name init
+# Tạo file .env từ .env.example
+cp .env.example .env
+
+# Generate Prisma client
+npm run db:generate
+
+# Tạo database và tables
+npm run db:push
 ```
 
-### Run locally
+3. **Chạy ứng dụng**:
 ```bash
 npm run dev
 ```
-Visit → [http://localhost:3000](http://localhost:3000)
 
----
+4. **Truy cập**: Mở trình duyệt tại `http://localhost:3000`
 
-## ☁️ Deployment on Google Cloud
+## Cấu trúc dự án
 
-### Build Docker image
-```bash
-docker build -t gcr.io/PROJECT_ID/next15-lms .
-docker push gcr.io/PROJECT_ID/next15-lms
+```
+├── app/                    # Next.js App Router
+│   ├── api/               # API routes
+│   ├── dashboard/         # Trang dashboard
+│   ├── login/            # Trang đăng nhập
+│   └── register/         # Trang đăng ký
+├── components/            # React components
+│   ├── Layout/           # Layout components
+│   └── Social/           # Social media components
+├── lib/                   # Utilities
+│   ├── prisma.ts         # Prisma client
+│   └── auth.ts           # Auth configuration
+├── prisma/               # Database schema
+│   └── schema.prisma     # Prisma schema
+└── types/                # TypeScript types
 ```
 
-### Deploy to Cloud Run
-```bash
-gcloud run deploy next15-lms   --image gcr.io/PROJECT_ID/next15-lms   --platform managed   --region asia-southeast1   --allow-unauthenticated   --set-env-vars NEXTAUTH_URL=$NEXTAUTH_URL,NEXTAUTH_SECRET=$NEXTAUTH_SECRET,DATABASE_URL=$DATABASE_URL,GOOGLE_CLOUD_BUCKET=$GOOGLE_CLOUD_BUCKET
-```
+## Database Schema
 
----
+### User Roles
+- `ADMIN`: Quản trị viên
+- `TEACHER`: Giáo viên
+- `STUDENT`: Học sinh
+- `PARENT`: Phụ huynh
 
-## 📌 Available Commands
-| Command   | Description                           |
-|-----------|---------------------------------------|
-| `dev`     | Run app in development mode           |
-| `build`   | Build app for production              |
-| `start`   | Start production server               |
-| `lint`    | Run ESLint to check code style        |
+### Document Types
+- `ANNOUNCEMENT`: Thông báo
+- `POLICY`: Chính sách
+- `REPORT`: Báo cáo
+- `FORM`: Biểu mẫu
+- `OTHER`: Khác
 
----
+## Tính năng trong tương lai
 
-## 📂 Notes
-- **Video storage**: handled via GCS (configure CORS for upload).
-- **Database**: Cloud SQL with Prisma migration.
-- **Deployment**: Cloud Run auto-scales by traffic.
-- **Optional**: Stripe for payments, Cloud CDN for optimized video streaming.
+- [ ] Upload file cho bài tập và văn bản
+- [ ] Thông báo real-time
+- [ ] Chat trực tuyến
+- [ ] Video call cho lớp học
+- [ ] Báo cáo và thống kê chi tiết
+- [ ] Mobile app
+
+## License
+
+MIT
+

@@ -1,54 +1,65 @@
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/lmsmath-app:$COMMIT_SHA', '.']
-  
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/phuocbuu:$SHORT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/phuocbuu:latest'
+      - '.'
+    timeout: '1200s'
+
   # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/lmsmath-app:$COMMIT_SHA']
-  
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/phuocbuu:$SHORT_SHA'
+    timeout: '600s'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/phuocbuu:latest'
+    timeout: '600s'
+
   # Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - 'run'
       - 'deploy'
-      - 'lmsmath-app'
+      - 'phuocbuu'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/lmsmath-app:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/phuocbuu:$SHORT_SHA'
       - '--region'
-      - 'asia-east2'
+      - 'asia-southeast1'
       - '--platform'
       - 'managed'
-      - '--cpu'
-      - '1'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '3000'
       - '--memory'
-      - '512Mi'
+      - '2Gi'
+      - '--cpu'
+      - '2'
       - '--min-instances'
       - '0'
       - '--max-instances'
       - '10'
-      - '--concurrency'
-      - '80'
       - '--timeout'
       - '300'
-      - '--port'
-      - '3000'
-      - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'NODE_ENV=production,PORT=3000,HOSTNAME=0.0.0.0,NEXT_TELEMETRY_DISABLED=1'
-      - '--set-secrets'
-      - 'DATABASE_URL=database-url:latest,NEXTAUTH_SECRET=nextauth-secret:latest'
-      - '--execution-environment'
-      - 'gen2'
-      - '--cpu-boost'
+      - 'NODE_ENV=production'
+    timeout: '600s'
 
-# Store images in Container Registry
 images:
-  - 'gcr.io/$PROJECT_ID/lmsmath-app:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/phuocbuu:$SHORT_SHA'
+  - 'gcr.io/$PROJECT_ID/phuocbuu:latest'
 
-# Build configuration
 options:
   machineType: 'E2_HIGHCPU_8'
-  diskSizeGb: 100
   logging: CLOUD_LOGGING_ONLY
+
+timeout: '1800s'
+

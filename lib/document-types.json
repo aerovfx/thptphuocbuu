@@ -1,0 +1,396 @@
+{
+  "documentTypes": [
+    {
+      "code": "CV",
+      "name": "Công văn",
+      "group": "administrative",
+      "description": "Văn bản điều hành chung, phổ biến nhất",
+      "synonyms": ["công văn", "cv", "công văn đi", "công văn đến", "văn bản"],
+      "keywords": ["công văn", "số", "về việc", "thực hiện", "triển khai"],
+      "order": 1
+    },
+    {
+      "code": "QĐ",
+      "name": "Quyết định",
+      "group": "administrative",
+      "description": "Quyết định nhân sự, tài chính, thành lập, khen thưởng",
+      "synonyms": ["quyết định", "qd", "quyet dinh"],
+      "keywords": ["quyết định", "ban hành", "về việc", "bổ nhiệm", "khen thưởng", "kỷ luật"],
+      "order": 2
+    },
+    {
+      "code": "CT",
+      "name": "Chỉ thị",
+      "group": "administrative",
+      "description": "Văn bản chỉ đạo trực tiếp",
+      "synonyms": ["chỉ thị", "ct", "chi thi"],
+      "keywords": ["chỉ thị", "về việc", "thực hiện", "triển khai", "chỉ đạo"],
+      "order": 3
+    },
+    {
+      "code": "TB",
+      "name": "Thông báo",
+      "group": "administrative",
+      "description": "Kết luận, kết quả, lịch họp, thông tin chính thức",
+      "synonyms": ["thông báo", "tb", "thong bao"],
+      "keywords": ["thông báo", "về việc", "kết quả", "lịch họp", "thông tin"],
+      "order": 4
+    },
+    {
+      "code": "BC",
+      "name": "Báo cáo",
+      "group": "administrative",
+      "description": "Báo cáo kết quả, đánh giá, tổng kết",
+      "synonyms": ["báo cáo", "bc", "bao cao"],
+      "keywords": ["báo cáo", "kết quả", "tổng kết", "đánh giá", "thực hiện"],
+      "order": 5
+    },
+    {
+      "code": "TT",
+      "name": "Tờ trình",
+      "group": "administrative",
+      "description": "Trình cấp trên phê duyệt",
+      "synonyms": ["tờ trình", "tt", "to trinh"],
+      "keywords": ["tờ trình", "đề nghị", "phê duyệt", "xem xét", "cho ý kiến"],
+      "order": 6
+    },
+    {
+      "code": "KH",
+      "name": "Kế hoạch",
+      "group": "administrative",
+      "description": "Kế hoạch công tác, triển khai nhiệm vụ",
+      "synonyms": ["kế hoạch", "kh", "ke hoach"],
+      "keywords": ["kế hoạch", "thực hiện", "triển khai", "nhiệm vụ", "công tác"],
+      "order": 7
+    },
+    {
+      "code": "CTri",
+      "name": "Chương trình",
+      "group": "administrative",
+      "description": "Thường dùng trong giáo dục, y tế, hành chính",
+      "synonyms": ["chương trình", "ctri", "chuong trinh"],
+      "keywords": ["chương trình", "thực hiện", "triển khai", "nhiệm vụ"],
+      "order": 8
+    },
+    {
+      "code": "DA",
+      "name": "Đề án",
+      "group": "administrative",
+      "description": "Đề án phát triển, tổ chức, quản lý",
+      "synonyms": ["đề án", "da", "de an"],
+      "keywords": ["đề án", "phát triển", "tổ chức", "quản lý", "xây dựng"],
+      "order": 9
+    },
+    {
+      "code": "PA",
+      "name": "Phương án",
+      "group": "administrative",
+      "description": "Phương án xử lý, phương án tài chính",
+      "synonyms": ["phương án", "pa", "phuong an"],
+      "keywords": ["phương án", "xử lý", "tài chính", "giải pháp"],
+      "order": 10
+    },
+    {
+      "code": "QDinh",
+      "name": "Quy định",
+      "group": "administrative",
+      "description": "Ban hành quy định nội bộ",
+      "synonyms": ["quy định", "qdinh", "quy dinh"],
+      "keywords": ["quy định", "ban hành", "nội bộ", "chế độ"],
+      "order": 11
+    },
+    {
+      "code": "QC",
+      "name": "Quy chế",
+      "group": "administrative",
+      "description": "Quy chế làm việc, khen thưởng, tài chính",
+      "synonyms": ["quy chế", "qc", "quy che"],
+      "keywords": ["quy chế", "làm việc", "khen thưởng", "tài chính"],
+      "order": 12
+    },
+    {
+      "code": "HD",
+      "name": "Hướng dẫn",
+      "group": "administrative",
+      "description": "Hướng dẫn nghiệp vụ, kỹ thuật",
+      "synonyms": ["hướng dẫn", "hd", "huong dan"],
+      "keywords": ["hướng dẫn", "nghiệp vụ", "kỹ thuật", "thực hiện"],
+      "order": 13
+    },
+    {
+      "code": "BB",
+      "name": "Biên bản",
+      "group": "administrative",
+      "description": "Biên bản họp, kiểm tra, nghiệm thu",
+      "synonyms": ["biên bản", "bb", "bien ban"],
+      "keywords": ["biên bản", "họp", "kiểm tra", "nghiệm thu", "kết luận"],
+      "order": 14
+    },
+    {
+      "code": "GM",
+      "name": "Giấy mời",
+      "group": "administrative",
+      "description": "Mời họp, mời tham dự sự kiện",
+      "synonyms": ["giấy mời", "gm", "giay moi"],
+      "keywords": ["giấy mời", "mời", "tham dự", "họp", "sự kiện"],
+      "order": 15
+    },
+    {
+      "code": "GT",
+      "name": "Giấy giới thiệu",
+      "group": "administrative",
+      "description": "Giới thiệu công tác",
+      "synonyms": ["giấy giới thiệu", "gt", "giay gioi thieu"],
+      "keywords": ["giấy giới thiệu", "giới thiệu", "công tác"],
+      "order": 16
+    },
+    {
+      "code": "GĐĐ",
+      "name": "Giấy đi đường",
+      "group": "administrative",
+      "description": "Văn bản cấp cho công tác ngoài",
+      "synonyms": ["giấy đi đường", "gdd", "giay di duong"],
+      "keywords": ["giấy đi đường", "công tác", "đi đường"],
+      "order": 17
+    },
+    {
+      "code": "PG",
+      "name": "Phiếu gửi",
+      "group": "administrative",
+      "description": "Dùng cho văn bản đến",
+      "synonyms": ["phiếu gửi", "pg", "phieu gui"],
+      "keywords": ["phiếu gửi", "gửi"],
+      "order": 18
+    },
+    {
+      "code": "PC",
+      "name": "Phiếu chuyển",
+      "group": "administrative",
+      "description": "Chuyển xử lý nội bộ",
+      "synonyms": ["phiếu chuyển", "pc", "phieu chuyen"],
+      "keywords": ["phiếu chuyển", "chuyển", "xử lý"],
+      "order": 19
+    },
+    {
+      "code": "PB",
+      "name": "Phiếu báo",
+      "group": "administrative",
+      "description": "Thông báo nội bộ dạng phiếu",
+      "synonyms": ["phiếu báo", "pb", "phieu bao"],
+      "keywords": ["phiếu báo", "báo", "thông báo"],
+      "order": 20
+    },
+    {
+      "code": "HS",
+      "name": "Hồ sơ",
+      "group": "administrative",
+      "description": "Hồ sơ công việc, hồ sơ đề nghị",
+      "synonyms": ["hồ sơ", "hs", "ho so"],
+      "keywords": ["hồ sơ", "công việc", "đề nghị"],
+      "order": 21
+    },
+    {
+      "code": "HDN",
+      "name": "Hợp đồng",
+      "group": "administrative",
+      "description": "Dùng cho doanh nghiệp, trường học",
+      "synonyms": ["hợp đồng", "hdn", "hop dong"],
+      "keywords": ["hợp đồng", "ký kết", "thỏa thuận"],
+      "order": 22
+    },
+    {
+      "code": "CVĐ",
+      "name": "Công văn đến",
+      "group": "inbound",
+      "description": "Công văn nhận được từ bên ngoài",
+      "synonyms": ["công văn đến", "cvd", "cong van den"],
+      "keywords": ["công văn đến", "nhận", "đến"],
+      "order": 23
+    },
+    {
+      "code": "GMĐ",
+      "name": "Giấy mời đến",
+      "group": "inbound",
+      "description": "Giấy mời nhận được",
+      "synonyms": ["giấy mời đến", "gmd", "giay moi den"],
+      "keywords": ["giấy mời đến", "nhận"],
+      "order": 24
+    },
+    {
+      "code": "TBĐ",
+      "name": "Thông báo đến",
+      "group": "inbound",
+      "description": "Thông báo nhận được",
+      "synonyms": ["thông báo đến", "tbd", "thong bao den"],
+      "keywords": ["thông báo đến", "nhận"],
+      "order": 25
+    },
+    {
+      "code": "BCĐ",
+      "name": "Báo cáo đến",
+      "group": "inbound",
+      "description": "Báo cáo nhận được",
+      "synonyms": ["báo cáo đến", "bcd", "bao cao den"],
+      "keywords": ["báo cáo đến", "nhận"],
+      "order": 26
+    },
+    {
+      "code": "KTĐ",
+      "name": "Kiến nghị - Đề xuất đến",
+      "group": "inbound",
+      "description": "Kiến nghị, đề xuất nhận được",
+      "synonyms": ["kiến nghị", "kien nghi", "đề xuất", "de xuat", "ktd"],
+      "keywords": ["kiến nghị", "đề xuất", "nhận"],
+      "order": 27
+    },
+    {
+      "code": "CVD",
+      "name": "Công văn đi",
+      "group": "outbound",
+      "description": "Công văn gửi đi",
+      "synonyms": ["công văn đi", "cvd", "cong van di"],
+      "keywords": ["công văn đi", "gửi", "đi"],
+      "order": 28
+    },
+    {
+      "code": "QĐD",
+      "name": "Quyết định đi",
+      "group": "outbound",
+      "description": "Quyết định ban hành",
+      "synonyms": ["quyết định đi", "qdd", "quyet dinh di"],
+      "keywords": ["quyết định đi", "ban hành"],
+      "order": 29
+    },
+    {
+      "code": "TBD",
+      "name": "Thông báo đi",
+      "group": "outbound",
+      "description": "Thông báo gửi đi",
+      "synonyms": ["thông báo đi", "tbd", "thong bao di"],
+      "keywords": ["thông báo đi", "gửi"],
+      "order": 30
+    },
+    {
+      "code": "KHD",
+      "name": "Kế hoạch đi",
+      "group": "outbound",
+      "description": "Kế hoạch gửi đi",
+      "synonyms": ["kế hoạch đi", "khd", "ke hoach di"],
+      "keywords": ["kế hoạch đi", "gửi"],
+      "order": 31
+    },
+    {
+      "code": "BCD",
+      "name": "Báo cáo đi",
+      "group": "outbound",
+      "description": "Báo cáo gửi đi",
+      "synonyms": ["báo cáo đi", "bcd", "bao cao di"],
+      "keywords": ["báo cáo đi", "gửi"],
+      "order": 32
+    },
+    {
+      "code": "NQ",
+      "name": "Nghị quyết",
+      "group": "legal",
+      "description": "Văn bản pháp lý cao cấp",
+      "synonyms": ["nghị quyết", "nq", "nghi quyet"],
+      "keywords": ["nghị quyết", "ban hành"],
+      "order": 33
+    },
+    {
+      "code": "TTg",
+      "name": "Thông tư",
+      "group": "legal",
+      "description": "Thông tư / Thông tư liên tịch",
+      "synonyms": ["thông tư", "ttg", "thong tu"],
+      "keywords": ["thông tư", "ban hành"],
+      "order": 34
+    },
+    {
+      "code": "NĐ",
+      "name": "Nghị định",
+      "group": "legal",
+      "description": "Nghị định của Chính phủ",
+      "synonyms": ["nghị định", "nd", "nghi dinh"],
+      "keywords": ["nghị định", "ban hành"],
+      "order": 35
+    },
+    {
+      "code": "L",
+      "name": "Luật",
+      "group": "legal",
+      "description": "Luật (nếu lưu văn bản QPPL trong hệ thống)",
+      "synonyms": ["luật", "l", "luat"],
+      "keywords": ["luật", "ban hành"],
+      "order": 36
+    },
+    {
+      "code": "TBn",
+      "name": "Thông báo nội bộ",
+      "group": "internal",
+      "description": "Thông báo nội bộ",
+      "synonyms": ["thông báo nội bộ", "tbn", "thong bao noi bo"],
+      "keywords": ["thông báo nội bộ", "nội bộ"],
+      "order": 37
+    },
+    {
+      "code": "BBh",
+      "name": "Biên bản họp",
+      "group": "internal",
+      "description": "Biên bản họp nội bộ",
+      "synonyms": ["biên bản họp", "bbh", "bien ban hop"],
+      "keywords": ["biên bản họp", "họp", "nội bộ"],
+      "order": 38
+    },
+    {
+      "code": "YC",
+      "name": "Yêu cầu xử lý",
+      "group": "internal",
+      "description": "Task, yêu cầu xử lý công việc",
+      "synonyms": ["yêu cầu", "yeu cau", "yc", "task"],
+      "keywords": ["yêu cầu", "xử lý", "task"],
+      "order": 39
+    },
+    {
+      "code": "DX",
+      "name": "Đề xuất nội bộ",
+      "group": "internal",
+      "description": "Đề xuất nội bộ",
+      "synonyms": ["đề xuất nội bộ", "dx", "de xuat noi bo"],
+      "keywords": ["đề xuất", "nội bộ"],
+      "order": 40
+    },
+    {
+      "code": "KT",
+      "name": "Kiểm tra - Checklist",
+      "group": "internal",
+      "description": "Kiểm tra, checklist nội bộ",
+      "synonyms": ["kiểm tra", "kiem tra", "kt", "checklist"],
+      "keywords": ["kiểm tra", "checklist", "nội bộ"],
+      "order": 41
+    }
+  ],
+  "groups": {
+    "administrative": {
+      "name": "Văn bản hành chính",
+      "description": "Các loại văn bản hành chính thông thường"
+    },
+    "inbound": {
+      "name": "Văn bản đến",
+      "description": "Văn bản nhận được từ bên ngoài"
+    },
+    "outbound": {
+      "name": "Văn bản đi",
+      "description": "Văn bản gửi đi"
+    },
+    "legal": {
+      "name": "Văn bản pháp lý",
+      "description": "Văn bản quy phạm pháp luật"
+    },
+    "internal": {
+      "name": "Văn bản nội bộ",
+      "description": "Văn bản nội bộ trong tổ chức"
+    }
+  }
+}
+

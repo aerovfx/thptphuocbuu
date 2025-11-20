@@ -1,123 +1,61 @@
-import { NextResponse } from 'next/server';
-import { hash } from 'bcryptjs';
-import { db } from '@/lib/db';
-import { sendVerificationEmail } from '@/lib/email/verification-email';
-import { validatePassword } from '@/lib/password-validation';
-import { logAuthEvent } from '@/lib/auth-logger';
-import crypto from 'crypto';
+import { NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
+import { prisma } from '@/lib/prisma'
+import { z } from 'zod'
 
-export async function POST(req: Request) {
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  role: z.enum(['STUDENT', 'TEACHER', 'PARENT', 'ADMIN']),
+})
+
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
-    const { email, password, name, role } = body;
+    const body = await request.json()
+    const validatedData = registerSchema.parse(body)
 
-    // Validate input
-    if (!email || !password || !name) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    // Validate password strength
-    const passwordValidation = validatePassword(password);
-    if (!passwordValidation.isValid) {
-      return NextResponse.json(
-        { 
-          error: 'Password does not meet requirements',
-          errors: passwordValidation.errors
-        },
-        { status: 400 }
-      );
-    }
-
-    // Check if user already exists
-    const existingUser = await db.user.findUnique({
-      where: { email }
-    });
+    const existingUser = await prisma.user.findUnique({
+      where: { email: validatedData.email },
+    })
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User with this email already exists' },
+        { error: 'Email đã được sử dụng' },
         { status: 400 }
-      );
+      )
     }
 
-    console.log('[REGISTER] Creating new user:', email);
+    const hashedPassword = await bcrypt.hash(validatedData.password, 10)
 
-    // Hash password
-    const hashedPassword = await hash(password, 10);
-
-    // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiry = new Date();
-    tokenExpiry.setHours(tokenExpiry.getHours() + 24); // 24 hours
-
-    // Create user with pending status
-    const userId = `user_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-    
-    const user = await db.user.create({
+    const user = await prisma.user.create({
       data: {
-        id: userId,
-        email,
-        name,
+        email: validatedData.email,
         password: hashedPassword,
-        role: role || 'STUDENT',
-        emailVerified: null, // Not verified yet
-        updatedAt: new Date()
-      }
-    });
-
-    console.log('[REGISTER] User created:', user.email, '(ID:', user.id, ')');
-
-    // Create verification token in database
-    await db.verificationToken.create({
-      data: {
-        identifier: user.email,
-        token: verificationToken,
-        expires: tokenExpiry
-      }
-    });
-
-    console.log('[REGISTER] Verification token created');
-
-    // Send verification email
-    await sendVerificationEmail({
-      email: user.email,
-      name: user.name || 'User',
-      verificationToken
-    });
-
-    console.log('[REGISTER] Verification email sent');
-
-    // Log registration event
-    await logAuthEvent({
-      userId: user.id,
-      email: user.email,
-      action: 'register',
-      status: 'success',
-      metadata: { role: user.role }
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Account created successfully. Please check your email to verify your account.',
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role
-      }
-    }, { status: 201 });
-
-  } catch (error: any) {
-    console.error('[REGISTER] Error:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to create account',
-        message: error.message 
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        role: validatedData.role,
       },
+    })
+
+    return NextResponse.json(
+      { message: 'Đăng ký thành công', userId: user.id },
+      { status: 201 }
+    )
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Dữ liệu không hợp lệ', details: error.errors },
+        { status: 400 }
+      )
+    }
+
+    console.error('Registration error:', error)
+    return NextResponse.json(
+      { error: 'Đã xảy ra lỗi khi đăng ký' },
       { status: 500 }
-    );
+    )
   }
 }
+

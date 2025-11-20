@@ -1,0 +1,154 @@
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { redirect } from 'next/navigation'
+import UserProfile from '@/components/Profile/UserProfile'
+
+async function getUserProfile(userId: string, currentUserId?: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        avatar: true,
+        coverPhoto: true,
+        bio: true,
+        role: true,
+        phone: true,
+        dateOfBirth: true,
+        createdAt: true,
+        _count: {
+          select: {
+            posts: true,
+            friendships: true,
+            friendships2: true,
+          },
+        },
+      },
+  })
+
+  if (!user) {
+    return null
+  }
+
+  // Check if current user is following this user
+  let isFollowing = false
+  if (currentUserId && currentUserId !== userId) {
+    const friendship = await prisma.friendship.findFirst({
+      where: {
+        user1Id: currentUserId,
+        user2Id: userId,
+      },
+    })
+    isFollowing = !!friendship
+  }
+
+  // Get user's posts
+  const userPosts = await prisma.post.findMany({
+    where: { authorId: userId },
+    include: {
+      author: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          avatar: true,
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+          comments: true,
+          bookmarks: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  })
+
+  // Get user's remixed posts
+  let remixedPosts: any[] = []
+  try {
+    // Check if repost model exists
+    if (prisma.repost) {
+      remixedPosts = await prisma.repost.findMany({
+        where: { userId },
+        include: {
+          post: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+              _count: {
+                select: {
+                  likes: true,
+                  comments: true,
+                  bookmarks: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      })
+    }
+  } catch (error) {
+    // If repost model doesn't exist or there's an error, use empty array
+    console.error('Error fetching remixed posts:', error)
+    remixedPosts = []
+  }
+
+  // Combine posts and remixed posts, marking remixed ones
+  const allPosts = [
+    ...userPosts.map((post) => ({ ...post, isRemix: false })),
+    ...remixedPosts.map((repost) => ({ ...repost.post, isRemix: true, remixedAt: repost.createdAt })),
+  ].sort((a, b) => {
+    const dateA = a.isRemix ? new Date(a.remixedAt).getTime() : new Date(a.createdAt).getTime()
+    const dateB = b.isRemix ? new Date(b.remixedAt).getTime() : new Date(b.createdAt).getTime()
+    return dateB - dateA
+  })
+
+  // Calculate following/followers count
+  const followingCount = await prisma.friendship.count({
+    where: { user1Id: userId },
+  })
+  const followersCount = await prisma.friendship.count({
+    where: { user2Id: userId },
+  })
+
+  return {
+    ...user,
+    isFollowing,
+    posts: allPosts,
+    remixedPosts: remixedPosts.map((r) => r.post),
+    followingCount,
+    followersCount,
+  }
+}
+
+export default async function UserProfilePage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const session = await getServerSession(authOptions)
+  const { id } = await params
+
+  const userProfile = await getUserProfile(id, session?.user.id)
+
+  if (!userProfile) {
+    redirect('/dashboard')
+  }
+
+  return <UserProfile user={userProfile} currentUser={session} />
+}
+

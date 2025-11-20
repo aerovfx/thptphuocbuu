@@ -75,7 +75,7 @@ export default function NewClassPage() {
           )}
 
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-2 font-poppins">
               Tên lớp học *
             </label>
             <input
@@ -84,13 +84,13 @@ export default function NewClassPage() {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-poppins"
               placeholder="Ví dụ: Toán 10A1"
             />
           </div>
 
           <div>
-            <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="code" className="block text-sm font-medium text-gray-400 mb-2 font-poppins">
               Mã lớp học *
             </label>
             <input
@@ -99,13 +99,13 @@ export default function NewClassPage() {
               value={formData.code}
               onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-poppins"
               placeholder="Ví dụ: TOAN10A1"
             />
           </div>
 
           <div>
-            <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="subject" className="block text-sm font-medium text-gray-400 mb-2 font-poppins">
               Môn học *
             </label>
             <input
@@ -114,13 +114,13 @@ export default function NewClassPage() {
               value={formData.subject}
               onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-poppins"
               placeholder="Ví dụ: Toán học"
             />
           </div>
 
           <div>
-            <label htmlFor="grade" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="grade" className="block text-sm font-medium text-gray-400 mb-2 font-poppins">
               Khối lớp *
             </label>
             <input
@@ -129,13 +129,13 @@ export default function NewClassPage() {
               value={formData.grade}
               onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-poppins"
               placeholder="Ví dụ: 10"
             />
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="description" className="block text-sm font-medium text-gray-400 mb-2 font-poppins">
               Mô tả
             </label>
             <textarea
@@ -143,7 +143,7 @@ export default function NewClassPage() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-poppins"
               placeholder="Mô tả về lớp học..."
             />
           </div>
@@ -151,21 +151,22 @@ export default function NewClassPage() {
           <div className="flex items-center justify-end space-x-4">
             <Link
               href="/dashboard/classes"
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="px-6 py-2 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-800 font-poppins transition-colors"
             >
               Hủy
             </Link>
             <button
               type="submit"
               disabled={loading}
-              className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-poppins font-semibold transition-colors"
             >
               {loading ? 'Đang tạo...' : 'Tạo lớp học'}
             </button>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </SharedLayout>
   )
 }
 

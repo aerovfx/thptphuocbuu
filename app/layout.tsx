@@ -1,16 +1,30 @@
-import './globals.css'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import { AuthSessionProvider } from '@/components/providers/session-provider'
-import { ToastProvider } from '@/components/providers/toaster-provider'
-import { ConfettiProvider } from '@/components/providers/confetti-provider'
-import { LanguageProvider } from '@/contexts/LanguageContext'
+import { Montserrat, Poppins } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
+import './globals.css'
+import { Providers } from './providers'
 
-const inter = Inter({ subsets: ['latin'] })
+const montserrat = Montserrat({
+  subsets: ['latin', 'latin-ext', 'vietnamese'],
+  variable: '--font-montserrat',
+  display: 'swap',
+  fallback: ['system-ui', 'arial'],
+  adjustFontFallback: false,
+})
+
+const poppins = Poppins({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-poppins',
+  display: 'swap',
+  fallback: ['system-ui', 'arial'],
+  adjustFontFallback: false,
+})
 
 export const metadata: Metadata = {
-  title: 'AeroEdu - Interactive Learning Platform',
-  description: 'An innovative learning platform with virtual labs and AI-powered content generation',
+  title: 'THPT Phước Bửu - Hệ thống LMS',
+  description: 'Nền tảng học tập và mạng xã hội cho trường học THPT Phước Bửu',
 }
 
 export default function RootLayout({
@@ -19,16 +33,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <AuthSessionProvider>
-          <LanguageProvider>
-            <ConfettiProvider />
-            <ToastProvider />
-            {children}
-          </LanguageProvider>
-        </AuthSessionProvider>
+    <html lang="vi" suppressHydrationWarning>
+      <body className={`${montserrat.variable} ${poppins.variable} font-sans`}>
+        <Providers>{children}</Providers>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
 }
+

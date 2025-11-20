@@ -1,50 +1,28 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Output configuration for Cloud Run
+  // Enable standalone output for Docker
   output: 'standalone',
   
-  // Image optimization
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'utfs.io',
-        port: '',
-        pathname: '/**',
+        hostname: '**',
       },
       {
-        protocol: 'https',
-        hostname: 'storage.googleapis.com',
-        port: '',
-        pathname: '/**',
+        protocol: 'http',
+        hostname: 'localhost',
       },
     ],
-    formats: ['image/webp', 'image/avif'],
-    minimumCacheTTL: 60,
-    dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-
-  // Disable ESLint during build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
-  // Disable TypeScript type checking during build
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-
-  // Simple webpack config to avoid conflicts
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
-      };
-    }
-    return config;
+  // Optimize font loading
+  optimizeFonts: true,
+  // Suppress font loading warnings in development
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
   },
 }
 
 module.exports = nextConfig
+

@@ -1,68 +1,59 @@
-# Multi-stage build for production
-# Using Debian-based image for better Prisma compatibility
-FROM node:20-slim AS base
+# Use the official Node.js runtime as base image
+FROM node:20-alpine AS base
 
-# Install OpenSSL and other dependencies
-RUN apt-get update && apt-get install -y \
-    openssl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Dependencies stage
+# Install dependencies only when needed
 FROM base AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
+# Copy package files
 COPY package.json package-lock.json* ./
-COPY prisma ./prisma/
+RUN npm ci
 
-RUN npm ci --legacy-peer-deps
-
-# Builder stage
+# Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Ensure public directory exists
-RUN mkdir -p public
-
-# Generate Prisma client
+# Generate Prisma Client
 RUN npx prisma generate
 
-# Build Next.js application
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
-
+# Build Next.js app
+ENV NEXT_TELEMETRY_DISABLED 1
 RUN npm run build
 
-# Runner stage
+# Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
 
-# Create non-root user
-RUN groupadd --system --gid 1001 nodejs
-RUN useradd --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# Copy built application
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copy necessary files from standalone build
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Copy Prisma files
+# Copy standalone build output
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy Prisma schema and generated client (needed for runtime)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
-# Switch to non-root user
+# Set correct permissions
+RUN chown -R nextjs:nodejs /app
+
 USER nextjs
 
 EXPOSE 3000
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
 
 CMD ["node", "server.js"]
+
