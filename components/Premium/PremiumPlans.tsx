@@ -38,7 +38,7 @@ const plans = [
     id: 'STANDARD',
     name: 'Premium Standard',
     price: '50',
-    priceType: 'công việc hoàn thành',
+    priceType: 'điểm',
     period: 'tháng',
     description: 'Gói cơ bản cho cá nhân',
     features: [
@@ -57,7 +57,7 @@ const plans = [
     id: 'PRO',
     name: 'Premium Pro',
     price: '290',
-    priceType: 'công việc hoàn thành',
+    priceType: 'điểm',
     period: 'tháng',
     description: 'Gói chuyên nghiệp cho doanh nghiệp vừa',
     features: [
@@ -100,22 +100,42 @@ export default function PremiumPlans({ currentUser, premiumStatus }: PremiumPlan
   const [isSubscribing, setIsSubscribing] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
-  const [completedTasksCount, setCompletedTasksCount] = useState<number | null>(null)
+  const [premiumData, setPremiumData] = useState<{
+    points: number
+    breakdown: {
+      tasks: number
+      posts: number
+      likes: number
+      taskPoints: number
+      postPoints: number
+      likePoints: number
+    }
+  } | null>(null)
 
-  // Fetch completed tasks count
+  // Fetch premium points data
   useEffect(() => {
-    const fetchCompletedTasks = async () => {
+    const fetchPremiumData = async () => {
       try {
         const response = await fetch(`/api/premium/completed-tasks`)
         if (response.ok) {
           const data = await response.json()
-          setCompletedTasksCount(data.count || 0)
+          setPremiumData({
+            points: data.points || data.count || 0,
+            breakdown: data.breakdown || {
+              tasks: 0,
+              posts: 0,
+              likes: 0,
+              taskPoints: 0,
+              postPoints: 0,
+              likePoints: 0,
+            },
+          })
         }
       } catch (error) {
-        console.error('Error fetching completed tasks:', error)
+        console.error('Error fetching premium data:', error)
       }
     }
-    fetchCompletedTasks()
+    fetchPremiumData()
   }, [])
 
   const handleSubscribe = async (planId: string) => {
@@ -126,9 +146,17 @@ export default function PremiumPlans({ currentUser, premiumStatus }: PremiumPlan
 
     const plan = plans.find(p => p.id === planId)
     if (plan && plan.priceType) {
-      const requiredTasks = parseInt(plan.price)
-      if (completedTasksCount !== null && completedTasksCount < requiredTasks) {
-        alert(`Bạn cần hoàn thành ít nhất ${requiredTasks} công việc trong tháng này để đăng ký gói ${plan.name}. Hiện tại bạn đã hoàn thành ${completedTasksCount} công việc.`)
+      const requiredPoints = parseInt(plan.price)
+      if (premiumData !== null && premiumData.points < requiredPoints) {
+        const { tasks, posts, likes } = premiumData.breakdown
+        alert(
+          `Bạn cần đạt ít nhất ${requiredPoints} điểm trong tháng này để đăng ký gói ${plan.name}.\n\n` +
+          `Hiện tại bạn đã đạt ${premiumData.points} điểm:\n` +
+          `- ${tasks} công việc hoàn thành (${premiumData.breakdown.taskPoints} điểm)\n` +
+          `- ${posts} bài đăng (${premiumData.breakdown.postPoints} điểm)\n` +
+          `- ${likes} lượt like nhận được (${premiumData.breakdown.likePoints} điểm)\n\n` +
+          `Công thức: 1 công việc = 1 điểm, 1 bài đăng = 1.5 điểm, 1 lượt like = 0.3 điểm`
+        )
         return
       }
     }
@@ -213,13 +241,30 @@ export default function PremiumPlans({ currentUser, premiumStatus }: PremiumPlan
             </p>
           </div>
         )}
-        {completedTasksCount !== null && !premiumStatus.isPremium && (
-          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 inline-block">
-            <p className="text-sm text-bluelock-dark dark:text-gray-300 font-poppins">
-              Bạn đã hoàn thành <span className="font-bold text-blue-600 dark:text-blue-400">{completedTasksCount}</span> công việc trong tháng này
+        {premiumData !== null && !premiumStatus.isPremium && (
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 inline-block max-w-2xl">
+            <p className="text-sm text-bluelock-dark dark:text-gray-300 font-poppins mb-2">
+              Bạn đã đạt <span className="font-bold text-blue-600 dark:text-blue-400">{premiumData.points}</span> điểm trong tháng này
+            </p>
+            <div className="text-xs text-gray-600 dark:text-gray-400 font-poppins space-y-1">
+              <div className="flex items-center justify-between">
+                <span>• {premiumData.breakdown.tasks} công việc hoàn thành</span>
+                <span className="font-semibold">{premiumData.breakdown.taskPoints} điểm</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>• {premiumData.breakdown.posts} bài đăng</span>
+                <span className="font-semibold">{premiumData.breakdown.postPoints} điểm</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>• {premiumData.breakdown.likes} lượt like nhận được</span>
+                <span className="font-semibold">{premiumData.breakdown.likePoints} điểm</span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-poppins mt-2 pt-2 border-t border-blue-200 dark:border-blue-700">
+              Công thức: 1 công việc = 1 điểm, 1 bài đăng = 1.5 điểm, 1 lượt like = 0.3 điểm
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 font-poppins mt-1">
-              Premium sẽ tự động kích hoạt khi bạn hoàn thành đủ số công việc yêu cầu
+              Premium sẽ tự động kích hoạt khi bạn đạt đủ số điểm yêu cầu
             </p>
           </div>
         )}
@@ -323,9 +368,14 @@ export default function PremiumPlans({ currentUser, premiumStatus }: PremiumPlan
                       </span>
                     )}
                   </div>
-                  {plan.priceType && (
+                  {plan.priceType && plan.id !== 'ENTERPRISE' && (
                     <p className="text-xs text-bluelock-dark/50 dark:text-gray-500 font-poppins mt-1 text-center">
                       (Tương đương {parseInt(plan.price) * 1000} VNĐ/tháng)
+                    </p>
+                  )}
+                  {plan.priceType && plan.id !== 'ENTERPRISE' && (
+                    <p className="text-xs text-bluelock-dark/50 dark:text-gray-500 font-poppins mt-1 text-center italic">
+                      Công thức: 1 công việc = 1 điểm, 1 bài đăng = 1.5 điểm, 1 lượt like = 0.3 điểm
                     </p>
                   )}
                 </div>
@@ -342,11 +392,11 @@ export default function PremiumPlans({ currentUser, premiumStatus }: PremiumPlan
 
               <button
                 onClick={() => handleSubscribe(plan.id)}
-                disabled={premiumStatus.isPremium || isProcessing || (!!plan.priceType && completedTasksCount !== null && completedTasksCount < parseInt(plan.price))}
+                disabled={premiumStatus.isPremium || isProcessing || (!!plan.priceType && premiumData !== null && premiumData.points < parseInt(plan.price))}
                 className={`w-full py-3 rounded-lg font-poppins font-semibold transition-colors flex items-center justify-center space-x-2 ${
                   premiumStatus.isPremium
                     ? 'bg-gray-600 cursor-not-allowed text-white'
-                    : plan.priceType && completedTasksCount !== null && completedTasksCount < parseInt(plan.price)
+                    : plan.priceType && premiumData !== null && premiumData.points < parseInt(plan.price)
                     ? 'bg-gray-400 cursor-not-allowed text-white'
                     : plan.popular
                     ? 'bg-bluelock-green hover:bg-bluelock-green-bright dark:bg-blue-500 dark:hover:bg-blue-600 text-black dark:text-white'
@@ -360,8 +410,8 @@ export default function PremiumPlans({ currentUser, premiumStatus }: PremiumPlan
                   </>
                 ) : premiumStatus.isPremium ? (
                   <span>Đã đăng ký</span>
-                ) : plan.priceType && completedTasksCount !== null && completedTasksCount < parseInt(plan.price) ? (
-                  <span>Chưa đủ điều kiện ({completedTasksCount}/{plan.price} công việc)</span>
+                ) : plan.priceType && premiumData !== null && premiumData.points < parseInt(plan.price) ? (
+                  <span>Chưa đủ điều kiện ({premiumData.points}/{plan.price} điểm)</span>
                 ) : plan.id === 'ENTERPRISE' ? (
                   <>
                     <span>Liên hệ</span>

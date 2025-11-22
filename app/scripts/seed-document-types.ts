@@ -8,7 +8,7 @@
 
 import { PrismaClient } from '@prisma/client'
 // @ts-ignore - JSON import
-import documentTypesData from '../lib/document-types.json'
+import documentTypesData from '../../lib/document-types.json'
 
 const prisma = new PrismaClient()
 

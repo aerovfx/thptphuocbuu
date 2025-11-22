@@ -57,7 +57,10 @@ async function getDocument(id: string, userId: string, role: string) {
   }
 
   // Check access permission
-  if (role === 'STUDENT' || role === 'PARENT') {
+  if (role === 'ADMIN') {
+    // ADMIN can access all documents
+    // No restriction
+  } else if (role === 'STUDENT' || role === 'PARENT') {
     const hasAccess = document.assignments.some(
       (assignment) => assignment.assignedToId === userId
     )

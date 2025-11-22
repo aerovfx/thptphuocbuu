@@ -17,6 +17,13 @@ enum UserRole {
   PARENT
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+  PENDING
+}
+
 enum PostType {
   TEXT
   IMAGE
@@ -33,34 +40,34 @@ enum DocumentType {
 }
 
 enum IncomingDocumentType {
-  DIRECTIVE      // Văn bản chỉ đạo
-  RECORD         // Hồ sơ
-  REPORT         // Tờ trình
-  REQUEST        // Đề nghị
-  OTHER          // Khác
+  DIRECTIVE // Văn bản chỉ đạo
+  RECORD // Hồ sơ
+  REPORT // Tờ trình
+  REQUEST // Đề nghị
+  OTHER // Khác
 }
 
 enum DocumentStatus {
-  PENDING        // Chờ xử lý
-  PROCESSING     // Đang xử lý
-  APPROVED       // Đã phê duyệt
-  REJECTED       // Từ chối
-  COMPLETED      // Hoàn thành
-  ARCHIVED       // Lưu trữ
+  PENDING // Chờ xử lý
+  PROCESSING // Đang xử lý
+  APPROVED // Đã phê duyệt
+  REJECTED // Từ chối
+  COMPLETED // Hoàn thành
+  ARCHIVED // Lưu trữ
 }
 
 enum ApprovalStatus {
   PENDING
   APPROVED
   REJECTED
-  RETURNED       // Trả lại
+  RETURNED // Trả lại
 }
 
 enum SignatureProvider {
   VNPT
   VIETTEL
   MISA
-  INTERNAL       // Ký nội bộ
+  INTERNAL // Ký nội bộ
 }
 
 enum BrandVerificationStatus {
@@ -76,88 +83,98 @@ enum BrandMemberRole {
 }
 
 enum BrandBadgeType {
-  GOLD       // Verified Organization (Brand Premium)
-  SILVER     // Education/Non-profit
-  BLUE       // Premium Individual
+  GOLD // Verified Organization (Brand Premium)
+  SILVER // Education/Non-profit
+  BLUE // Premium Individual
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password      String?   // Optional for OAuth users
-  firstName     String
-  lastName      String
-  avatar        String?
-  coverPhoto    String?   // Hình bìa hồ sơ
-  role          UserRole  @default(STUDENT)
-  bio           String?
-  phone         String?
-  dateOfBirth   DateTime?
-  emailVerified DateTime?
-  resetPasswordToken      String?
-  resetPasswordExpires    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  password             String? // Optional for OAuth users
+  firstName            String
+  lastName             String
+  avatar               String?
+  coverPhoto           String? // Hình bìa hồ sơ
+  role                 UserRole  @default(STUDENT)
+  bio                  String?
+  phone                String?
+  dateOfBirth          DateTime?
+  emailVerified        DateTime?
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   // OAuth accounts
-  accounts      Account[]
-  sessions      Session[]
+  accounts Account[]
+  sessions Session[]
 
   // LMS Relations
-  enrolledClasses    ClassEnrollment[]
-  taughtClasses      Class[]            @relation("TeacherClasses")
-  assignments        Assignment[]
-  submissions        Submission[]
-  teacherGrades      Grade[]       @relation("TeacherGrades")
-  studentGrades      Grade[]       @relation("StudentGrades")
-  announcements      Announcement[]
+  enrolledClasses ClassEnrollment[]
+  taughtClasses   Class[]           @relation("TeacherClasses")
+  assignments     Assignment[]
+  submissions     Submission[]
+  teacherGrades   Grade[]           @relation("TeacherGrades")
+  studentGrades   Grade[]           @relation("StudentGrades")
+  announcements   Announcement[]
+  lessonCompletions LessonCompletion[]
 
   // Social Media Relations
-  posts              Post[]             @relation("AuthorPosts")
-  comments           Comment[]
-  likes              Like[]
-  bookmarks          Bookmark[]
-  reposts            Repost[]
-  sentFriendRequests FriendRequest[]    @relation("Sender")
+  posts                  Post[]          @relation("AuthorPosts")
+  comments               Comment[]
+  likes                  Like[]
+  bookmarks              Bookmark[]
+  reposts                Repost[]
+  sentFriendRequests     FriendRequest[] @relation("Sender")
   receivedFriendRequests FriendRequest[] @relation("Receiver")
-  friendships        Friendship[]       @relation("User1")
-  friendships2       Friendship[]       @relation("User2")
+  friendships            Friendship[]    @relation("User1")
+  friendships2           Friendship[]    @relation("User2")
 
   // Document Relations
-  uploadedDocuments  Document[]
-  documentAccess     DocumentAccess[]
+  uploadedDocuments Document[]
+  documentAccess    DocumentAccess[]
 
   // DMS Relations
-  incomingDocumentsCreated IncomingDocument[] @relation("IncomingDocumentsCreated")
+  incomingDocumentsCreated  IncomingDocument[]           @relation("IncomingDocumentsCreated")
   incomingDocumentsAssigned IncomingDocumentAssignment[] @relation("IncomingDocumentsAssigned")
-  outgoingDocumentsCreated OutgoingDocument[] @relation("OutgoingDocumentsCreated")
-  workflowApprovals Approval[]
-  digitalSignatures DigitalSignature[] @relation("DigitalSignatures")
+  outgoingDocumentsCreated  OutgoingDocument[]           @relation("OutgoingDocumentsCreated")
+  workflowApprovals         Approval[]
+  digitalSignatures         DigitalSignature[]           @relation("DigitalSignatures")
 
   // Brand Relations
-  isPremium        Boolean   @default(false)
-  brandId          String?
-  ownedBrand       Brand?    @relation("BrandOwner")
-  brandMemberships BrandMember[]
-  brandBadges      BrandBadge[]
+  isPremium            Boolean               @default(false)
+  brandId              String?
+  ownedBrand           Brand?                @relation("BrandOwner")
+  brandMemberships     BrandMember[]
+  brandBadges          BrandBadge[]
   premiumSubscriptions PremiumSubscription[] @relation("PremiumSubscriptions")
 
   // Collaborative Document Relations
-  ownedDocuments       CollaborativeDocument[] @relation("DocumentOwner")
-  documentRevisions     DocumentRevision[]      @relation("DocumentRevisions")
-  documentComments      DocumentComment[]        @relation("DocumentComments")
-  documentPermissions   DocumentPermission[]     @relation("DocumentPermissions")
-  workItemsCreated WorkItem[] @relation("WorkItemsCreated")
-  documentVersionsCreated DocumentVersion[] @relation("DocumentVersionsCreated")
-  workflowAssignments Workflow[] @relation("WorkflowAssignments")
-  taskAssignments Task[] @relation("TaskAssignments")
-  auditLogs AuditLog[] @relation("AuditLogs")
-  newsArticles NewsArticle[] @relation("NewsArticles")
+  ownedDocuments          CollaborativeDocument[] @relation("DocumentOwner")
+  documentRevisions       DocumentRevision[]      @relation("DocumentRevisions")
+  documentComments        DocumentComment[]       @relation("DocumentComments")
+  documentPermissions     DocumentPermission[]    @relation("DocumentPermissions")
+  workItemsCreated        WorkItem[]              @relation("WorkItemsCreated")
+  documentVersionsCreated DocumentVersion[]       @relation("DocumentVersionsCreated")
+  workflowAssignments     Workflow[]              @relation("WorkflowAssignments")
+  taskAssignments         Task[]                  @relation("TaskAssignments")
+  auditLogs               AuditLog[]              @relation("AuditLogs")
+  newsArticles            NewsArticle[]           @relation("NewsArticles")
 
   // Messages Relations
   user1Conversations Conversation[] @relation("User1Conversations")
   user2Conversations Conversation[] @relation("User2Conversations")
-  sentMessages Message[] @relation("SentMessages")
+  sentMessages       Message[]      @relation("SentMessages")
+
+  // Admin Panel Relations
+  status          UserStatus           @default(ACTIVE)
+  lastLogin       DateTime?
+  metadata        String? // JSON string for additional metadata
+  userRoles       UserRoleAssignment[]
+  createdRoles    Role[]               @relation("RoleCreator")
+  assignedByRoles UserRoleAssignment[] @relation("AssignedByUser")
+  adminAuditLogs  AdminAuditLog[]      @relation("AdminAuditLogs")
 
   @@map("users")
 }
@@ -174,19 +191,20 @@ model Class {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  enrollments ClassEnrollment[]
-  assignments Assignment[]
+  enrollments   ClassEnrollment[]
+  assignments   Assignment[]
   announcements Announcement[]
+  chapters      Chapter[]
 
   @@map("classes")
 }
 
 model ClassEnrollment {
-  id        String   @id @default(cuid())
-  userId    String
-  classId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  userId     String
+  classId    String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  class      Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
   enrolledAt DateTime @default(now())
 
   @@unique([userId, classId])
@@ -211,34 +229,81 @@ model Assignment {
   @@map("assignments")
 }
 
+// Course Content Models
+model Chapter {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  order       Int      @default(0)
+  classId     String
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lessons Lesson[]
+
+  @@map("chapters")
+}
+
+model Lesson {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  content     String?  // HTML content
+  order       Int      @default(0)
+  duration    Int?     // Duration in minutes
+  chapterId   String
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Track lesson completion for students
+  completions LessonCompletion[]
+
+  @@map("lessons")
+}
+
+model LessonCompletion {
+  id        String   @id @default(cuid())
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+  completedCount Int   @default(1) // How many times completed
+
+  @@unique([lessonId, userId])
+  @@map("lesson_completions")
+}
+
 model Submission {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   assignmentId String
   assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   studentId    String
-  student      User     @relation(fields: [studentId], references: [id])
+  student      User       @relation(fields: [studentId], references: [id])
   content      String?
   fileUrl      String?
-  submittedAt  DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  submittedAt  DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  grade        Grade?
+  grade Grade?
 
   @@unique([assignmentId, studentId])
   @@map("submissions")
 }
 
 model Grade {
-  id           String   @id @default(cuid())
-  submissionId String   @unique
+  id           String     @id @default(cuid())
+  submissionId String     @unique
   submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   teacherId    String
-  teacher      User     @relation("TeacherGrades", fields: [teacherId], references: [id])
+  teacher      User       @relation("TeacherGrades", fields: [teacherId], references: [id])
   studentId    String
-  student      User     @relation("StudentGrades", fields: [studentId], references: [id])
+  student      User       @relation("StudentGrades", fields: [studentId], references: [id])
   score        Float
   feedback     String?
-  gradedAt     DateTime @default(now())
+  gradedAt     DateTime   @default(now())
 
   @@map("grades")
 }
@@ -259,20 +324,20 @@ model Announcement {
 
 // Social Media Models
 model Post {
-  id          String   @id @default(cuid())
-  content     String
-  type        PostType @default(TEXT)
-  imageUrl    String?
-  videoUrl    String?
-  linkUrl     String?
-  locationName String?  // Tên địa điểm (ví dụ: "Hà Nội, Việt Nam")
-  latitude    Float?   // Vĩ độ
-  longitude   Float?   // Kinh độ
-  scheduledAt DateTime? // Thời gian lên lịch đăng bài (null = đăng ngay)
-  authorId    String
-  author      User     @relation("AuthorPosts", fields: [authorId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String    @id @default(cuid())
+  content      String
+  type         PostType  @default(TEXT)
+  imageUrl     String?
+  videoUrl     String?
+  linkUrl      String?
+  locationName String? // Tên địa điểm (ví dụ: "Hà Nội, Việt Nam")
+  latitude     Float? // Vĩ độ
+  longitude    Float? // Kinh độ
+  scheduledAt  DateTime? // Thời gian lên lịch đăng bài (null = đăng ngay)
+  authorId     String
+  author       User      @relation("AuthorPosts", fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   comments  Comment[]
   likes     Like[]
@@ -360,20 +425,20 @@ model Friendship {
 
 // Document Management Models
 model Document {
-  id          String       @id @default(cuid())
-  title       String
-  description String?
-  fileName    String
-  fileUrl     String
-  fileSize    Int          // in bytes
-  mimeType    String
-  type        DocumentType
-  category    String?
-  signedFileUrl String?    // File đã ký số
-  uploadedById String
-  uploadedBy  User         @relation(fields: [uploadedById], references: [id])
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id            String       @id @default(cuid())
+  title         String
+  description   String?
+  fileName      String
+  fileUrl       String
+  fileSize      Int // in bytes
+  mimeType      String
+  type          DocumentType
+  category      String?
+  signedFileUrl String? // File đã ký số
+  uploadedById  String
+  uploadedBy    User         @relation(fields: [uploadedById], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   access     DocumentAccess[]
   signatures DigitalSignature[] @relation("DocumentSignatures")
@@ -382,15 +447,15 @@ model Document {
 }
 
 model DocumentAccess {
-  id         String   @id @default(cuid())
-  documentId String
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role       UserRole? // null means public access
-  canView    Boolean  @default(true)
-  canDownload Boolean @default(false)
-  createdAt  DateTime @default(now())
+  id          String    @id @default(cuid())
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        UserRole? // null means public access
+  canView     Boolean   @default(true)
+  canDownload Boolean   @default(false)
+  createdAt   DateTime  @default(now())
 
   @@unique([documentId, userId])
   @@map("document_access")
@@ -445,9 +510,9 @@ model VerificationToken {
 // Loại văn bản hành chính (Standard Document Type Codes)
 model AdministrativeDocumentType {
   code        String   @id // CV, QĐ, TB, BC, etc.
-  name        String   // Tên đầy đủ: Công văn, Quyết định, etc.
-  group       String   // inbound, outbound, administrative, internal, legal
-  description String?  // Mô tả chi tiết
+  name        String // Tên đầy đủ: Công văn, Quyết định, etc.
+  group       String // inbound, outbound, administrative, internal, legal
+  description String? // Mô tả chi tiết
   active      Boolean  @default(true)
   order       Int      @default(0) // Thứ tự hiển thị
   createdAt   DateTime @default(now())
@@ -462,253 +527,253 @@ model AdministrativeDocumentType {
 
 // Văn bản đến
 model IncomingDocument {
-  id              String              @id @default(cuid())
-  documentNumber  String?             // Số văn bản
-  documentCode    String?             // Mã văn bản
-  title           String
-  content         String?             // Nội dung trích xuất từ OCR
-  summary         String?             // Tóm tắt AI
-  type            IncomingDocumentType @default(OTHER)
-  status          DocumentStatus      @default(PENDING)
-  
+  id             String               @id @default(cuid())
+  documentNumber String? // Số văn bản
+  documentCode   String? // Mã văn bản
+  title          String
+  content        String? // Nội dung trích xuất từ OCR
+  summary        String? // Tóm tắt AI
+  type           IncomingDocumentType @default(OTHER)
+  status         DocumentStatus       @default(PENDING)
+
   // File info
   fileName        String
   fileUrl         String
   fileSize        Int
   mimeType        String
-  originalFileUrl String?             // File gốc trước OCR
-  
+  originalFileUrl String? // File gốc trước OCR
+
   // OCR & AI
-  ocrText         String?             // Text trích xuất từ OCR
-  ocrConfidence   Float?              // Độ tin cậy OCR
-  aiCategory      String?             // Phân loại AI
-  aiConfidence    Float?              // Độ tin cậy AI
-  aiExtractedData String?             // JSON: dữ liệu trích xuất
-  
+  ocrText         String? // Text trích xuất từ OCR
+  ocrConfidence   Float? // Độ tin cậy OCR
+  aiCategory      String? // Phân loại AI
+  aiConfidence    Float? // Độ tin cậy AI
+  aiExtractedData String? // JSON: dữ liệu trích xuất
+
   // Metadata
-  sender          String?             // Người/nơi gửi
-  receivedDate    DateTime            @default(now())
-  priority        String              @default("NORMAL") // URGENT, HIGH, NORMAL, LOW
-  deadline        DateTime?
-  
+  sender       String? // Người/nơi gửi
+  receivedDate DateTime  @default(now())
+  priority     String    @default("NORMAL") // URGENT, HIGH, NORMAL, LOW
+  deadline     DateTime?
+
   // Document Type
-  documentTypeCode String?                      // Mã loại văn bản (CV, QĐ, TB, etc.)
+  documentTypeCode String? // Mã loại văn bản (CV, QĐ, TB, etc.)
   documentType     AdministrativeDocumentType? @relation(fields: [documentTypeCode], references: [code])
-  
+
   // Relations
-  createdById     String
-  createdBy       User                @relation("IncomingDocumentsCreated", fields: [createdById], references: [id])
-  assignments     IncomingDocumentAssignment[]
-  approvals       Approval[]
-  aiResults       DocumentAI[]
-  versions        DocumentVersion[]   @relation("DocumentVersions")
-  workflows       Workflow[]          @relation("IncomingDocumentWorkflows")
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  createdById String
+  createdBy   User                         @relation("IncomingDocumentsCreated", fields: [createdById], references: [id])
+  assignments IncomingDocumentAssignment[]
+  approvals   Approval[]
+  aiResults   DocumentAI[]
+  versions    DocumentVersion[]            @relation("DocumentVersions")
+  workflows   Workflow[]                   @relation("IncomingDocumentWorkflows")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("incoming_documents")
 }
 
 // Phân công xử lý văn bản đến
 model IncomingDocumentAssignment {
-  id                String            @id @default(cuid())
-  documentId        String
-  document          IncomingDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  assignedToId      String
-  assignedTo        User              @relation("IncomingDocumentsAssigned", fields: [assignedToId], references: [id])
-  assignedById      String?           // Người phân công
-  notes             String?           // Ghi chú phân công
-  deadline          DateTime?
-  status            DocumentStatus    @default(PENDING)
-  completedAt       DateTime?
-  checklistItems    String?           // JSON: array of checklist items
-  
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  id             String           @id @default(cuid())
+  documentId     String
+  document       IncomingDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  assignedToId   String
+  assignedTo     User             @relation("IncomingDocumentsAssigned", fields: [assignedToId], references: [id])
+  assignedById   String? // Người phân công
+  notes          String? // Ghi chú phân công
+  deadline       DateTime?
+  status         DocumentStatus   @default(PENDING)
+  completedAt    DateTime?
+  checklistItems String? // JSON: array of checklist items
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("incoming_document_assignments")
 }
 
 // Văn bản đi
 model OutgoingDocument {
-  id              String              @id @default(cuid())
-  documentNumber  String?             // Số văn bản (tự động)
-  documentCode    String?             // Mã văn bản
-  title           String
-  content         String              // Nội dung văn bản
-  aiDraft         String?             // Bản nháp AI gợi ý
-  template        String?             // Mẫu sử dụng (NĐ 30)
-  
+  id             String  @id @default(cuid())
+  documentNumber String? // Số văn bản (tự động)
+  documentCode   String? // Mã văn bản
+  title          String
+  content        String // Nội dung văn bản
+  aiDraft        String? // Bản nháp AI gợi ý
+  template       String? // Mẫu sử dụng (NĐ 30)
+
   // File info
-  fileName        String?
-  fileUrl         String?
-  fileSize        Int?
-  mimeType        String?
-  signedFileUrl   String?             // File đã ký số
-  
+  fileName      String?
+  fileUrl       String?
+  fileSize      Int?
+  mimeType      String?
+  signedFileUrl String? // File đã ký số
+
   // Metadata
-  recipient       String?             // Người/nơi nhận
-  status          DocumentStatus      @default(PENDING)
-  priority        String              @default("NORMAL")
-  sendDate        DateTime?
-  
+  recipient String? // Người/nơi nhận
+  status    DocumentStatus @default(PENDING)
+  priority  String         @default("NORMAL")
+  sendDate  DateTime?
+
   // Document Type
-  documentTypeCode String?                      // Mã loại văn bản (CV, QĐ, TB, etc.)
+  documentTypeCode String? // Mã loại văn bản (CV, QĐ, TB, etc.)
   documentType     AdministrativeDocumentType? @relation(fields: [documentTypeCode], references: [code])
-  
+
   // Relations
-  createdById     String
-  createdBy       User                @relation("OutgoingDocumentsCreated", fields: [createdById], references: [id])
-  approvals       Approval[]
-  signatures      DigitalSignature[]
-  workflows       Workflow[]          @relation("OutgoingDocumentWorkflows")
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  createdById String
+  createdBy   User               @relation("OutgoingDocumentsCreated", fields: [createdById], references: [id])
+  approvals   Approval[]
+  signatures  DigitalSignature[]
+  workflows   Workflow[]         @relation("OutgoingDocumentWorkflows")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("outgoing_documents")
 }
 
 // Luồng phê duyệt
 model Approval {
-  id              String              @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Document reference (polymorphic)
   incomingDocumentId String?
   incomingDocument   IncomingDocument? @relation(fields: [incomingDocumentId], references: [id], onDelete: Cascade)
   outgoingDocumentId String?
   outgoingDocument   OutgoingDocument? @relation(fields: [outgoingDocumentId], references: [id], onDelete: Cascade)
-  workItemId      String?
-  workItem        WorkItem?           @relation(fields: [workItemId], references: [id], onDelete: Cascade)
-  
+  workItemId         String?
+  workItem           WorkItem?         @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+
   // Approval info
-  level           Int                 // Cấp phê duyệt (1, 2, 3...)
-  approverId      String
-  approver        User                @relation(fields: [approverId], references: [id])
-  status          ApprovalStatus      @default(PENDING)
-  comment         String?             // Ý kiến phê duyệt
-  approvedAt      DateTime?
-  
+  level      Int // Cấp phê duyệt (1, 2, 3...)
+  approverId String
+  approver   User           @relation(fields: [approverId], references: [id])
+  status     ApprovalStatus @default(PENDING)
+  comment    String? // Ý kiến phê duyệt
+  approvedAt DateTime?
+
   // Deadline
-  deadline        DateTime?
-  reminderSent    Boolean             @default(false)
-  reminderSentAt  DateTime?
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  deadline       DateTime?
+  reminderSent   Boolean   @default(false)
+  reminderSentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("approvals")
 }
 
 // Hồ sơ công việc
 model WorkItem {
-  id              String              @id @default(cuid())
-  title           String
-  description     String?
-  content         String?             // Nội dung chi tiết
-  status          DocumentStatus      @default(PENDING)
-  priority        String              @default("NORMAL")
-  
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  content     String? // Nội dung chi tiết
+  status      DocumentStatus @default(PENDING)
+  priority    String         @default("NORMAL")
+
   // Deadline & reminders
-  deadline        DateTime?
-  reminderDays    Int?                // Số ngày nhắc trước deadline
-  lastReminderAt  DateTime?
-  
+  deadline       DateTime?
+  reminderDays   Int? // Số ngày nhắc trước deadline
+  lastReminderAt DateTime?
+
   // Relations
-  createdById     String
-  createdBy       User                @relation("WorkItemsCreated", fields: [createdById], references: [id])
-  approvals       Approval[]
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  completedAt     DateTime?
+  createdById String
+  createdBy   User       @relation("WorkItemsCreated", fields: [createdById], references: [id])
+  approvals   Approval[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
 
   @@map("work_items")
 }
 
 // Ký số & xác thực
 model DigitalSignature {
-  id              String              @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Document reference (polymorphic)
-  documentId      String?             // General Document
-  document        Document?           @relation("DocumentSignatures", fields: [documentId], references: [id], onDelete: Cascade)
+  documentId         String? // General Document
+  document           Document?         @relation("DocumentSignatures", fields: [documentId], references: [id], onDelete: Cascade)
   outgoingDocumentId String?
-  outgoingDocument    OutgoingDocument? @relation(fields: [outgoingDocumentId], references: [id], onDelete: Cascade)
-  
+  outgoingDocument   OutgoingDocument? @relation(fields: [outgoingDocumentId], references: [id], onDelete: Cascade)
+
   // Signature info
   provider        SignatureProvider
-  certificateId   String?             // ID chứng thư số
-  certificateInfo String?             // JSON: thông tin chứng thư
-  signedBy        String              // Người ký
+  certificateId   String? // ID chứng thư số
+  certificateInfo String? // JSON: thông tin chứng thư
+  signedBy        String // Người ký
   signedById      String
-  signedByUser    User                @relation("DigitalSignatures", fields: [signedById], references: [id])
-  
+  signedByUser    User              @relation("DigitalSignatures", fields: [signedById], references: [id])
+
   // Signature data
-  signatureHash   String?             // Hash chữ ký
-  signatureFileUrl String?            // File chữ ký
-  timestamp       DateTime?           // Thời gian ký
-  
+  signatureHash    String? // Hash chữ ký
+  signatureFileUrl String? // File chữ ký
+  timestamp        DateTime? // Thời gian ký
+
   // Status
-  isValid         Boolean             @default(true)
-  verifiedAt      DateTime?
-  errorMessage    String?
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  isValid      Boolean   @default(true)
+  verifiedAt   DateTime?
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("digital_signatures")
 }
 
 // AI Processing Results
 model DocumentAI {
-  id              String              @id @default(cuid())
-  documentId      String
-  document        IncomingDocument    @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  
+  id         String           @id @default(cuid())
+  documentId String
+  document   IncomingDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
   // AI Results
-  aiType          String              // OCR, CLASSIFY, EXTRACT, SUMMARIZE, SEARCH
-  result          String              // JSON: kết quả AI
-  confidence      Float?
-  model           String?             // Model AI sử dụng
-  processingTime  Int?                // Thời gian xử lý (ms)
-  
+  aiType         String // OCR, CLASSIFY, EXTRACT, SUMMARIZE, SEARCH
+  result         String // JSON: kết quả AI
+  confidence     Float?
+  model          String? // Model AI sử dụng
+  processingTime Int? // Thời gian xử lý (ms)
+
   // Related documents (semantic search)
-  relatedDocIds  String?             // JSON: IDs tài liệu liên quan
-  
-  createdAt       DateTime            @default(now())
+  relatedDocIds String? // JSON: IDs tài liệu liên quan
+
+  createdAt DateTime @default(now())
 
   @@map("document_ai")
 }
 
 // Document Versions (for version control)
 model DocumentVersion {
-  id              String              @id @default(cuid())
-  documentId      String
-  document        IncomingDocument    @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
-  
+  id         String           @id @default(cuid())
+  documentId String
+  document   IncomingDocument @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+
   // Version info
-  versionNumber   Int                 @default(1)
-  fileUrl         String
-  fileName        String
-  fileSize        Int
-  mimeType        String
-  
+  versionNumber Int    @default(1)
+  fileUrl       String
+  fileName      String
+  fileSize      Int
+  mimeType      String
+
   // OCR & AI
-  ocrText         String?             // Text trích xuất từ OCR
-  extractedTextId String?             // Reference to OCRExtract
-  
+  ocrText         String? // Text trích xuất từ OCR
+  extractedTextId String? // Reference to OCRExtract
+
   // Metadata
-  createdById     String
-  createdBy       User                @relation("DocumentVersionsCreated", fields: [createdById], references: [id])
-  changeNote      String?             // Ghi chú thay đổi
-  
+  createdById String
+  createdBy   User    @relation("DocumentVersionsCreated", fields: [createdById], references: [id])
+  changeNote  String? // Ghi chú thay đổi
+
   // Relations
-  ocrExtracts     OCRExtract[]
-  embeddings      DocumentEmbedding[]
-  
-  createdAt       DateTime            @default(now())
+  ocrExtracts OCRExtract[]
+  embeddings  DocumentEmbedding[]
+
+  createdAt DateTime @default(now())
 
   @@unique([documentId, versionNumber])
   @@map("document_versions")
@@ -716,37 +781,37 @@ model DocumentVersion {
 
 // OCR Extract Results
 model OCRExtract {
-  id              String              @id @default(cuid())
+  id                String          @id @default(cuid())
   documentVersionId String
-  documentVersion   DocumentVersion    @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
-  
+  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+
   // OCR Results
-  text            String              // Full extracted text
-  pages          Int?                // Số trang
-  language        String?             // Ngôn ngữ phát hiện
-  confidence      Float?              // Độ tin cậy trung bình
-  
+  text       String // Full extracted text
+  pages      Int? // Số trang
+  language   String? // Ngôn ngữ phát hiện
+  confidence Float? // Độ tin cậy trung bình
+
   // Processing info
-  provider        String?             // Tesseract, Google Vision, Azure, etc.
-  processingTime  Int?                // Thời gian xử lý (ms)
-  
-  createdAt       DateTime            @default(now())
+  provider       String? // Tesseract, Google Vision, Azure, etc.
+  processingTime Int? // Thời gian xử lý (ms)
+
+  createdAt DateTime @default(now())
 
   @@map("ocr_extracts")
 }
 
 // Document Embeddings (for semantic search)
 model DocumentEmbedding {
-  id              String              @id @default(cuid())
+  id                String          @id @default(cuid())
   documentVersionId String
-  documentVersion   DocumentVersion    @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
-  
+  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+
   // Embedding data
-  vector          String              // JSON array of floats (1536 for OpenAI, 768 for others)
-  model           String              // Model used (text-embedding-ada-002, etc.)
-  chunkIndex      Int?                // Index if document is chunked
-  
-  createdAt       DateTime            @default(now())
+  vector     String // JSON array of floats (1536 for OpenAI, 768 for others)
+  model      String // Model used (text-embedding-ada-002, etc.)
+  chunkIndex Int? // Index if document is chunked
+
+  createdAt DateTime @default(now())
 
   @@unique([documentVersionId, chunkIndex])
   @@map("document_embeddings")
@@ -754,86 +819,86 @@ model DocumentEmbedding {
 
 // Workflow Engine
 model Workflow {
-  id              String              @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Document reference
   incomingDocumentId String?
   incomingDocument   IncomingDocument? @relation("IncomingDocumentWorkflows", fields: [incomingDocumentId], references: [id], onDelete: Cascade)
   outgoingDocumentId String?
   outgoingDocument   OutgoingDocument? @relation("OutgoingDocumentWorkflows", fields: [outgoingDocumentId], references: [id], onDelete: Cascade)
-  
-  // Workflow definition
-  name            String
-  steps           String              // JSON: array of workflow steps
-  currentStep     Int                 @default(0)
-  status          String              @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, CANCELLED
-  
-  // Auto-routing
-  autoAssigned    Boolean             @default(false)
-  assignedToId    String?
-  assignedTo      User?               @relation("WorkflowAssignments", fields: [assignedToId], references: [id])
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  completedAt     DateTime?
 
-  tasks           Task[]
+  // Workflow definition
+  name        String
+  steps       String // JSON: array of workflow steps
+  currentStep Int    @default(0)
+  status      String @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+
+  // Auto-routing
+  autoAssigned Boolean @default(false)
+  assignedToId String?
+  assignedTo   User?   @relation("WorkflowAssignments", fields: [assignedToId], references: [id])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  tasks Task[]
 
   @@map("workflows")
 }
 
 // Workflow Tasks
 model Task {
-  id              String              @id @default(cuid())
-  workflowId      String
-  workflow        Workflow            @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(cuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
   // Task info
-  stepNumber      Int
-  title           String
-  description     String?
-  assigneeId      String
-  assignee        User                @relation("TaskAssignments", fields: [assigneeId], references: [id])
-  
+  stepNumber  Int
+  title       String
+  description String?
+  assigneeId  String
+  assignee    User    @relation("TaskAssignments", fields: [assigneeId], references: [id])
+
   // Status
-  status          String              @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, REJECTED
-  dueDate         DateTime?
-  completedAt     DateTime?
-  
+  status      String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, REJECTED
+  dueDate     DateTime?
+  completedAt DateTime?
+
   // Notes
-  notes           String?
-  attachments     String?             // JSON: array of file URLs
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  notes       String?
+  attachments String? // JSON: array of file URLs
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("tasks")
 }
 
 // Audit Log (immutable)
 model AuditLog {
-  id              String              @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // User & Action
-  userId          String
-  user            User                @relation("AuditLogs", fields: [userId], references: [id])
-  action          String              // CREATE, UPDATE, DELETE, APPROVE, REJECT, SIGN, etc.
-  
+  userId String
+  user   User   @relation("AuditLogs", fields: [userId], references: [id])
+  action String // CREATE, UPDATE, DELETE, APPROVE, REJECT, SIGN, etc.
+
   // Document reference
   incomingDocumentId String?
   outgoingDocumentId String?
-  workflowId      String?
-  taskId          String?
-  
+  workflowId         String?
+  taskId             String?
+
   // Payload
-  payload         String              // JSON: chi tiết thay đổi
-  ipAddress       String?
-  userAgent       String?
-  
+  payload   String // JSON: chi tiết thay đổi
+  ipAddress String?
+  userAgent String?
+
   // Immutability
-  hash            String?             // Hash của log để đảm bảo tính toàn vẹn
-  
-  timestamp       DateTime            @default(now())
+  hash String? // Hash của log để đảm bảo tính toàn vẹn
+
+  timestamp DateTime @default(now())
 
   @@index([userId])
   @@index([incomingDocumentId])
@@ -864,34 +929,34 @@ enum NewsStatus {
 }
 
 model NewsArticle {
-  id              String              @id @default(cuid())
-  title           String
-  slug            String              @unique
-  excerpt         String?             // Tóm tắt ngắn
-  content         String              // Nội dung đầy đủ (Markdown hoặc HTML)
-  featuredImage   String?             // URL ảnh đại diện
-  category        NewsCategory        @default(GENERAL)
-  status          NewsStatus          @default(DRAFT)
-  
+  id            String       @id @default(cuid())
+  title         String
+  slug          String       @unique
+  excerpt       String? // Tóm tắt ngắn
+  content       String // Nội dung đầy đủ (Markdown hoặc HTML)
+  featuredImage String? // URL ảnh đại diện
+  category      NewsCategory @default(GENERAL)
+  status        NewsStatus   @default(DRAFT)
+
   // Metadata
-  authorId        String
-  author          User                @relation("NewsArticles", fields: [authorId], references: [id])
-  views           Int                 @default(0)
-  isFeatured      Boolean             @default(false)
-  isTopNews       Boolean             @default(false)
-  
+  authorId   String
+  author     User    @relation("NewsArticles", fields: [authorId], references: [id])
+  views      Int     @default(0)
+  isFeatured Boolean @default(false)
+  isTopNews  Boolean @default(false)
+
   // SEO
   metaTitle       String?
   metaDescription String?
-  tags            String?             // JSON array of tags
-  
+  tags            String? // JSON array of tags
+
   // Relations
-  departmentId    String?
-  department      NewsDepartment?     @relation(fields: [departmentId], references: [id])
-  
-  publishedAt     DateTime?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  departmentId String?
+  department   NewsDepartment? @relation(fields: [departmentId], references: [id])
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([category])
   @@index([status])
@@ -900,29 +965,29 @@ model NewsArticle {
 }
 
 model NewsDepartment {
-  id              String              @id @default(cuid())
-  name            String              @unique
-  slug            String              @unique
-  description     String?
-  icon            String?             // Icon name hoặc URL
-  order           Int                 @default(0)
-  
-  articles        NewsArticle[]
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  icon        String? // Icon name hoặc URL
+  order       Int     @default(0)
+
+  articles NewsArticle[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("news_departments")
 }
 
 model NewsTag {
-  id              String              @id @default(cuid())
-  name            String              @unique
-  slug            String              @unique
-  description     String?
-  color           String?             // Màu hiển thị
-  
-  createdAt       DateTime            @default(now())
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  color       String? // Màu hiển thị
+
+  createdAt DateTime @default(now())
 
   @@map("news_tags")
 }
@@ -933,28 +998,28 @@ model NewsTag {
 
 // Conversation (1-on-1 chat)
 model Conversation {
-  id              String              @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Participants
-  user1Id         String
-  user1           User                @relation("User1Conversations", fields: [user1Id], references: [id], onDelete: Cascade)
-  user2Id         String
-  user2           User                @relation("User2Conversations", fields: [user2Id], references: [id], onDelete: Cascade)
-  
+  user1Id String
+  user1   User   @relation("User1Conversations", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id String
+  user2   User   @relation("User2Conversations", fields: [user2Id], references: [id], onDelete: Cascade)
+
   // Last message info (for quick access)
-  lastMessageId   String?
-  lastMessage     Message?            @relation("LastMessage", fields: [lastMessageId], references: [id])
-  lastMessageAt   DateTime?
-  
+  lastMessageId String?
+  lastMessage   Message?  @relation("LastMessage", fields: [lastMessageId], references: [id])
+  lastMessageAt DateTime?
+
   // Unread counts per user
-  user1UnreadCount Int                @default(0)
-  user2UnreadCount Int                @default(0)
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  
-  messages        Message[]
-  
+  user1UnreadCount Int @default(0)
+  user2UnreadCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages Message[]
+
   @@unique([user1Id, user2Id])
   @@index([user1Id, updatedAt])
   @@index([user2Id, updatedAt])
@@ -963,26 +1028,26 @@ model Conversation {
 
 // Message
 model Message {
-  id              String              @id @default(cuid())
-  conversationId  String
-  conversation    Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
   // Sender
-  senderId        String
-  sender          User                @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  
+  senderId String
+  sender   User   @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
   // Content
-  content         String
-  imageUrl        String?             // Optional image attachment
-  isRead          Boolean             @default(false)
-  readAt          DateTime?
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  
+  content  String
+  imageUrl String? // Optional image attachment
+  isRead   Boolean   @default(false)
+  readAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relation for last message
   lastMessageConversations Conversation[] @relation("LastMessage")
-  
+
   @@index([conversationId, createdAt])
   @@index([senderId])
   @@map("messages")
@@ -990,23 +1055,23 @@ model Message {
 
 // Brand Management Models
 model Brand {
-  id                String                  @id @default(cuid())
-  name              String
-  slug              String                  @unique
-  logoUrl           String?
-  website           String?
-  description       String?
-  emailDomain       String?                // Verified email domain (e.g., @company.com)
-  businessLicense   String?                // URL to business license document
+  id                 String                  @id @default(cuid())
+  name               String
+  slug               String                  @unique
+  logoUrl            String?
+  website            String?
+  description        String?
+  emailDomain        String? // Verified email domain (e.g., @company.com)
+  businessLicense    String? // URL to business license document
   verificationStatus BrandVerificationStatus @default(PENDING)
-  createdById       String                   @unique
-  createdBy         User                    @relation("BrandOwner", fields: [createdById], references: [id], onDelete: Cascade)
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
+  createdById        String                  @unique
+  createdBy          User                    @relation("BrandOwner", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
 
   // Relations
-  members           BrandMember[]
-  badges            BrandBadge[]
+  members BrandMember[]
+  badges  BrandBadge[]
 
   @@index([createdById])
   @@index([slug])
@@ -1020,7 +1085,7 @@ model BrandMember {
   userId      String
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   role        BrandMemberRole @default(MEMBER)
-  permissions Json?           // Custom permissions as JSON
+  permissions Json? // Custom permissions as JSON
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
@@ -1031,16 +1096,16 @@ model BrandMember {
 }
 
 model BrandBadge {
-  id          String          @id @default(cuid())
-  brandId     String
-  brand       Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badgeType   BrandBadgeType
-  badgeIconUrl String?        // Custom badge icon URL
-  isActive    Boolean         @default(true)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id           String         @id @default(cuid())
+  brandId      String
+  brand        Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeType    BrandBadgeType
+  badgeIconUrl String? // Custom badge icon URL
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   @@unique([brandId, userId])
   @@index([brandId])
@@ -1050,17 +1115,17 @@ model BrandBadge {
 
 // Premium Subscription Model
 model PremiumSubscription {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation("PremiumSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
-  plan            String   // STANDARD, PRO, ENTERPRISE
-  status          String   @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED
-  startDate       DateTime @default(now())
-  endDate         DateTime // 1 month from startDate
-  activatedBy     String   @default("TASKS") // TASKS (auto), MANUAL (user subscribed)
-  completedTasks  Int      @default(0) // Number of tasks completed to activate
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation("PremiumSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  plan           String // STANDARD, PRO, ENTERPRISE
+  status         String   @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED
+  startDate      DateTime @default(now())
+  endDate        DateTime // 1 month from startDate
+  activatedBy    String   @default("TASKS") // TASKS (auto), MANUAL (user subscribed)
+  completedTasks Int      @default(0) // Number of tasks completed to activate
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -1077,74 +1142,180 @@ enum DocumentPermissionRole {
 }
 
 model CollaborativeDocument {
-  id          String   @id @default(cuid())
-  title       String
-  content     Json?    // CRDT snapshot or AST
-  ownerId     String
-  owner       User     @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String    @id @default(cuid())
+  title        String
+  content      Json? // CRDT snapshot or AST
+  ownerId      String
+  owner        User      @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   lastEditedAt DateTime?
   lastEditedBy String?
-  
+
   // Relations
   revisions   DocumentRevision[]
   comments    DocumentComment[]
   permissions DocumentPermission[]
-  
+
   @@index([ownerId])
   @@index([updatedAt])
   @@map("collaborative_documents")
 }
 
 model DocumentRevision {
-  id          String   @id @default(cuid())
+  id          String                @id @default(cuid())
   documentId  String
   document    CollaborativeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  delta       Json?    // Operational Transform delta or CRDT changes
-  snapshot    Json?    // Full document snapshot at this revision
+  delta       Json? // Operational Transform delta or CRDT changes
+  snapshot    Json? // Full document snapshot at this revision
   userId      String?
-  user        User?    @relation("DocumentRevisions", fields: [userId], references: [id], onDelete: SetNull)
-  description String?  // Optional description of changes
-  createdAt   DateTime @default(now())
-  
+  user        User?                 @relation("DocumentRevisions", fields: [userId], references: [id], onDelete: SetNull)
+  description String? // Optional description of changes
+  createdAt   DateTime              @default(now())
+
   @@index([documentId, createdAt])
   @@map("document_revisions")
 }
 
 model DocumentComment {
-  id          String   @id @default(cuid())
-  documentId  String
-  document    CollaborativeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation("DocumentComments", fields: [userId], references: [id], onDelete: Cascade)
-  content     String
-  position    Json?    // Position in document (e.g., { blockId, offset })
-  resolved    Boolean  @default(false)
-  resolvedAt  DateTime?
-  resolvedBy  String?
-  replies     Json?    // Nested replies as JSON
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id         String                @id @default(cuid())
+  documentId String
+  document   CollaborativeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User                  @relation("DocumentComments", fields: [userId], references: [id], onDelete: Cascade)
+  content    String
+  position   Json? // Position in document (e.g., { blockId, offset })
+  resolved   Boolean               @default(false)
+  resolvedAt DateTime?
+  resolvedBy String?
+  replies    Json? // Nested replies as JSON
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
   @@index([documentId])
   @@index([userId])
   @@map("document_comments")
 }
 
 model DocumentPermission {
-  id          String   @id @default(cuid())
-  documentId  String
-  document    CollaborativeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation("DocumentPermissions", fields: [userId], references: [id], onDelete: Cascade)
-  role        DocumentPermissionRole @default(VIEWER)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id         String                 @id @default(cuid())
+  documentId String
+  document   CollaborativeDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User                   @relation("DocumentPermissions", fields: [userId], references: [id], onDelete: Cascade)
+  role       DocumentPermissionRole @default(VIEWER)
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
   @@unique([documentId, userId])
   @@index([documentId])
   @@index([userId])
   @@map("document_permissions")
 }
 
+// ============================================
+// Admin Panel Models - RBAC & Module Management
+// ============================================
+
+// Role Model
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String
+  createdBy   User     @relation("RoleCreator", fields: [createdById], references: [id])
+
+  // Relations
+  rolePermissions RolePermission[]
+  userAssignments UserRoleAssignment[]
+
+  @@map("roles")
+}
+
+// Permission Model
+model Permission {
+  id          String   @id @default(cuid())
+  resource    String // e.g. "module:user", "module:report"
+  action      String // e.g. "read", "write", "delete", "export"
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@map("permissions")
+}
+
+// RolePermission (many-to-many)
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  attributes   String? // JSON string for ABAC rules (optional)
+  createdAt    DateTime   @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// UserRoleAssignment (many-to-many with metadata)
+model UserRoleAssignment {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId       String
+  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedById String
+  assignedBy   User     @relation("AssignedByUser", fields: [assignedById], references: [id])
+  assignedAt   DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+// Module Model
+model Module {
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g. "user_mgmt", "report_module"
+  name        String
+  description String?
+  enabled     Boolean  @default(false)
+  config      String? // JSON string for module configuration
+  version     String   @default("1.0.0")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+  @@index([enabled])
+  @@map("modules")
+}
+
+// Admin Audit Log (extended from existing AuditLog)
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String // Admin user who performed the action
+  actor      User     @relation("AdminAuditLogs", fields: [actorId], references: [id])
+  action     String // "user.create", "module.update", "role.assign", etc.
+  targetType String? // "user", "role", "module", "permission"
+  targetId   String? // ID of the target resource
+  details    String? // JSON string with action details
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("admin_audit_logs")
+}

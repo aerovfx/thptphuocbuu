@@ -240,50 +240,60 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role
         token.id = user.id
-        token.email = user.email
+        token.email = user.email || undefined
         // Map avatar from user object (could be from credentials or OAuth)
         token.avatar = (user as any).avatar || (user as any).image || null
       }
 
       // Always fetch latest avatar from database to ensure sync
       if (token.id) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: {
-            role: true,
-            firstName: true,
-            lastName: true,
-            avatar: true,
-          },
-        })
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: {
+              role: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+            },
+          })
 
-        if (dbUser) {
-          token.role = dbUser.role
-          token.avatar = dbUser.avatar
+          if (dbUser) {
+            token.role = dbUser.role
+            token.avatar = dbUser.avatar
+          }
+        } catch (error) {
+          // Log error but don't throw - allow token to proceed with existing data
+          logger.error('[Auth] Error fetching user data in jwt callback:', error)
         }
       }
 
       // Refresh user data if needed
       if (trigger === 'update') {
-        const updatedUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: {
-            role: true,
-            firstName: true,
-            lastName: true,
-            avatar: true,
-          },
-        })
+        try {
+          const updatedUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: {
+              role: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+            },
+          })
 
-        if (updatedUser) {
-          token.role = updatedUser.role
-          token.avatar = updatedUser.avatar
+          if (updatedUser) {
+            token.role = updatedUser.role
+            token.avatar = updatedUser.avatar
+          }
+        } catch (error) {
+          // Log error but don't throw - allow token to proceed with existing data
+          logger.error('[Auth] Error updating user data in jwt callback:', error)
         }
       }
 
       // Check token expiration
       const now = Math.floor(Date.now() / 1000)
-      if (token.exp && token.exp < now) {
+      if (token.exp && typeof token.exp === 'number' && token.exp < now) {
         throw new Error('Token đã hết hạn. Vui lòng đăng nhập lại.')
       }
 
@@ -314,6 +324,6 @@ export const authOptions: NextAuthOptions = {
       }
     },
   },
-  debug: process.env.NODE_ENV === 'development',
+  debug: false, // Set to false to disable NextAuth debug warnings
 }
 

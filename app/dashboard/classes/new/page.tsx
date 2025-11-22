@@ -39,7 +39,9 @@ export default function NewClassPage() {
       }
 
       router.push('/dashboard/classes')
+      router.refresh()
     } catch (err) {
+      console.error('Error creating class:', err)
       setError('Đã xảy ra lỗi. Vui lòng thử lại.')
     } finally {
       setLoading(false)

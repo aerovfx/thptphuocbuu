@@ -52,7 +52,10 @@ async function getIncomingDocuments(userId: string, role: string) {
   const where: any = {}
 
   // Role-based filtering
-  if (role === 'STUDENT' || role === 'PARENT') {
+  if (role === 'ADMIN') {
+    // ADMIN can see all incoming documents
+    // where remains empty to show all
+  } else if (role === 'STUDENT' || role === 'PARENT') {
     where.assignments = {
       some: {
         assignedToId: userId,
@@ -118,7 +121,10 @@ async function getOutgoingDocuments(userId: string, role: string) {
   const where: any = {}
 
   // Role-based filtering
-  if (role === 'STUDENT' || role === 'PARENT') {
+  if (role === 'ADMIN') {
+    // ADMIN can see all outgoing documents
+    // where remains empty to show all
+  } else if (role === 'STUDENT' || role === 'PARENT') {
     where.approvals = {
       some: {
         approverId: userId,

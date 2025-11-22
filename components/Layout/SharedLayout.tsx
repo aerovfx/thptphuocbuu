@@ -19,6 +19,7 @@ import {
   Users,
   LayoutDashboard,
   Crown,
+  Shield,
 } from 'lucide-react'
 import Avatar from '../Common/Avatar'
 import ThemeToggle from '../Common/ThemeToggle'
@@ -83,6 +84,7 @@ export default function SharedLayout({
     href: string
     icon: any
     requireAuth?: boolean
+    adminOnly?: boolean
   }> = [
     { name: 'Trang chủ', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Lớp học', href: '/dashboard/classes', icon: BookOpen },
@@ -91,6 +93,7 @@ export default function SharedLayout({
     { name: 'Người dùng', href: '/dashboard/users', icon: Users },
     { name: 'Premium', href: '/dashboard/premium', icon: Crown, requireAuth: true },
     { name: 'Cài đặt', href: '/dashboard/settings', icon: Settings },
+    { name: 'Admin Panel', href: '/dashboard/admin', icon: Shield, adminOnly: true },
   ]
 
   const isDashboard = pathname?.startsWith('/dashboard')
@@ -127,18 +130,26 @@ export default function SharedLayout({
             </div>
 
             <nav className="space-y-2 flex-1">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
-                const isDisabled = (item.requireAuth === true) && !currentUser
+              {navItems
+                .filter((item) => {
+                  // Only show admin-only items to ADMIN users
+                  if ((item as any).adminOnly && session?.user?.role !== 'ADMIN') {
+                    return false
+                  }
+                  return true
+                })
+                .map((item) => {
+                  const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+                  const isDisabled = (item.requireAuth === true) && !currentUser
 
-                return (
-                  <Link
-                    key={item.name}
-                    href={isDisabled ? '/login' : item.href}
-                    className={`flex items-center space-x-4 px-4 py-3 rounded-full hover:bg-bluelock-light-2 dark:hover:bg-gray-900 transition-colors font-poppins ${
-                      isActive ? 'font-bold text-bluelock-green dark:text-white' : 'text-bluelock-dark dark:text-white'
-                    } ${isDisabled ? 'opacity-50' : ''}`}
-                  >
+                  return (
+                    <Link
+                      key={item.name}
+                      href={isDisabled ? '/login' : item.href}
+                      className={`flex items-center space-x-4 px-4 py-3 rounded-full hover:bg-bluelock-light-2 dark:hover:bg-gray-900 transition-colors font-poppins ${
+                        isActive ? 'font-bold text-bluelock-green dark:text-white' : 'text-bluelock-dark dark:text-white'
+                      } ${isDisabled ? 'opacity-50' : ''}`}
+                    >
                     <item.icon size={24} />
                     <span>{item.name}</span>
                   </Link>

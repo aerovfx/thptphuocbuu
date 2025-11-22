@@ -8,7 +8,10 @@ async function getOutgoingDocuments(userId: string, role: string) {
   const where: any = {}
 
   // Role-based filtering
-  if (role === 'STUDENT' || role === 'PARENT') {
+  if (role === 'ADMIN') {
+    // ADMIN can see all outgoing documents
+    // where remains empty to show all
+  } else if (role === 'STUDENT' || role === 'PARENT') {
     where.approvals = {
       some: {
         approverId: userId,
@@ -17,7 +20,6 @@ async function getOutgoingDocuments(userId: string, role: string) {
   } else if (role === 'TEACHER') {
     where.createdById = userId
   }
-  // ADMIN can see all
 
   return await prisma.outgoingDocument.findMany({
     where,

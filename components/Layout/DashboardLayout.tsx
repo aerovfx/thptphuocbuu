@@ -14,12 +14,20 @@ import {
   Menu,
   X,
   Crown,
+  Shield,
 } from 'lucide-react'
 import Logo from '../Common/Logo'
 import Avatar from '../Common/Avatar'
 import { useState } from 'react'
 
-const navigation = [
+type NavigationItem = {
+  name: string
+  href: string
+  icon: React.ComponentType<{ size?: number }>
+  adminOnly?: boolean
+}
+
+const navigation: NavigationItem[] = [
   { name: 'Trang chủ', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Lớp học', href: '/dashboard/classes', icon: BookOpen },
   { name: 'Mạng xã hội', href: '/dashboard/social', icon: MessageSquare },
@@ -27,6 +35,7 @@ const navigation = [
   { name: 'Người dùng', href: '/dashboard/users', icon: Users },
   { name: 'Premium', href: '/dashboard/premium', icon: Crown },
   { name: 'Cài đặt', href: '/dashboard/settings', icon: Settings },
+  { name: 'Admin Panel', href: '/dashboard/admin', icon: Shield, adminOnly: true },
 ]
 
 export default function DashboardLayout({
@@ -70,24 +79,32 @@ export default function DashboardLayout({
           </div>
 
           <nav className="flex-1 p-4 space-y-2">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-primary-100 text-primary-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <item.icon size={20} />
-                  <span>{item.name}</span>
-                </Link>
-              )
-            })}
+            {navigation
+              .filter((item) => {
+                // Only show admin-only items to ADMIN users
+                if (item.adminOnly && session?.user?.role !== 'ADMIN') {
+                  return false
+                }
+                return true
+              })
+              .map((item) => {
+                const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-primary-100 text-primary-700 font-medium'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <item.icon size={20} />
+                    <span>{item.name}</span>
+                  </Link>
+                )
+              })}
           </nav>
 
           <div className="p-4 border-t">

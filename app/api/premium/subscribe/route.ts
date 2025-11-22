@@ -32,40 +32,92 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check completed tasks requirement based on plan
+    // Check premium points requirement based on plan
+    // Formula: 1 task = 1 point, 1 post = 1.5 points, 1 like received = 0.3 points
     const planRequirements: Record<string, number> = {
       'STANDARD': 50,
       'PRO': 290,
-      'ENTERPRISE': 0, // Enterprise doesn't require tasks
+      'ENTERPRISE': 0, // Enterprise doesn't require points
     }
 
-    const requiredTasks = planRequirements[validatedData.plan] || 0
-    let completedTasksCount = 0
+    const requiredPoints = planRequirements[validatedData.plan] || 0
+    let totalPoints = 0
+    let breakdown = {
+      tasks: 0,
+      posts: 0,
+      likes: 0,
+    }
     
-    if (requiredTasks > 0) {
+    if (requiredPoints > 0) {
       // Calculate start and end of current month
       const now = new Date()
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
 
-      // Count completed tasks in current month
-      completedTasksCount = await prisma.task.count({
-        where: {
-          assigneeId: session.user.id,
-          status: 'COMPLETED',
-          completedAt: {
-            gte: startOfMonth,
-            lte: endOfMonth,
+      // Count completed tasks, posts, and likes received in current month
+      const [completedTasksCount, completedAssignmentsCount, postsCount, likesReceivedCount] = await Promise.all([
+        prisma.task.count({
+          where: {
+            assigneeId: session.user.id,
+            status: 'COMPLETED',
+            completedAt: {
+              gte: startOfMonth,
+              lte: endOfMonth,
+            },
           },
-        },
-      })
+        }),
+        prisma.incomingDocumentAssignment.count({
+          where: {
+            assignedToId: session.user.id,
+            status: 'COMPLETED',
+            completedAt: {
+              gte: startOfMonth,
+              lte: endOfMonth,
+            },
+          },
+        }),
+        prisma.post.count({
+          where: {
+            authorId: session.user.id,
+            createdAt: {
+              gte: startOfMonth,
+              lte: endOfMonth,
+            },
+          },
+        }),
+        prisma.like.count({
+          where: {
+            post: {
+              authorId: session.user.id,
+              createdAt: {
+                gte: startOfMonth,
+                lte: endOfMonth,
+              },
+            },
+          },
+        }),
+      ])
 
-      if (completedTasksCount < requiredTasks) {
+      breakdown = {
+        tasks: completedTasksCount + completedAssignmentsCount,
+        posts: postsCount,
+        likes: likesReceivedCount,
+      }
+
+      // Calculate total points using the formula
+      const taskPoints = breakdown.tasks // 1 point per task
+      const postPoints = breakdown.posts * 1.5 // 1.5 points per post
+      const likePoints = breakdown.likes * 0.3 // 0.3 points per like received
+      
+      totalPoints = Math.floor(taskPoints + postPoints + likePoints)
+
+      if (totalPoints < requiredPoints) {
         return NextResponse.json(
           { 
-            error: `Bạn cần hoàn thành ít nhất ${requiredTasks} công việc trong tháng này để đăng ký gói ${validatedData.plan}. Hiện tại bạn đã hoàn thành ${completedTasksCount} công việc.`,
-            completedTasks: completedTasksCount,
-            requiredTasks,
+            error: `Bạn cần đạt ít nhất ${requiredPoints} điểm trong tháng này để đăng ký gói ${validatedData.plan}. Hiện tại bạn đã đạt ${totalPoints} điểm (${breakdown.tasks} công việc, ${breakdown.posts} bài đăng, ${breakdown.likes} lượt like).`,
+            points: totalPoints,
+            requiredPoints,
+            breakdown,
           },
           { status: 400 }
         )
@@ -88,7 +140,7 @@ export async function POST(request: Request) {
           startDate: now,
           endDate,
           activatedBy: 'MANUAL',
-          completedTasks: requiredTasks > 0 ? (completedTasksCount || 0) : 0,
+          completedTasks: requiredPoints > 0 ? (breakdown.tasks || 0) : 0,
         },
       })
     } catch (error: any) {

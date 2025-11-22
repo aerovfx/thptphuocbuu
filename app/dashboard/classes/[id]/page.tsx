@@ -2,9 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
-import SharedLayout from '@/components/Layout/SharedLayout'
-import RightSidebar from '@/components/Layout/RightSidebar'
-import ClassDetailContent from '@/components/Classes/ClassDetailContent'
+import CourseContentView from '@/components/Classes/CourseContentView'
 
 async function getClassDetail(classId: string, userId: string, role: string) {
   const classItem = await prisma.class.findUnique({
@@ -46,6 +44,25 @@ async function getClassDetail(classId: string, userId: string, role: string) {
           dueDate: 'asc',
         },
       },
+      chapters: {
+        include: {
+          lessons: {
+            include: {
+              completions: {
+                where: {
+                  userId: userId,
+                },
+              },
+            },
+            orderBy: {
+              order: 'asc',
+            },
+          },
+        },
+        orderBy: {
+          order: 'asc',
+        },
+      },
       _count: {
         select: {
           enrollments: true,
@@ -60,7 +77,10 @@ async function getClassDetail(classId: string, userId: string, role: string) {
   }
 
   // Check access
-  if (role === 'TEACHER') {
+  if (role === 'ADMIN') {
+    // ADMIN can access all classes
+    // No restriction
+  } else if (role === 'TEACHER') {
     if (classItem.teacherId !== userId) {
       return null // Teacher can only access their own classes
     }
@@ -80,30 +100,58 @@ export default async function ClassDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    redirect('/login')
-  }
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      redirect('/login')
+    }
 
-  const { id } = await params
-  const classDetail = await getClassDetail(id, session.user.id, session.user.role)
+    const { id } = await params
+    const classDetail = await getClassDetail(id, session.user.id, session.user.role)
 
-  if (!classDetail) {
+    if (!classDetail) {
+      redirect('/dashboard/classes')
+    }
+
+  // Format chapters and lessons with completion status
+  const formattedChapters = (classDetail.chapters || []).map((chapter) => ({
+    id: chapter.id,
+    title: chapter.title,
+    description: chapter.description,
+    order: chapter.order,
+    lessons: (chapter.lessons || []).map((lesson) => ({
+      id: lesson.id,
+      title: lesson.title,
+      description: lesson.description,
+      content: lesson.content,
+      order: lesson.order,
+      duration: lesson.duration,
+      isCompleted: (lesson.completions || []).length > 0,
+      completedCount: lesson.completions?.[0]?.completedCount || 0,
+    })),
+  }))
+
+    // Get enrolled users for right sidebar
+    const enrolledUsers = classDetail.enrollments.map((enrollment) => enrollment.user)
+
+    return (
+      <CourseContentView
+        classDetail={{
+          id: classDetail.id,
+          name: classDetail.name,
+          code: classDetail.code,
+          description: classDetail.description,
+          subject: classDetail.subject,
+          teacher: classDetail.teacher,
+        }}
+        chapters={formattedChapters}
+        currentUser={session}
+        enrolledUsers={enrolledUsers}
+      />
+    )
+  } catch (error) {
+    console.error('Error loading class detail:', error)
     redirect('/dashboard/classes')
   }
-
-  const trendingTopics = [
-    { category: 'Chủ đề nổi trội ở Việt Nam', name: 'LMS Platform', posts: '1.2K' },
-    { category: 'Chủ đề nổi trội ở Việt Nam', name: 'Học trực tuyến', posts: '856' },
-  ]
-
-  return (
-    <SharedLayout
-      title={classDetail.name}
-      rightSidebar={<RightSidebar trendingTopics={trendingTopics} currentUser={session} />}
-    >
-      <ClassDetailContent classDetail={classDetail} currentUser={session} />
-    </SharedLayout>
-  )
 }
 

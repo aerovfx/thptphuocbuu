@@ -13,6 +13,9 @@ async function getStats(userId: string, role: string) {
   const startOfYear = new Date(now.getFullYear(), 0, 1)
 
   if (role === 'TEACHER' || role === 'ADMIN') {
+    // For ADMIN, show all data. For TEACHER, show only their data
+    const isAdmin = role === 'ADMIN'
+    
     const [
       classes,
       students,
@@ -28,45 +31,81 @@ async function getStats(userId: string, role: string) {
       completedAssignments,
       activeTasks,
     ] = await Promise.all([
-      prisma.class.count({ where: { teacherId: userId } }),
-      prisma.classEnrollment.count({
-        where: { class: { teacherId: userId } },
-      }),
-      prisma.document.count({ where: { uploadedById: userId } }),
-      prisma.post.count({ where: { authorId: userId } }),
-      prisma.incomingDocument.count({ where: { createdById: userId } }),
-      prisma.outgoingDocument.count({ where: { createdById: userId } }),
-      prisma.incomingDocument.count({
-        where: { createdById: userId, status: 'PENDING' },
-      }),
-      prisma.incomingDocument.count({
-        where: { createdById: userId, status: 'COMPLETED' },
-      }),
-      prisma.outgoingDocument.count({
-        where: { createdById: userId, status: 'PENDING' },
-      }),
-      prisma.outgoingDocument.count({
-        where: { createdById: userId, status: 'APPROVED' },
-      }),
-      prisma.task.count({
-        where: { assigneeId: userId, status: { not: 'COMPLETED' } },
-      }),
-      prisma.task.count({
-        where: { assigneeId: userId, status: 'COMPLETED' },
-      }),
+      isAdmin 
+        ? prisma.class.count()
+        : prisma.class.count({ where: { teacherId: userId } }),
+      isAdmin
+        ? prisma.classEnrollment.count()
+        : prisma.classEnrollment.count({
+            where: { class: { teacherId: userId } },
+          }),
+      isAdmin
+        ? prisma.document.count()
+        : prisma.document.count({ where: { uploadedById: userId } }),
+      isAdmin
+        ? prisma.post.count()
+        : prisma.post.count({ where: { authorId: userId } }),
+      isAdmin
+        ? prisma.incomingDocument.count()
+        : prisma.incomingDocument.count({ where: { createdById: userId } }),
+      isAdmin
+        ? prisma.outgoingDocument.count()
+        : prisma.outgoingDocument.count({ where: { createdById: userId } }),
+      isAdmin
+        ? prisma.incomingDocument.count({ where: { status: 'PENDING' } })
+        : prisma.incomingDocument.count({
+            where: { createdById: userId, status: 'PENDING' },
+          }),
+      isAdmin
+        ? prisma.incomingDocument.count({ where: { status: 'COMPLETED' } })
+        : prisma.incomingDocument.count({
+            where: { createdById: userId, status: 'COMPLETED' },
+          }),
+      isAdmin
+        ? prisma.outgoingDocument.count({ where: { status: 'PENDING' } })
+        : prisma.outgoingDocument.count({
+            where: { createdById: userId, status: 'PENDING' },
+          }),
+      isAdmin
+        ? prisma.outgoingDocument.count({ where: { status: 'APPROVED' } })
+        : prisma.outgoingDocument.count({
+            where: { createdById: userId, status: 'APPROVED' },
+          }),
+      isAdmin
+        ? prisma.task.count({ where: { status: { not: 'COMPLETED' } } })
+        : prisma.task.count({
+            where: { assigneeId: userId, status: { not: 'COMPLETED' } },
+          }),
+      isAdmin
+        ? prisma.task.count({ where: { status: 'COMPLETED' } })
+        : prisma.task.count({
+            where: { assigneeId: userId, status: 'COMPLETED' },
+          }),
       // Get all active tasks with due dates to calculate average progress
-      prisma.task.findMany({
-        where: {
-          assigneeId: userId,
-          status: { not: 'COMPLETED' },
-          dueDate: { gte: new Date() }, // Only tasks that are not overdue
-        },
-        select: {
-          createdAt: true,
-          dueDate: true,
-          status: true,
-        },
-      }),
+      isAdmin
+        ? prisma.task.findMany({
+            where: {
+              status: { not: 'COMPLETED' },
+              dueDate: { gte: new Date() }, // Only tasks that are not overdue
+            },
+            select: {
+              createdAt: true,
+              dueDate: true,
+              status: true,
+            },
+          })
+        : prisma.task.findMany({
+            where: {
+              assigneeId: userId,
+              status: { not: 'COMPLETED' },
+              dueDate: { gte: new Date() }, // Only tasks that are not overdue
+            },
+            select: {
+              createdAt: true,
+              dueDate: true,
+              status: true,
+            },
+          }),
     ])
 
     // Calculate average progress for active tasks
@@ -202,6 +241,7 @@ async function getStats(userId: string, role: string) {
 
     return {
       classes,
+      students: 0, // STUDENT role doesn't have students, but include for consistency
       documents,
       posts,
       friends,

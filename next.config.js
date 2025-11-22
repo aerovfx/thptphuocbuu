@@ -60,6 +60,9 @@ const nextConfig = {
     ],
   },
   
+  // Turbopack configuration (empty config to silence warning)
+  turbopack: {},
+  
   // Headers for caching
   async headers() {
     return [
