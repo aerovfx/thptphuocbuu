@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   X,
+  Crown,
 } from 'lucide-react'
 import Logo from '../Common/Logo'
 import Avatar from '../Common/Avatar'
@@ -24,6 +25,7 @@ const navigation = [
   { name: 'Mạng xã hội', href: '/dashboard/social', icon: MessageSquare },
   { name: 'Văn bản', href: '/dashboard/documents', icon: FileText },
   { name: 'Người dùng', href: '/dashboard/users', icon: Users },
+  { name: 'Premium', href: '/dashboard/premium', icon: Crown },
   { name: 'Cài đặt', href: '/dashboard/settings', icon: Settings },
 ]
 

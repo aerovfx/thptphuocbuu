@@ -18,11 +18,13 @@ import {
   Settings,
   Users,
   LayoutDashboard,
+  Crown,
 } from 'lucide-react'
 import Avatar from '../Common/Avatar'
 import ThemeToggle from '../Common/ThemeToggle'
 import Logo from '../Common/Logo'
 import UserMenu from '../Common/UserMenu'
+import ContactsSidebar from './ContactsSidebar'
 import { ReactNode, useState, useEffect, useRef } from 'react'
 
 interface SharedLayoutProps {
@@ -72,6 +74,7 @@ export default function SharedLayout({
     { name: 'Thông báo', href: '/notifications', icon: Bell, requireAuth: true },
     { name: 'Tin nhắn', href: '/messages', icon: Mail, requireAuth: true },
     { name: 'Dấu trang', href: '/bookmarks', icon: Bookmark, requireAuth: true },
+    { name: 'Premium', href: '/dashboard/premium', icon: Crown, requireAuth: true },
     { name: 'Hồ sơ', href: currentUser ? '/dashboard' : '/login', icon: User },
   ]
 
@@ -86,6 +89,7 @@ export default function SharedLayout({
     { name: 'Mạng xã hội', href: '/dashboard/social', icon: MessageSquare },
     { name: 'Văn bản', href: '/dashboard/documents', icon: FileText },
     { name: 'Người dùng', href: '/dashboard/users', icon: Users },
+    { name: 'Premium', href: '/dashboard/premium', icon: Crown, requireAuth: true },
     { name: 'Cài đặt', href: '/dashboard/settings', icon: Settings },
   ]
 
@@ -232,7 +236,12 @@ export default function SharedLayout({
           </aside>
         )}
       </div>
-      <ThemeToggle />
+      {/* Theme Toggle - Top Right */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+      {/* Contacts Sidebar - Right side with circular avatars */}
+      {currentUser && <ContactsSidebar />}
     </div>
   )
 }

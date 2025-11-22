@@ -11,17 +11,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check if user has Premium or Admin access for AI features
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isPremium: true, role: true },
+    })
+
+    const hasAIAccess = user?.isPremium === true || user?.role === 'ADMIN'
+
     const body = await request.json()
-    const { query, type = 'hybrid', limit = 20 } = body
+    const { query, type = 'text', limit = 20 } = body
 
     if (!query || !query.trim()) {
       return NextResponse.json({ error: 'Query không được để trống' }, { status: 400 })
     }
 
+    // Check access for semantic search
+    if ((type === 'semantic' || type === 'hybrid') && !hasAIAccess) {
+      return NextResponse.json(
+        { 
+          error: 'Tính năng AI chỉ dành cho tài khoản Premium và Quản trị viên',
+          requiresPremium: true 
+        },
+        { status: 403 }
+      )
+    }
+
     // Perform semantic search
     let semanticResults: Array<{ id: string; score: number }> = []
     
-    if (type === 'semantic' || type === 'hybrid') {
+    if ((type === 'semantic' || type === 'hybrid') && hasAIAccess) {
       try {
         semanticResults = await semanticSearch(query)
       } catch (error) {

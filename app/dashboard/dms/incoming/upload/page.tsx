@@ -2,7 +2,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import SharedLayout from '@/components/Layout/SharedLayout'
-import RightSidebar from '@/components/Layout/RightSidebar'
 import UploadIncomingDocument from '@/components/DMS/UploadIncomingDocument'
 
 export default async function UploadIncomingDocumentPage() {
@@ -24,7 +23,6 @@ export default async function UploadIncomingDocumentPage() {
   return (
     <SharedLayout
       title="Tải lên văn bản đến"
-      rightSidebar={<RightSidebar trendingTopics={trendingTopics} currentUser={session} />}
     >
       <UploadIncomingDocument currentUser={session} />
     </SharedLayout>

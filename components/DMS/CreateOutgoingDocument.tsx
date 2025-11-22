@@ -1,10 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText, AlertCircle, Sparkles } from 'lucide-react'
-import { InlineHelp, HelpIcon } from '@/components/Common/Tooltip'
-import { helpTexts } from '@/lib/tooltip-help-texts'
+import { AlertCircle } from 'lucide-react'
+import dynamic from 'next/dynamic'
+
+// Dynamically import GoogleDocsEditor to avoid SSR issues
+const GoogleDocsEditor = dynamic(() => import('./GoogleDocsEditor'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-screen">
+      <div className="text-gray-500 dark:text-gray-400">Đang tải trình soạn thảo...</div>
+    </div>
+  ),
+})
 
 interface CreateOutgoingDocumentProps {
   currentUser: any
@@ -17,30 +26,38 @@ export default function CreateOutgoingDocument({ currentUser }: CreateOutgoingDo
   const [recipient, setRecipient] = useState('')
   const [priority, setPriority] = useState('NORMAL')
   const [sendDate, setSendDate] = useState('')
-  const [template, setTemplate] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showAISuggest, setShowAISuggest] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [documentId, setDocumentId] = useState<string | null>(null)
+  const [showMetadata, setShowMetadata] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleManualSave = async () => {
+    setIsSaving(true)
     setError(null)
 
-    if (!title.trim()) {
-      setError('Vui lòng nhập tiêu đề')
-      return
-    }
-
-    if (!content.trim()) {
-      setError('Vui lòng nhập nội dung văn bản')
-      return
-    }
-
-    setIsSubmitting(true)
-
     try {
-      const response = await fetch('/api/dms/outgoing', {
-        method: 'POST',
+      if (!title.trim()) {
+        setError('Vui lòng nhập tiêu đề')
+        setIsSaving(false)
+        return
+      }
+
+      // Extract text from HTML to check if content is empty
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = content
+      const textContent = tempDiv.textContent || tempDiv.innerText || ''
+      
+      if (!textContent.trim()) {
+        setError('Vui lòng nhập nội dung văn bản')
+        setIsSaving(false)
+        return
+      }
+
+      const method = documentId ? 'PUT' : 'POST'
+      const url = documentId ? `/api/dms/outgoing/${documentId}` : '/api/dms/outgoing'
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -50,211 +67,133 @@ export default function CreateOutgoingDocument({ currentUser }: CreateOutgoingDo
           recipient: recipient || undefined,
           priority,
           sendDate: sendDate ? new Date(sendDate).toISOString() : undefined,
-          template: template || undefined,
         }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Đã xảy ra lỗi khi tạo văn bản')
+        throw new Error(data.error || 'Đã xảy ra lỗi khi lưu văn bản')
       }
 
-      // Redirect to document detail page
+      setDocumentId(data.id)
       router.push(`/dashboard/dms/outgoing/${data.id}`)
     } catch (err: any) {
-      setError(err.message || 'Đã xảy ra lỗi khi tạo văn bản')
+      setError(err.message || 'Đã xảy ra lỗi khi lưu văn bản')
     } finally {
-      setIsSubmitting(false)
+      setIsSaving(false)
     }
   }
 
-  const handleAISuggest = async () => {
-    if (!title && !recipient) {
-      setError('Vui lòng nhập ít nhất tiêu đề hoặc người nhận để AI gợi ý')
-      return
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await handleManualSave()
+  }
 
-    setShowAISuggest(true)
-    try {
-      const response = await fetch('/api/ai/suggest-draft', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'OUTGOING',
-          recipient,
-          purpose: title,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok && data.draft) {
-        setContent(data.draft)
-        setTemplate(data.template || '')
+  // Auto-detect title from first sentence
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent)
+    
+    // Auto-detect title from first sentence if title is empty
+    if (!title && newContent.trim()) {
+      // Extract text from HTML
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = newContent
+      const text = tempDiv.textContent || tempDiv.innerText || ''
+      const firstSentence = text.trim().split(/[.!?]+/)[0]
+      if (firstSentence && firstSentence.length > 0 && firstSentence.length < 100) {
+        setTitle(firstSentence)
       }
-    } catch (err) {
-      console.error('Error getting AI suggestion:', err)
-    } finally {
-      setShowAISuggest(false)
     }
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="bg-bluelock-light-2 dark:bg-gray-900 rounded-lg p-6 border border-bluelock-blue/30 dark:border-gray-800 transition-colors duration-300">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-bluelock-dark dark:text-white font-poppins">
-            Thông tin văn bản đi
-          </h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleAISuggest}
-              disabled={showAISuggest}
-              className="px-4 py-2 bg-bluelock-green hover:bg-bluelock-green-bright dark:bg-blue-500 dark:hover:bg-blue-600 text-black dark:text-white rounded-lg font-poppins font-semibold transition-colors flex items-center space-x-2 shadow-bluelock-glow dark:shadow-none disabled:opacity-50"
-            >
-              <Sparkles size={18} />
-              <span>{showAISuggest ? 'Đang tạo...' : 'AI Gợi ý'}</span>
-            </button>
-            <HelpIcon
-              content={helpTexts.aiDraft.content}
-              className="text-bluelock-dark dark:text-gray-300"
-            />
+    <div className="fixed inset-0 flex flex-col bg-white dark:bg-gray-900">
+      {error && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center space-x-2 text-red-400 shadow-lg">
+          <AlertCircle size={20} />
+          <span className="font-poppins">{error}</span>
+        </div>
+      )}
+
+      <GoogleDocsEditor
+        title={title}
+        content={content}
+        onTitleChange={setTitle}
+        onContentChange={handleContentChange}
+        onSave={handleManualSave}
+        placeholder="Bắt đầu soạn thảo văn bản..."
+      />
+
+      {/* Metadata Panel - Slide in from right */}
+      {showMetadata && (
+        <div className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-xl z-40 overflow-y-auto">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white font-poppins">
+                Thông tin văn bản
+              </h2>
+              <button
+                onClick={() => setShowMetadata(false)}
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 font-poppins">
+                  Người nhận
+                </label>
+                <input
+                  type="text"
+                  value={recipient}
+                  onChange={(e) => setRecipient(e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins"
+                  placeholder="Nhập người nhận"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 font-poppins">
+                  Độ ưu tiên
+                </label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins"
+                >
+                  <option value="NORMAL">Bình thường</option>
+                  <option value="HIGH">Cao</option>
+                  <option value="URGENT">Khẩn</option>
+                  <option value="LOW">Thấp</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 font-poppins">
+                  Ngày gửi
+                </label>
+                <input
+                  type="datetime-local"
+                  value={sendDate}
+                  onChange={(e) => setSendDate(e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins"
+                />
+              </div>
+            </div>
           </div>
         </div>
+      )}
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center space-x-2 text-red-400">
-            <AlertCircle size={20} />
-            <span className="font-poppins">{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Title */}
-          <div>
-            <InlineHelp
-              label="Tiêu đề"
-              helpText={helpTexts.title.content}
-              className="mb-2 text-bluelock-dark dark:text-gray-300"
-            />
-            <span className="text-red-400 ml-2">*</span>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 bg-bluelock-light dark:bg-gray-800 border border-bluelock-blue/30 dark:border-gray-700 rounded-lg text-bluelock-dark dark:text-white placeholder-bluelock-dark/50 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-bluelock-green dark:focus:ring-blue-500 font-poppins transition-colors duration-300"
-              placeholder="Nhập tiêu đề văn bản"
-              required
-            />
-          </div>
-
-          {/* Content */}
-          <div>
-            <InlineHelp
-              label="Nội dung"
-              helpText={helpTexts.content.content}
-              className="mb-2 text-bluelock-dark dark:text-gray-300"
-            />
-            <span className="text-red-400 ml-2">*</span>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={12}
-              className="w-full px-4 py-2 bg-bluelock-light dark:bg-gray-800 border border-bluelock-blue/30 dark:border-gray-700 rounded-lg text-bluelock-dark dark:text-white placeholder-bluelock-dark/50 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-bluelock-green dark:focus:ring-blue-500 font-poppins transition-colors duration-300"
-              placeholder="Nhập nội dung văn bản..."
-              required
-            />
-          </div>
-
-          {/* Recipient and Priority */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <InlineHelp
-                label="Người/nơi nhận"
-                helpText={helpTexts.recipient.content}
-                className="mb-2 text-bluelock-dark dark:text-gray-300"
-              />
-              <input
-                type="text"
-                value={recipient}
-                onChange={(e) => setRecipient(e.target.value)}
-                className="w-full px-4 py-2 bg-bluelock-light dark:bg-gray-800 border border-bluelock-blue/30 dark:border-gray-700 rounded-lg text-bluelock-dark dark:text-white placeholder-bluelock-dark/50 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-bluelock-green dark:focus:ring-blue-500 font-poppins transition-colors duration-300"
-                placeholder="Nhập người/nơi nhận"
-              />
-            </div>
-
-            <div>
-              <InlineHelp
-                label="Mức độ ưu tiên"
-                helpText={helpTexts.priority.content}
-                className="mb-2 text-bluelock-dark dark:text-gray-300"
-              />
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className="w-full px-4 py-2 bg-bluelock-light dark:bg-gray-800 border border-bluelock-blue/30 dark:border-gray-700 rounded-lg text-bluelock-dark dark:text-white focus:outline-none focus:ring-2 focus:ring-bluelock-green dark:focus:ring-blue-500 font-poppins transition-colors duration-300"
-              >
-                <option value="URGENT">Khẩn</option>
-                <option value="HIGH">Cao</option>
-                <option value="NORMAL">Bình thường</option>
-                <option value="LOW">Thấp</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Send Date */}
-          <div>
-            <InlineHelp
-              label="Ngày gửi dự kiến"
-              helpText={helpTexts.sendDate.content}
-              className="mb-2 text-bluelock-dark dark:text-gray-300"
-            />
-            <input
-              type="datetime-local"
-              value={sendDate}
-              onChange={(e) => setSendDate(e.target.value)}
-              className="w-full px-4 py-2 bg-bluelock-light dark:bg-gray-800 border border-bluelock-blue/30 dark:border-gray-700 rounded-lg text-bluelock-dark dark:text-white focus:outline-none focus:ring-2 focus:ring-bluelock-green dark:focus:ring-blue-500 font-poppins transition-colors duration-300"
-            />
-          </div>
-
-          {/* Template (hidden, auto-filled by AI) */}
-          {template && (
-            <div>
-              <label className="block text-sm font-medium text-bluelock-dark dark:text-gray-300 mb-2 font-poppins">
-                Mẫu sử dụng
-              </label>
-              <input
-                type="text"
-                value={template}
-                readOnly
-                className="w-full px-4 py-2 bg-bluelock-light-3 dark:bg-gray-800 border border-bluelock-blue/30 dark:border-gray-700 rounded-lg text-bluelock-dark/60 dark:text-gray-400 font-poppins"
-              />
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex items-center justify-end space-x-4 pt-4">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="px-6 py-2 bg-bluelock-light-2 dark:bg-gray-800 hover:bg-bluelock-light-3 dark:hover:bg-gray-700 text-bluelock-dark dark:text-white rounded-lg font-poppins font-semibold transition-colors"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-6 py-2 bg-bluelock-green hover:bg-bluelock-green-bright dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-black dark:text-white rounded-lg font-poppins font-semibold transition-colors shadow-bluelock-glow dark:shadow-none"
-            >
-              {isSubmitting ? 'Đang tạo...' : 'Tạo văn bản'}
-            </button>
-          </div>
-        </form>
-      </div>
+      {/* Toggle Metadata Button */}
+      <button
+        onClick={() => setShowMetadata(!showMetadata)}
+        className="fixed bottom-6 right-6 z-30 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg font-poppins"
+      >
+        {showMetadata ? 'Ẩn thông tin' : 'Thông tin văn bản'}
+      </button>
     </div>
   )
 }
-

@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { Plus, BookOpen } from 'lucide-react'
 import SharedLayout from '@/components/Layout/SharedLayout'
-import RightSidebar from '@/components/Layout/RightSidebar'
 
 async function getClasses(userId: string, role: string) {
   if (role === 'TEACHER') {
@@ -42,7 +41,6 @@ export default async function ClassesPage() {
   return (
     <SharedLayout
       title="Lớp học"
-      rightSidebar={<RightSidebar trendingTopics={trendingTopics} currentUser={session} />}
     >
       <div className="p-6">
         <div className="flex items-center justify-between mb-8">

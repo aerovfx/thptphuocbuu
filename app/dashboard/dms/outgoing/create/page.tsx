@@ -2,7 +2,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import SharedLayout from '@/components/Layout/SharedLayout'
-import RightSidebar from '@/components/Layout/RightSidebar'
 import CreateOutgoingDocument from '@/components/DMS/CreateOutgoingDocument'
 
 export default async function CreateOutgoingDocumentPage() {
@@ -21,13 +20,7 @@ export default async function CreateOutgoingDocumentPage() {
     { category: 'Chủ đề nổi trội', name: 'Quản lý tài liệu', posts: '642' },
   ]
 
-  return (
-    <SharedLayout
-      title="Tạo văn bản đi"
-      rightSidebar={<RightSidebar trendingTopics={trendingTopics} currentUser={session} />}
-    >
-      <CreateOutgoingDocument currentUser={session} />
-    </SharedLayout>
-  )
+  // CreateOutgoingDocument now handles its own layout (Google Docs style)
+  return <CreateOutgoingDocument currentUser={session} />
 }
 

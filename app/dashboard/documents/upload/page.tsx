@@ -3,9 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Upload } from 'lucide-react'
+import { ArrowLeft, Upload, FileText, X } from 'lucide-react'
 import SharedLayout from '@/components/Layout/SharedLayout'
-import RightSidebar from '@/components/Layout/RightSidebar'
 
 const documentTypes = [
   { value: 'ANNOUNCEMENT', label: 'Thông báo' },
@@ -26,10 +25,67 @@ export default function UploadDocumentPage() {
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const validateFile = (file: File): string | null => {
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    const allowedTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx']
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+
+    if (!allowedTypes.includes(fileExtension)) {
+      return 'Chỉ chấp nhận file PDF, DOC, DOCX, XLS, XLSX'
+    }
+
+    if (file.size > maxSize) {
+      return 'Kích thước file tối đa 10MB'
+    }
+
+    return null
+  }
+
+  const handleFileSelect = (selectedFile: File) => {
+    const validationError = validateFile(selectedFile)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setError('')
+    setFile(selectedFile)
+    // Auto-fill title from filename if empty
+    if (!formData.title) {
+      const fileName = selectedFile.name
+      const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.')) || fileName
+      setFormData({ ...formData, title: nameWithoutExt })
+    }
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0])
+      handleFileSelect(e.target.files[0])
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const droppedFiles = e.dataTransfer.files
+    if (droppedFiles && droppedFiles.length > 0) {
+      handleFileSelect(droppedFiles[0])
     }
   }
 
@@ -79,7 +135,6 @@ export default function UploadDocumentPage() {
   return (
     <SharedLayout
       title="Tải lên văn bản"
-      rightSidebar={<RightSidebar trendingTopics={trendingTopics} />}
     >
       <div className="p-6">
         <div className="mb-8">
@@ -165,29 +220,67 @@ export default function UploadDocumentPage() {
             <label htmlFor="file" className="block text-sm font-medium text-gray-400 mb-2 font-poppins">
               File văn bản *
             </label>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-700 border-dashed rounded-lg hover:border-blue-500 transition-colors">
+            <div
+              className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-all cursor-pointer ${
+                isDragging
+                  ? 'border-blue-500 bg-blue-500/10 scale-[1.02]'
+                  : file
+                  ? 'border-gray-700 hover:border-gray-600'
+                  : 'border-gray-700 hover:border-blue-500'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => !file && document.getElementById('file')?.click()}
+            >
               <div className="space-y-1 text-center">
-                <Upload className="mx-auto h-12 w-12 text-gray-500" />
-                <div className="flex text-sm text-gray-400">
-                  <label
-                    htmlFor="file"
-                    className="relative cursor-pointer rounded-md font-medium text-blue-500 hover:text-blue-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500 font-poppins"
-                  >
-                    <span>Chọn file</span>
-                    <input
-                      id="file"
-                      name="file"
-                      type="file"
-                      className="sr-only"
-                      onChange={handleFileChange}
-                      required
-                    />
-                  </label>
-                  <p className="pl-1 font-poppins">hoặc kéo thả file vào đây</p>
-                </div>
-                <p className="text-xs text-gray-500 font-poppins">
-                  {file ? file.name : 'PDF, DOC, DOCX, XLS, XLSX (tối đa 10MB)'}
-                </p>
+                {file ? (
+                  <div className="flex flex-col items-center space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="text-blue-500" size={24} />
+                      <span className="text-white font-poppins">{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setFile(null)
+                          setError('')
+                        }}
+                        className="text-red-400 hover:text-red-300 transition-colors"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 font-poppins">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className={`mx-auto h-12 w-12 ${isDragging ? 'text-blue-400' : 'text-gray-500'}`} />
+                    <div className="flex text-sm text-gray-400 justify-center items-center">
+                      <label
+                        htmlFor="file"
+                        className="relative cursor-pointer rounded-md font-medium text-blue-500 hover:text-blue-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500 font-poppins"
+                      >
+                        <span>Chọn file</span>
+                        <input
+                          id="file"
+                          name="file"
+                          type="file"
+                          className="sr-only"
+                          onChange={handleFileChange}
+                          required
+                          accept=".pdf,.doc,.docx,.xls,.xlsx"
+                        />
+                      </label>
+                      <p className="pl-1 font-poppins">hoặc kéo thả file vào đây</p>
+                    </div>
+                    <p className="text-xs text-gray-500 font-poppins">
+                      PDF, DOC, DOCX, XLS, XLSX (tối đa 10MB)
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>

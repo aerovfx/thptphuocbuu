@@ -15,9 +15,12 @@ import {
   Sparkles,
   Brain,
   X,
+  Lock,
+  Crown,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Avatar from '@/components/Common/Avatar'
+import { hasPremiumOrAdminAccess } from '@/lib/premium-check'
 
 interface IncomingDocument {
   id: string
@@ -96,6 +99,7 @@ export default function IncomingDocumentsList({
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
   const canUpload = currentUser.user.role === 'ADMIN' || currentUser.user.role === 'TEACHER'
+  const hasAIAccess = hasPremiumOrAdminAccess(currentUser.user)
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -155,25 +159,6 @@ export default function IncomingDocumentsList({
 
   return (
     <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white font-poppins mb-2">Văn bản đến</h1>
-          <p className="text-gray-400 font-poppins">
-            Quản lý và xử lý các văn bản được gửi đến trường
-          </p>
-        </div>
-        {canUpload && (
-          <Link
-            href="/dashboard/dms/incoming/upload"
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center space-x-2 font-poppins font-semibold transition-colors"
-          >
-            <Plus size={20} />
-            <span>Tải lên văn bản</span>
-          </Link>
-        )}
-      </div>
-
       {/* Filters */}
       <div className="bg-gray-900 rounded-lg p-4 mb-6 border border-gray-800">
         <div className="space-y-4">
@@ -203,19 +188,30 @@ export default function IncomingDocumentsList({
               )}
             </div>
 
-            {/* Search Type Selector */}
-            <div className="relative">
-              <Brain className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <select
-                value={searchType}
-                onChange={(e) => setSearchType(e.target.value as 'text' | 'semantic' | 'hybrid')}
-                className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins appearance-none"
+            {/* Search Type Selector - Only for Premium/Admin */}
+            {hasAIAccess ? (
+              <div className="relative">
+                <Brain className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <select
+                  value={searchType}
+                  onChange={(e) => setSearchType(e.target.value as 'text' | 'semantic' | 'hybrid')}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins appearance-none"
+                >
+                  <option value="text">Tìm kiếm văn bản</option>
+                  <option value="semantic">Tìm kiếm ngữ nghĩa (AI)</option>
+                  <option value="hybrid">Tìm kiếm kết hợp (AI)</option>
+                </select>
+              </div>
+            ) : (
+              <Link
+                href="/dashboard/premium"
+                className="relative flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 hover:bg-yellow-500/30 transition-colors font-poppins"
+                title="Nâng cấp Premium để sử dụng AI"
               >
-                <option value="text">Tìm kiếm văn bản</option>
-                <option value="semantic">Tìm kiếm ngữ nghĩa</option>
-                <option value="hybrid">Tìm kiếm kết hợp</option>
-              </select>
-            </div>
+                <Lock className="w-4 h-4" />
+                <span className="text-sm">Nâng cấp Premium</span>
+              </Link>
+            )}
 
             {/* Search Button */}
             <button
@@ -336,18 +332,34 @@ export default function IncomingDocumentsList({
             const statusInfo = statusLabels[doc.status] || { label: doc.status, color: 'bg-gray-500/20 text-gray-400' }
             const priorityInfo = priorityLabels[doc.priority] || { label: doc.priority, color: 'bg-gray-500/20 text-gray-400' }
 
+            // Calculate progress based on status
+            const getProgress = (status: string) => {
+              switch (status) {
+                case 'PENDING': return 0
+                case 'PROCESSING': return 33
+                case 'APPROVED': return 66
+                case 'COMPLETED': return 100
+                case 'REJECTED': return 0
+                case 'ARCHIVED': return 100
+                default: return 0
+              }
+            }
+
+            const progress = getProgress(doc.status)
+            const primaryAssignee = doc.assignments.length > 0 ? doc.assignments[0].assignedTo : null
+
             return (
               <div
                 key={doc.id}
                 onClick={() => router.push(`/dashboard/dms/incoming/${doc.id}`)}
-                className="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-blue-500/50 transition-all cursor-pointer"
+                className="bg-gray-900 rounded-lg p-4 border border-gray-800 hover:border-blue-500/50 transition-all cursor-pointer"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <h3 className="text-lg font-semibold text-white font-poppins">{doc.title}</h3>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    {/* Status and Priority Tags */}
+                    <div className="flex items-center space-x-2 mb-2">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${statusInfo.color} font-poppins flex items-center space-x-1`}>
-                        <StatusIcon size={14} />
+                        <StatusIcon size={12} />
                         <span>{statusInfo.label}</span>
                       </span>
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${priorityInfo.color} font-poppins`}>
@@ -355,80 +367,79 @@ export default function IncomingDocumentsList({
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div className="flex items-center space-x-2 text-sm text-gray-400 font-poppins">
-                        <span className="font-medium">Người gửi:</span>
-                        <span>{doc.sender || 'Chưa xác định'}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-400 font-poppins">
-                        <span className="font-medium">Loại:</span>
-                        <span>{typeLabels[doc.type] || doc.type}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-400 font-poppins">
-                        <span className="font-medium">Ngày nhận:</span>
-                        <span>
-                          {formatDistanceToNow(new Date(doc.receivedDate), { addSuffix: true })}
-                        </span>
-                      </div>
-                      {doc.deadline && (
-                        <div className="flex items-center space-x-2 text-sm text-gray-400 font-poppins">
-                          <span className="font-medium">Hạn xử lý:</span>
-                          <span className={new Date(doc.deadline) < new Date() ? 'text-red-400' : ''}>
-                            {formatDistanceToNow(new Date(doc.deadline), { addSuffix: true })}
-                          </span>
+                    {/* Title */}
+                    <h3 className="text-base font-semibold text-white font-poppins mb-2 line-clamp-1">
+                      {doc.title}
+                    </h3>
+
+                    {/* Metadata - Compact */}
+                    <div className="space-y-1 mb-3">
+                      {doc.sender && (
+                        <div className="flex items-center space-x-2 text-xs text-gray-400 font-poppins">
+                          <span>{doc.sender}</span>
                         </div>
                       )}
+                      <div className="flex items-center space-x-4 text-xs text-gray-500 font-poppins">
+                        <span>Nhận: {new Date(doc.receivedDate).toLocaleDateString('vi-VN')}</span>
+                        {doc.deadline && (
+                          <span className={new Date(doc.deadline) < new Date() ? 'text-red-400' : ''}>
+                            Hạn: {new Date(doc.deadline).toLocaleDateString('vi-VN')}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Assignments */}
-                    {doc.assignments.length > 0 && (
-                      <div className="flex items-center space-x-2 mb-4">
-                        <span className="text-sm text-gray-400 font-poppins">Phân công:</span>
-                        <div className="flex items-center space-x-2">
-                          {doc.assignments.slice(0, 3).map((assignment) => (
-                            <div key={assignment.id} className="flex items-center space-x-1">
-                              <Avatar
-                                src={assignment.assignedTo.avatar}
-                                name={`${assignment.assignedTo.firstName} ${assignment.assignedTo.lastName}`}
-                                size="sm"
-                              />
-                              <span className="text-sm text-gray-400 font-poppins">
-                                {assignment.assignedTo.firstName} {assignment.assignedTo.lastName}
-                              </span>
-                            </div>
-                          ))}
-                          {doc.assignments.length > 3 && (
-                            <span className="text-sm text-gray-500 font-poppins">
-                              +{doc.assignments.length - 3} người khác
-                            </span>
-                          )}
-                        </div>
+                    {/* Progress Bar */}
+                    <div className="mb-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-gray-400 font-poppins">Tiến độ</span>
+                        <span className="text-xs font-semibold text-white font-poppins">{progress}%</span>
                       </div>
-                    )}
-
-                    {/* Created By */}
-                    <div className="flex items-center space-x-2">
-                      <Avatar
-                        src={doc.createdBy.avatar}
-                        name={`${doc.createdBy.firstName} ${doc.createdBy.lastName}`}
-                        size="sm"
-                      />
-                      <span className="text-sm text-gray-500 font-poppins">
-                        Tạo bởi {doc.createdBy.firstName} {doc.createdBy.lastName}
-                      </span>
+                      <div className="w-full bg-gray-800 rounded-full h-1.5">
+                        <div
+                          className={`h-1.5 rounded-full transition-all ${
+                            progress === 100 ? 'bg-green-500' :
+                            progress >= 66 ? 'bg-blue-500' :
+                            progress >= 33 ? 'bg-yellow-500' :
+                            'bg-gray-600'
+                          }`}
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="ml-4">
-                    <a
-                      href={doc.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-blue-500 hover:text-blue-400 transition-colors"
-                    >
-                      <FileText size={24} />
-                    </a>
+                  {/* Right Side - Avatar and Actions */}
+                  <div className="flex flex-col items-end gap-3 flex-shrink-0">
+                    {/* Primary Assignee Avatar */}
+                    {primaryAssignee ? (
+                      <div className="relative group">
+                        <Avatar
+                          src={primaryAssignee.avatar}
+                          name={`${primaryAssignee.firstName} ${primaryAssignee.lastName}`}
+                          size="md"
+                        />
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-gray-900"></div>
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center">
+                        <span className="text-xs text-gray-400">?</span>
+                      </div>
+                    )}
+
+                    {/* Action Icons */}
+                    <div className="flex items-center space-x-2">
+                      <a
+                        href={doc.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-gray-400 hover:text-blue-400 transition-colors"
+                        title="Xem"
+                      >
+                        <FileText size={18} />
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>

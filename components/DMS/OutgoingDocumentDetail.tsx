@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import DOMPurify from 'dompurify'
 import {
   FileText,
   Clock,
@@ -21,6 +22,7 @@ import { formatDistanceToNow } from 'date-fns'
 import Avatar from '@/components/Common/Avatar'
 import SubmitApprovalModal from './SubmitApprovalModal'
 import PDFViewer from './PDFViewer'
+import DigitalSignatureModal from './DigitalSignatureModal'
 
 interface OutgoingDocumentDetailProps {
   document: any
@@ -50,6 +52,16 @@ export default function OutgoingDocumentDetail({
   const router = useRouter()
   const [showSubmitModal, setShowSubmitModal] = useState(false)
   const [showPDFViewer, setShowPDFViewer] = useState(false)
+  const [showSignatureModal, setShowSignatureModal] = useState(false)
+
+  // Sanitize HTML content to prevent XSS attacks
+  const sanitizedContent = useMemo(() => {
+    if (!document.content) return ''
+    return DOMPurify.sanitize(document.content, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'blockquote'],
+      ALLOWED_ATTR: ['href', 'target', 'rel'],
+    })
+  }, [document.content])
 
   // Check if file is PDF
   const isPDF = document.fileUrl && (
@@ -91,11 +103,16 @@ export default function OutgoingDocumentDetail({
   }
 
   const canEdit = currentUser.user.role === 'ADMIN' || document.createdById === currentUser.user.id
+  // Allow editing if status is PENDING or PROCESSING (not yet approved)
+  const canEditDocument = canEdit && (document.status === 'PENDING' || document.status === 'PROCESSING')
   const canSubmit = canEdit && document.status === 'PENDING' && document.approvals.length === 0
   const canApprove = document.approvals.some(
     (approval: any) =>
       approval.approverId === currentUser.user.id && approval.status === 'PENDING'
   )
+  const hasSignature = document.signatures && document.signatures.length > 0
+  const canSign = canEdit && document.status === 'APPROVED' && document.fileUrl && !hasSignature
+  const canSend = canEdit && document.status === 'APPROVED' && (hasSignature || document.signedFileUrl) && document.status !== 'COMPLETED'
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -230,11 +247,101 @@ export default function OutgoingDocumentDetail({
         <h2 className="text-lg font-semibold text-bluelock-dark dark:text-white mb-4 font-poppins">
           Nội dung văn bản
         </h2>
-        <div className="prose prose-invert max-w-none">
-          <div className="text-bluelock-dark dark:text-white whitespace-pre-wrap font-poppins">
-            {document.content}
-          </div>
-        </div>
+        <div 
+          className="prose prose-invert max-w-none text-bluelock-dark dark:text-white font-poppins document-content"
+          style={{
+            fontSize: '14px',
+            lineHeight: '1.8',
+          }}
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+        />
+        <style jsx>{`
+          .document-content :global(p) {
+            margin-bottom: 1em;
+            color: inherit;
+          }
+          .document-content :global(h1),
+          .document-content :global(h2),
+          .document-content :global(h3),
+          .document-content :global(h4),
+          .document-content :global(h5),
+          .document-content :global(h6) {
+            margin-top: 1.5em;
+            margin-bottom: 0.75em;
+            font-weight: 600;
+            color: inherit;
+          }
+          .document-content :global(ul),
+          .document-content :global(ol) {
+            margin-left: 1.5em;
+            margin-bottom: 1em;
+          }
+          .document-content :global(li) {
+            margin-bottom: 0.5em;
+          }
+          .document-content :global(strong) {
+            font-weight: 600;
+          }
+          .document-content :global(em) {
+            font-style: italic;
+          }
+          .document-content :global(u) {
+            text-decoration: underline;
+          }
+          .document-content :global(a) {
+            color: #3b82f6;
+            text-decoration: underline;
+          }
+          .document-content :global(a:hover) {
+            color: #2563eb;
+          }
+          .document-content :global(table) {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+          }
+          .document-content :global(th),
+          .document-content :global(td) {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.5em;
+            text-align: left;
+          }
+          .document-content :global(th) {
+            background-color: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+          }
+          .document-content :global(blockquote) {
+            border-left: 4px solid rgba(255, 255, 255, 0.2);
+            padding-left: 1em;
+            margin: 1em 0;
+            font-style: italic;
+            color: rgba(255, 255, 255, 0.8);
+          }
+          .document-content :global(code) {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.9em;
+          }
+          .document-content :global(pre) {
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 1em;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 1em 0;
+          }
+          .document-content :global(pre code) {
+            background-color: transparent;
+            padding: 0;
+          }
+          .document-content :global(img) {
+            max-width: 100%;
+            height: auto;
+            margin: 1em 0;
+            border-radius: 4px;
+          }
+        `}</style>
       </div>
 
       {/* Approvals */}
@@ -307,12 +414,54 @@ export default function OutgoingDocumentDetail({
         </div>
       )}
 
+      {/* Signed File */}
+      {document.signedFileUrl && (
+        <div className="bg-bluelock-light-2 dark:bg-gray-900 rounded-lg p-6 border border-bluelock-blue/30 dark:border-gray-800 mb-6 transition-colors duration-300">
+          <h2 className="text-lg font-semibold text-bluelock-dark dark:text-white mb-4 font-poppins flex items-center space-x-2">
+            <FileText size={20} />
+            <span>File đã ký số</span>
+          </h2>
+          <div className="flex items-center justify-between p-4 bg-bluelock-light dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <FileText className="text-blue-500" size={24} />
+              <div>
+                <p className="text-bluelock-dark dark:text-white font-poppins font-semibold">
+                  Văn bản đã được ký số
+                </p>
+                <p className="text-sm text-bluelock-dark/60 dark:text-gray-400 font-poppins">
+                  {document.signedFileUrl.split('/').pop()}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <a
+                href={document.signedFileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-poppins font-semibold transition-colors flex items-center space-x-2"
+              >
+                <Eye size={18} />
+                <span>Xem</span>
+              </a>
+              <a
+                href={document.signedFileUrl}
+                download
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-poppins font-semibold transition-colors flex items-center space-x-2"
+              >
+                <Download size={18} />
+                <span>Tải xuống</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Digital Signatures */}
-      {document.signatures.length > 0 && (
+      {document.signatures && document.signatures.length > 0 && (
         <div className="bg-bluelock-light-2 dark:bg-gray-900 rounded-lg p-6 border border-bluelock-blue/30 dark:border-gray-800 mb-6 transition-colors duration-300">
           <h2 className="text-lg font-semibold text-bluelock-dark dark:text-white mb-4 font-poppins flex items-center space-x-2">
             <PenTool size={20} />
-            <span>Chữ ký số</span>
+            <span>Chữ ký số ({document.signatures.length})</span>
           </h2>
           <div className="space-y-3">
             {document.signatures.map((signature: any) => (
@@ -359,10 +508,11 @@ export default function OutgoingDocumentDetail({
 
       {/* Actions */}
       <div className="flex items-center justify-end space-x-4">
-        {canEdit && document.status === 'PENDING' && (
+        {canEditDocument && (
           <button
             onClick={() => router.push(`/dashboard/dms/outgoing/${document.id}/edit`)}
-            className="px-6 py-2 bg-bluelock-light-2 dark:bg-gray-800 hover:bg-bluelock-light-3 dark:hover:bg-gray-700 text-bluelock-dark dark:text-white rounded-lg font-poppins font-semibold transition-colors flex items-center space-x-2"
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg font-poppins font-semibold transition-colors flex items-center space-x-2 shadow-lg"
+            title="Chỉnh sửa văn bản với Google Docs Editor"
           >
             <Edit size={18} />
             <span>Chỉnh sửa</span>
@@ -386,6 +536,46 @@ export default function OutgoingDocumentDetail({
             <span>Phê duyệt</span>
           </button>
         )}
+        {canSign && !hasSignature && (
+          <button
+            onClick={() => setShowSignatureModal(true)}
+            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-poppins font-semibold transition-colors flex items-center space-x-2"
+          >
+            <PenTool size={18} />
+            <span>Ký số VNPT Smart CA</span>
+          </button>
+        )}
+        {canSend && hasSignature && (
+          <button
+            onClick={async () => {
+              if (!confirm('Bạn có chắc chắn muốn gửi văn bản này? Văn bản sẽ không thể chỉnh sửa sau khi gửi.')) {
+                return
+              }
+
+              try {
+                const response = await fetch(`/api/dms/outgoing/${document.id}/send`, {
+                  method: 'POST',
+                })
+
+                const data = await response.json()
+
+                if (!response.ok) {
+                  throw new Error(data.error || 'Đã xảy ra lỗi')
+                }
+
+                alert('Đã gửi văn bản thành công!')
+                router.refresh()
+              } catch (error: any) {
+                console.error('Error sending document:', error)
+                alert(error.message || 'Đã xảy ra lỗi khi gửi văn bản')
+              }
+            }}
+            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-poppins font-semibold transition-colors flex items-center space-x-2"
+          >
+            <Send size={18} />
+            <span>Gửi văn bản</span>
+          </button>
+        )}
       </div>
 
       {/* Submit Approval Modal */}
@@ -406,6 +596,17 @@ export default function OutgoingDocumentDetail({
           onClose={() => setShowPDFViewer(false)}
         />
       )}
+
+      {/* Digital Signature Modal */}
+      <DigitalSignatureModal
+        isOpen={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
+        documentId={document.id}
+        documentType="outgoing"
+        onSuccess={() => {
+          router.refresh()
+        }}
+      />
     </div>
   )
 }

@@ -31,13 +31,11 @@ export async function POST(
       return NextResponse.json({ error: 'Người dùng không tồn tại' }, { status: 404 })
     }
 
-    // Check if already following
+    // Check if already following (one-way: user1Id follows user2Id)
     const existingFriendship = await prisma.friendship.findFirst({
       where: {
-        OR: [
-          { user1Id: session.user.id, user2Id: targetUserId },
-          { user1Id: targetUserId, user2Id: session.user.id },
-        ],
+        user1Id: session.user.id,
+        user2Id: targetUserId,
       },
     })
 
@@ -63,11 +61,16 @@ export async function POST(
           data: { status: 'ACCEPTED' },
         })
 
-        // Create friendship
+        // Create friendship: receiver (session.user.id) follows sender (targetUserId)
+        // One-way model: user1Id follows user2Id
+        // When User A sends request to User B and User B accepts:
+        // User B (acceptor) should follow User A (requester)
+        // This matches the endpoint semantics: POST /api/users/A/follow means "I want to follow A"
+        // So: session.user.id (acceptor) follows targetUserId (requester)
         await prisma.friendship.create({
           data: {
-            user1Id: session.user.id,
-            user2Id: targetUserId,
+            user1Id: session.user.id, // The acceptor follows
+            user2Id: targetUserId, // The requester is being followed
           },
         })
 
@@ -107,13 +110,11 @@ export async function DELETE(
 
     const { id: targetUserId } = await params
 
-    // Find and delete friendship
+    // Find and delete friendship (one-way: user1Id follows user2Id)
     const friendship = await prisma.friendship.findFirst({
       where: {
-        OR: [
-          { user1Id: session.user.id, user2Id: targetUserId },
-          { user1Id: targetUserId, user2Id: session.user.id },
-        ],
+        user1Id: session.user.id,
+        user2Id: targetUserId,
       },
     })
 
@@ -147,13 +148,11 @@ export async function GET(
 
     const { id: targetUserId } = await params
 
-    // Check if current user is following target user
+    // Check if current user is following target user (one-way: user1Id follows user2Id)
     const friendship = await prisma.friendship.findFirst({
       where: {
-        OR: [
-          { user1Id: session.user.id, user2Id: targetUserId },
-          { user1Id: targetUserId, user2Id: session.user.id },
-        ],
+        user1Id: session.user.id,
+        user2Id: targetUserId,
       },
     })
 

@@ -1,7 +1,17 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import HomePage from '@/components/Home/HomePage'
+import dynamic from 'next/dynamic'
+
+// Lazy load HomePage to reduce initial bundle size
+const HomePage = dynamic(() => import('@/components/Home/HomePage'), {
+  ssr: true,
+  loading: () => (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+    </div>
+  ),
+})
 
 async function getPublicPosts() {
   // Auto-publish scheduled posts that are due
@@ -25,8 +35,15 @@ async function getPublicPosts() {
     }
   }
 
+  // Optimized: Use select instead of include, and limit fields
   const posts = await prisma.post.findMany({
-    include: {
+    select: {
+      id: true,
+      content: true,
+      createdAt: true,
+      type: true,
+      imageUrl: true,
+      videoUrl: true,
       author: {
         select: {
           id: true,
@@ -42,19 +59,18 @@ async function getPublicPosts() {
         },
       },
     },
+    where: {
+      OR: [
+        { scheduledAt: null },
+        { scheduledAt: { lte: now } },
+      ],
+    },
     orderBy: { createdAt: 'desc' },
     take: 50,
   })
   
-  // Filter out scheduled posts that haven't been published yet
-  return posts.filter((post: any) => {
-    if (!post.scheduledAt) return true // No schedule = published
-    try {
-      return new Date(post.scheduledAt) <= now // Scheduled time passed = published
-    } catch {
-      return true // If date parsing fails, treat as published
-    }
-  })
+  // Posts are already filtered in the query, no need for additional filtering
+  return posts
 }
 
 export default async function Home() {

@@ -126,6 +126,17 @@ export async function PATCH(
           data: { status: 'COMPLETED' },
         })
       }
+
+      // Auto-activate Premium if user completed enough tasks
+      if (updatedAssignment.status === 'COMPLETED' && assignment.status !== 'COMPLETED') {
+        try {
+          const { checkAndActivatePremium } = await import('@/lib/premium/auto-activate')
+          await checkAndActivatePremium(assignment.assignedToId)
+        } catch (error) {
+          // Don't fail the request if premium activation fails
+          console.error('Error auto-activating premium:', error)
+        }
+      }
     }
 
     return NextResponse.json(updatedAssignment)

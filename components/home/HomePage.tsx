@@ -107,11 +107,10 @@ export default function HomePage({ initialPosts, session }: HomePageProps) {
 
   const handlePremiumSubscribe = () => {
     if (!currentUser) {
-      router.push('/login?redirect=/premium')
+      router.push('/login?redirect=/dashboard/premium')
       return
     }
-    // TODO: Navigate to premium subscription page
-    alert('Tính năng đăng ký Premium đang được phát triển')
+    router.push('/dashboard/premium')
   }
 
   const handleTrendingTopicMenu = (e: React.MouseEvent, topicName: string) => {

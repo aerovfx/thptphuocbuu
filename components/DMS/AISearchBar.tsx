@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Sparkles, X, Loader2, FileText, Inbox, Send } from 'lucide-react'
+import { Search, Sparkles, X, Loader2, FileText, Inbox, Send, Crown, Lock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { hasPremiumOrAdminAccess } from '@/lib/premium-check'
+import Link from 'next/link'
 
 interface SearchResult {
   id: string
@@ -20,20 +22,24 @@ interface AISearchBarProps {
   onResultClick?: (result: SearchResult) => void
   placeholder?: string
   className?: string
+  currentUser?: any
 }
 
 export default function AISearchBar({
   onResultClick,
   placeholder = 'Tìm kiếm văn bản bằng AI...',
   className = '',
+  currentUser,
 }: AISearchBarProps) {
   const [query, setQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [results, setResults] = useState<SearchResult[]>([])
   const [showResults, setShowResults] = useState(false)
-  const [searchType, setSearchType] = useState<'text' | 'semantic' | 'hybrid'>('hybrid')
+  const [searchType, setSearchType] = useState<'text' | 'semantic' | 'hybrid'>('text')
   const searchRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  
+  const hasAIAccess = hasPremiumOrAdminAccess(currentUser?.user || currentUser)
 
   // Close results when clicking outside
   useEffect(() => {
@@ -47,7 +53,7 @@ export default function AISearchBar({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const performSearch = async (searchQuery: string, type: 'text' | 'semantic' | 'hybrid' = 'hybrid') => {
+  const performSearch = async (searchQuery: string, type: 'text' | 'semantic' | 'hybrid' = 'text') => {
     if (!searchQuery.trim()) {
       setResults([])
       setShowResults(false)
@@ -58,13 +64,19 @@ export default function AISearchBar({
     setShowResults(true)
 
     try {
-      // Try semantic search first if available
-      if (type === 'semantic' || type === 'hybrid') {
+      // Only allow semantic/hybrid search for Premium/Admin users
+      if ((type === 'semantic' || type === 'hybrid') && !hasAIAccess) {
+        // Fallback to text search for non-premium users
+        type = 'text'
+      }
+
+      // Try semantic search first if available and user has access
+      if ((type === 'semantic' || type === 'hybrid') && hasAIAccess) {
         try {
           const semanticResponse = await fetch('/api/ai/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: searchQuery, type: 'hybrid' }),
+            body: JSON.stringify({ query: searchQuery, type: type }),
           })
 
           if (semanticResponse.ok) {
@@ -199,10 +211,22 @@ export default function AISearchBar({
               <X className="w-5 h-5" />
             </button>
           )}
-          <div className="flex items-center gap-1 px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-400">
-            <Sparkles className="w-3 h-3" />
-            <span>AI</span>
-          </div>
+          {hasAIAccess ? (
+            <div className="flex items-center gap-1 px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-400">
+              <Sparkles className="w-3 h-3" />
+              <span>AI</span>
+            </div>
+          ) : (
+            <Link
+              href="/dashboard/premium"
+              className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 rounded text-xs text-yellow-400 hover:bg-yellow-500/30 transition-colors"
+              title="Nâng cấp Premium để sử dụng AI"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Lock className="w-3 h-3" />
+              <span>Premium</span>
+            </Link>
+          )}
         </div>
       </div>
 

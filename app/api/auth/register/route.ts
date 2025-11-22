@@ -14,10 +14,24 @@ const registerSchema = z.object({
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const validatedData = registerSchema.parse(body)
+    
+    // Pre-process and normalize data BEFORE validation to ensure validation checks the actual stored values
+    const preprocessedBody = {
+      ...body,
+      email: typeof body.email === 'string' ? body.email.trim().toLowerCase() : body.email,
+      password: typeof body.password === 'string' ? body.password.trim() : body.password,
+      firstName: typeof body.firstName === 'string' ? body.firstName.trim() : body.firstName,
+      lastName: typeof body.lastName === 'string' ? body.lastName.trim() : body.lastName,
+    }
+    
+    const validatedData = registerSchema.parse(preprocessedBody)
+
+    // Use normalized values (already trimmed in preprocessing)
+    const normalizedEmail = validatedData.email
+    const normalizedPassword = validatedData.password
 
     const existingUser = await prisma.user.findUnique({
-      where: { email: validatedData.email },
+      where: { email: normalizedEmail },
     })
 
     if (existingUser) {
@@ -27,14 +41,14 @@ export async function POST(request: Request) {
       )
     }
 
-    const hashedPassword = await bcrypt.hash(validatedData.password, 10)
+    const hashedPassword = await bcrypt.hash(normalizedPassword, 10)
 
     const user = await prisma.user.create({
       data: {
-        email: validatedData.email,
+        email: normalizedEmail, // Use normalized email
         password: hashedPassword,
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
+        firstName: validatedData.firstName, // Already trimmed in preprocessing
+        lastName: validatedData.lastName, // Already trimmed in preprocessing
         role: validatedData.role,
       },
     })

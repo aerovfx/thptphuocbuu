@@ -21,16 +21,67 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
   const [notes, setNotes] = useState('')
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const validateFile = (file: File): string | null => {
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    const allowedTypes = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+
+    if (!allowedTypes.includes(fileExtension)) {
+      return 'Chỉ chấp nhận file PDF, DOC, DOCX, JPG, PNG'
+    }
+
+    if (file.size > maxSize) {
+      return 'Kích thước file tối đa 10MB'
+    }
+
+    return null
+  }
+
+  const handleFileSelect = (selectedFile: File) => {
+    const validationError = validateFile(selectedFile)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setError(null)
+    setFile(selectedFile)
+    // Auto-fill title from filename if empty
+    if (!title) {
+      const fileName = selectedFile.name
+      const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.')) || fileName
+      setTitle(nameWithoutExt)
+    }
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0])
-      // Auto-fill title from filename if empty
-      if (!title) {
-        const fileName = e.target.files[0].name
-        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.')) || fileName
-        setTitle(nameWithoutExt)
-      }
+      handleFileSelect(e.target.files[0])
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const droppedFiles = e.dataTransfer.files
+    if (droppedFiles && droppedFiles.length > 0) {
+      handleFileSelect(droppedFiles[0])
     }
   }
 
@@ -101,7 +152,19 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
               className="mb-2"
             />
             <span className="text-red-400 ml-2">*</span>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-700 border-dashed rounded-lg hover:border-blue-500 transition-colors">
+            <div
+              className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-all cursor-pointer ${
+                isDragging
+                  ? 'border-blue-500 bg-blue-500/10 scale-[1.02]'
+                  : file
+                  ? 'border-gray-700 hover:border-gray-600'
+                  : 'border-gray-700 hover:border-blue-500'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => !file && document.getElementById('file-input')?.click()}
+            >
               <div className="space-y-1 text-center">
                 {file ? (
                   <div className="flex items-center justify-center space-x-2">
@@ -109,19 +172,24 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
                     <span className="text-white font-poppins">{file.name}</span>
                     <button
                       type="button"
-                      onClick={() => setFile(null)}
-                      className="text-red-400 hover:text-red-300"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setFile(null)
+                        setError(null)
+                      }}
+                      className="text-red-400 hover:text-red-300 transition-colors"
                     >
                       <X size={20} />
                     </button>
                   </div>
                 ) : (
                   <>
-                    <Upload className="mx-auto text-gray-400" size={48} />
-                    <div className="flex text-sm text-gray-400">
+                    <Upload className={`mx-auto ${isDragging ? 'text-blue-400' : 'text-gray-400'}`} size={48} />
+                    <div className="flex text-sm text-gray-400 justify-center items-center">
                       <label className="relative cursor-pointer rounded-md font-medium text-blue-500 hover:text-blue-400">
                         <span className="font-poppins">Chọn file</span>
                         <input
+                          id="file-input"
                           type="file"
                           className="sr-only"
                           onChange={handleFileChange}

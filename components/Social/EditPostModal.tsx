@@ -185,7 +185,7 @@ export default function EditPostModal({ post, isOpen, onClose, onSuccess }: Edit
         if (fileInputRef.current) {
           fileInputRef.current.value = ''
         }
-        return
+      return
       }
     }
 
@@ -582,8 +582,7 @@ export default function EditPostModal({ post, isOpen, onClose, onSuccess }: Edit
           <div ref={emojiPickerRef} className="absolute bottom-16 left-4 z-10">
             <EmojiPicker
               onEmojiClick={handleEmojiSelect}
-              theme={isDarkMode ? 'dark' : 'light'}
-              locale="vi"
+              theme={isDarkMode ? ('dark' as any) : ('light' as any)}
             />
           </div>
         )}

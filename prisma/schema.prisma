@@ -63,6 +63,24 @@ enum SignatureProvider {
   INTERNAL       // Ký nội bộ
 }
 
+enum BrandVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BrandMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum BrandBadgeType {
+  GOLD       // Verified Organization (Brand Premium)
+  SILVER     // Education/Non-profit
+  BLUE       // Premium Individual
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -76,6 +94,8 @@ model User {
   phone         String?
   dateOfBirth   DateTime?
   emailVerified DateTime?
+  resetPasswordToken      String?
+  resetPasswordExpires    DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -113,6 +133,20 @@ model User {
   outgoingDocumentsCreated OutgoingDocument[] @relation("OutgoingDocumentsCreated")
   workflowApprovals Approval[]
   digitalSignatures DigitalSignature[] @relation("DigitalSignatures")
+
+  // Brand Relations
+  isPremium        Boolean   @default(false)
+  brandId          String?
+  ownedBrand       Brand?    @relation("BrandOwner")
+  brandMemberships BrandMember[]
+  brandBadges      BrandBadge[]
+  premiumSubscriptions PremiumSubscription[] @relation("PremiumSubscriptions")
+
+  // Collaborative Document Relations
+  ownedDocuments       CollaborativeDocument[] @relation("DocumentOwner")
+  documentRevisions     DocumentRevision[]      @relation("DocumentRevisions")
+  documentComments      DocumentComment[]        @relation("DocumentComments")
+  documentPermissions   DocumentPermission[]     @relation("DocumentPermissions")
   workItemsCreated WorkItem[] @relation("WorkItemsCreated")
   documentVersionsCreated DocumentVersion[] @relation("DocumentVersionsCreated")
   workflowAssignments Workflow[] @relation("WorkflowAssignments")
@@ -333,14 +367,16 @@ model Document {
   fileUrl     String
   fileSize    Int          // in bytes
   mimeType    String
-  type        DocumentType @default(OTHER)
+  type        DocumentType
   category    String?
+  signedFileUrl String?    // File đã ký số
   uploadedById String
   uploadedBy  User         @relation(fields: [uploadedById], references: [id])
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
   access     DocumentAccess[]
+  signatures DigitalSignature[] @relation("DocumentSignatures")
 
   @@map("documents")
 }
@@ -407,7 +443,7 @@ model VerificationToken {
 // ============================================
 
 // Loại văn bản hành chính (Standard Document Type Codes)
-model DocumentType {
+model AdministrativeDocumentType {
   code        String   @id // CV, QĐ, TB, BC, etc.
   name        String   // Tên đầy đủ: Công văn, Quyết định, etc.
   group       String   // inbound, outbound, administrative, internal, legal
@@ -456,8 +492,8 @@ model IncomingDocument {
   deadline        DateTime?
   
   // Document Type
-  documentTypeCode String?            // Mã loại văn bản (CV, QĐ, TB, etc.)
-  documentType     DocumentType?      @relation(fields: [documentTypeCode], references: [code])
+  documentTypeCode String?                      // Mã loại văn bản (CV, QĐ, TB, etc.)
+  documentType     AdministrativeDocumentType? @relation(fields: [documentTypeCode], references: [code])
   
   // Relations
   createdById     String
@@ -518,8 +554,8 @@ model OutgoingDocument {
   sendDate        DateTime?
   
   // Document Type
-  documentTypeCode String?            // Mã loại văn bản (CV, QĐ, TB, etc.)
-  documentType     DocumentType?      @relation(fields: [documentTypeCode], references: [code])
+  documentTypeCode String?                      // Mã loại văn bản (CV, QĐ, TB, etc.)
+  documentType     AdministrativeDocumentType? @relation(fields: [documentTypeCode], references: [code])
   
   // Relations
   createdById     String
@@ -595,7 +631,9 @@ model WorkItem {
 model DigitalSignature {
   id              String              @id @default(cuid())
   
-  // Document reference
+  // Document reference (polymorphic)
+  documentId      String?             // General Document
+  document        Document?           @relation("DocumentSignatures", fields: [documentId], references: [id], onDelete: Cascade)
   outgoingDocumentId String?
   outgoingDocument    OutgoingDocument? @relation(fields: [outgoingDocumentId], references: [id], onDelete: Cascade)
   
@@ -948,5 +986,165 @@ model Message {
   @@index([conversationId, createdAt])
   @@index([senderId])
   @@map("messages")
+}
+
+// Brand Management Models
+model Brand {
+  id                String                  @id @default(cuid())
+  name              String
+  slug              String                  @unique
+  logoUrl           String?
+  website           String?
+  description       String?
+  emailDomain       String?                // Verified email domain (e.g., @company.com)
+  businessLicense   String?                // URL to business license document
+  verificationStatus BrandVerificationStatus @default(PENDING)
+  createdById       String                   @unique
+  createdBy         User                    @relation("BrandOwner", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  // Relations
+  members           BrandMember[]
+  badges            BrandBadge[]
+
+  @@index([createdById])
+  @@index([slug])
+  @@map("brands")
+}
+
+model BrandMember {
+  id          String          @id @default(cuid())
+  brandId     String
+  brand       Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        BrandMemberRole @default(MEMBER)
+  permissions Json?           // Custom permissions as JSON
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([brandId, userId])
+  @@index([brandId])
+  @@index([userId])
+  @@map("brand_members")
+}
+
+model BrandBadge {
+  id          String          @id @default(cuid())
+  brandId     String
+  brand       Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeType   BrandBadgeType
+  badgeIconUrl String?        // Custom badge icon URL
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([brandId, userId])
+  @@index([brandId])
+  @@index([userId])
+  @@map("brand_badges")
+}
+
+// Premium Subscription Model
+model PremiumSubscription {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation("PremiumSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  plan            String   // STANDARD, PRO, ENTERPRISE
+  status          String   @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED
+  startDate       DateTime @default(now())
+  endDate         DateTime // 1 month from startDate
+  activatedBy     String   @default("TASKS") // TASKS (auto), MANUAL (user subscribed)
+  completedTasks  Int      @default(0) // Number of tasks completed to activate
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([endDate])
+  @@map("premium_subscriptions")
+}
+
+// Collaborative Document Editor Models (Google Docs-like)
+enum DocumentPermissionRole {
+  OWNER
+  EDITOR
+  COMMENTER
+  VIEWER
+}
+
+model CollaborativeDocument {
+  id          String   @id @default(cuid())
+  title       String
+  content     Json?    // CRDT snapshot or AST
+  ownerId     String
+  owner       User     @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastEditedAt DateTime?
+  lastEditedBy String?
+  
+  // Relations
+  revisions   DocumentRevision[]
+  comments    DocumentComment[]
+  permissions DocumentPermission[]
+  
+  @@index([ownerId])
+  @@index([updatedAt])
+  @@map("collaborative_documents")
+}
+
+model DocumentRevision {
+  id          String   @id @default(cuid())
+  documentId  String
+  document    CollaborativeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  delta       Json?    // Operational Transform delta or CRDT changes
+  snapshot    Json?    // Full document snapshot at this revision
+  userId      String?
+  user        User?    @relation("DocumentRevisions", fields: [userId], references: [id], onDelete: SetNull)
+  description String?  // Optional description of changes
+  createdAt   DateTime @default(now())
+  
+  @@index([documentId, createdAt])
+  @@map("document_revisions")
+}
+
+model DocumentComment {
+  id          String   @id @default(cuid())
+  documentId  String
+  document    CollaborativeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation("DocumentComments", fields: [userId], references: [id], onDelete: Cascade)
+  content     String
+  position    Json?    // Position in document (e.g., { blockId, offset })
+  resolved    Boolean  @default(false)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  replies     Json?    // Nested replies as JSON
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([documentId])
+  @@index([userId])
+  @@map("document_comments")
+}
+
+model DocumentPermission {
+  id          String   @id @default(cuid())
+  documentId  String
+  document    CollaborativeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation("DocumentPermissions", fields: [userId], references: [id], onDelete: Cascade)
+  role        DocumentPermissionRole @default(VIEWER)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([documentId, userId])
+  @@index([documentId])
+  @@index([userId])
+  @@map("document_permissions")
 }
 

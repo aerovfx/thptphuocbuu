@@ -128,6 +128,11 @@ export default function CreatePost() {
         setMediaPreview(null)
         setLocation(null)
         setScheduledDateTime('')
+        
+        // Dispatch custom event to notify SocialFeed
+        window.dispatchEvent(new CustomEvent('postCreated'))
+        
+        // Also refresh router to update server-side data
         router.refresh()
       } else {
         const errorData = await response.json()
@@ -417,7 +422,7 @@ export default function CreatePost() {
               >
                 <EmojiPicker
                   onEmojiClick={handleEmojiSelect}
-                  theme={isDarkMode ? 'dark' : 'light'}
+                  theme={isDarkMode ? ('dark' as any) : ('light' as any)}
                   width={350}
                   height={400}
                   searchDisabled={false}

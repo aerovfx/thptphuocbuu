@@ -135,6 +135,40 @@ export default function SocialFeed({
     }
   }, [currentUserId, initialPosts])
 
+  // Update posts when initialPosts changes (e.g., after creating a new post)
+  useEffect(() => {
+    setPosts(initialPosts)
+  }, [initialPosts])
+
+  // Listen for post creation events and refresh posts
+  useEffect(() => {
+    const handlePostCreated = () => {
+      // Fetch latest posts from API
+      fetch('/api/posts?limit=20')
+        .then((res) => res.json())
+        .then((data) => {
+          // API returns array directly, not wrapped in object
+          if (Array.isArray(data)) {
+            setPosts(data)
+          } else if (data.posts && Array.isArray(data.posts)) {
+            setPosts(data.posts)
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching posts after creation:', error)
+          // Fallback to router refresh if API fails
+          router.refresh()
+        })
+    }
+
+    // Listen for custom event
+    window.addEventListener('postCreated', handlePostCreated)
+
+    return () => {
+      window.removeEventListener('postCreated', handlePostCreated)
+    }
+  }, [router])
+
   const handleLike = async (postId: string) => {
     if (isGuest || !currentUserId) {
       if (onInteractionRequired) {

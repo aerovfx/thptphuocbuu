@@ -22,6 +22,18 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Google Fonts CSS Variables for Editor */
+:root {
+  --font-roboto: 'Roboto', sans-serif;
+  --font-open-sans: 'Open Sans', sans-serif;
+  --font-lato: 'Lato', sans-serif;
+  --font-inter: 'Inter', sans-serif;
+  --font-source-sans-3: 'Source Sans 3', sans-serif;
+  --font-raleway: 'Raleway', sans-serif;
+  --font-ubuntu: 'Ubuntu', sans-serif;
+  --font-playfair-display: 'Playfair Display', serif;
+}
+
 /* Light theme (BLUELOCK) */
 .light body {
   background: #ffffff; /* Pure white background */
@@ -217,6 +229,206 @@ body {
 .prose pre code {
   background-color: transparent;
   padding: 0;
+  color: inherit;
+}
+
+/* TipTap Editor Styles */
+.ProseMirror {
+  outline: none;
+  font-family: var(--font-inter), 'Arial', sans-serif;
+  font-size: 11pt;
+  line-height: 1.5;
+  color: #202124;
+}
+
+.dark .ProseMirror {
+  color: #e8eaed;
+}
+
+.ProseMirror p {
+  margin: 0;
+  padding: 0;
+  min-height: 1.5em;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9aa0a6;
+  pointer-events: none;
+  height: 0;
+}
+
+.dark .ProseMirror p.is-editor-empty:first-child::before {
+  color: #5f6368;
+}
+
+.ProseMirror h1 {
+  font-size: 24pt;
+  font-weight: 400;
+  line-height: 1.2;
+  margin-top: 20px;
+  margin-bottom: 6px;
+}
+
+.ProseMirror h2 {
+  font-size: 18pt;
+  font-weight: 400;
+  line-height: 1.2;
+  margin-top: 18px;
+  margin-bottom: 6px;
+}
+
+.ProseMirror h3 {
+  font-size: 14pt;
+  font-weight: 400;
+  line-height: 1.2;
+  margin-top: 16px;
+  margin-bottom: 6px;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 40px;
+  margin: 12px 0;
+}
+
+.ProseMirror li {
+  margin: 4px 0;
+}
+
+.ProseMirror a {
+  color: #1a73e8;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.dark .ProseMirror a {
+  color: #8ab4f8;
+}
+
+.ProseMirror a:hover {
+  text-decoration: underline;
+}
+
+.ProseMirror table {
+  border-collapse: collapse;
+  margin: 15px 0;
+  width: 100%;
+}
+
+.ProseMirror table td,
+.ProseMirror table th {
+  min-width: 1em;
+  border: 1px solid #dadce0;
+  padding: 6px 8px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.dark .ProseMirror table td,
+.dark .ProseMirror table th {
+  border-color: #5f6368;
+}
+
+.ProseMirror table th {
+  font-weight: bold;
+  text-align: left;
+  background-color: #f8f9fa;
+}
+
+.dark .ProseMirror table th {
+  background-color: #2d2e30;
+}
+
+.ProseMirror table .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: '';
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(200, 200, 255, 0.4);
+  pointer-events: none;
+}
+
+.ProseMirror mark {
+  background-color: #fef08a;
+  border-radius: 2px;
+  padding: 2px 0;
+}
+
+.dark .ProseMirror mark {
+  background-color: #854d0e;
+}
+
+.ProseMirror blockquote {
+  border-left: 4px solid #dadce0;
+  padding-left: 16px;
+  margin: 16px 0;
+  color: #5f6368;
+  font-style: italic;
+}
+
+.dark .ProseMirror blockquote {
+  border-left-color: #5f6368;
+  color: #9aa0a6;
+}
+
+.ProseMirror code {
+  background-color: #f1f3f4;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.dark .ProseMirror code {
+  background-color: #2d2e30;
+}
+
+.ProseMirror pre {
+  background-color: #f1f3f4;
+  border-radius: 4px;
+  padding: 12px;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+
+.dark .ProseMirror pre {
+  background-color: #2d2e30;
+}
+
+.ProseMirror pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* Google Docs-like page styling */
+.ProseMirror {
+  max-width: 816px;
+  margin: 0 auto;
+  padding: 96px 96px 96px 96px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  min-height: 1056px; /* A4 height at 96 DPI */
+  width: 100%;
+}
+
+.dark .ProseMirror {
+  background: #1e1e1e;
+  box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1), 0 1px 2px rgba(255, 255, 255, 0.05);
+}
+
+/* TipTap Editor Wrapper */
+.ProseMirror-focused {
+  outline: none;
+}
+
+/* Ensure editor content is visible */
+.ProseMirror > * {
   color: inherit;
 }
 

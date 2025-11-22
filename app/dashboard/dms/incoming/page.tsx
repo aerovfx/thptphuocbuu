@@ -2,7 +2,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import SharedLayout from '@/components/Layout/SharedLayout'
-import RightSidebar from '@/components/Layout/RightSidebar'
 import IncomingDocumentsList from '@/components/DMS/IncomingDocumentsList'
 
 async function getIncomingDocuments(userId: string, role: string) {
@@ -66,7 +65,6 @@ export default async function IncomingDocumentsPage() {
   return (
     <SharedLayout
       title="Văn bản đến"
-      rightSidebar={<RightSidebar trendingTopics={trendingTopics} currentUser={session} />}
     >
       <IncomingDocumentsList 
         initialDocuments={documents.map(doc => ({

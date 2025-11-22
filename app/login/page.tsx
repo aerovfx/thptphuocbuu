@@ -45,20 +45,36 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      // Trim và normalize email/password
+      const normalizedEmail = email.trim().toLowerCase()
+      const normalizedPassword = password.trim() // Trim password to ensure consistency
+
+      // Validate input
+      if (!normalizedEmail || !normalizedPassword) {
+        setError('Vui lòng nhập đầy đủ email và mật khẩu')
+        setLoading(false)
+        return
+      }
+
       const result = await signIn('credentials', {
-        email,
-        password,
+        email: normalizedEmail,
+        password: normalizedPassword,
         redirect: false,
       })
 
       if (result?.error) {
         // Handle specific error messages
-        if (result.error.includes('Email hoặc mật khẩu')) {
-          setError(result.error)
-        } else if (result.error.includes('OAuth')) {
+        const errorMsg = result.error
+        console.error('Login error:', errorMsg)
+        
+        if (errorMsg.includes('Email hoặc mật khẩu')) {
+          setError(errorMsg)
+        } else if (errorMsg.includes('OAuth')) {
           setError('Tài khoản này chỉ đăng nhập bằng Google.')
-        } else {
+        } else if (errorMsg === 'CredentialsSignin') {
           setError('Email hoặc mật khẩu không đúng')
+        } else {
+          setError(errorMsg || 'Email hoặc mật khẩu không đúng')
         }
       } else if (result?.ok) {
         // Verify session before redirect
@@ -69,8 +85,12 @@ export default function LoginPage() {
         } else {
           setError('Đăng nhập thành công nhưng không thể tạo session. Vui lòng thử lại.')
         }
+      } else {
+        // No error but not ok - might be a redirect issue
+        setError('Đã xảy ra lỗi không xác định. Vui lòng thử lại.')
       }
     } catch (err: any) {
+      console.error('Login exception:', err)
       setError(err.message || 'Đã xảy ra lỗi. Vui lòng thử lại.')
     } finally {
       setLoading(false)
@@ -125,9 +145,17 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
-              Mật khẩu
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors duration-300">
+                Mật khẩu
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium transition-colors duration-300"
+              >
+                Quên mật khẩu?
+              </Link>
+            </div>
             <input
               id="password"
               type="password"

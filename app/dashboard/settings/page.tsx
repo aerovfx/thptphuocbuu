@@ -1,7 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import SharedLayout from '@/components/Layout/SharedLayout'
-import RightSidebar from '@/components/Layout/RightSidebar'
 
 export default async function SettingsPage() {
   const session = await getServerSession(authOptions)
@@ -14,7 +13,6 @@ export default async function SettingsPage() {
   return (
     <SharedLayout
       title="Cài đặt"
-      rightSidebar={<RightSidebar trendingTopics={trendingTopics} currentUser={session} />}
     >
       <div className="p-6">
         <div className="bg-gray-900 rounded-lg border border-gray-800 p-6">

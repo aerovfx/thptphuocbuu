@@ -125,6 +125,63 @@ async function getUserProfile(userId: string, currentUserId?: string) {
     where: { user2Id: userId },
   })
 
+  // Get user's brand badge (with error handling)
+  let brandBadge = null
+  let affiliatedAccounts: any[] = []
+  
+  try {
+    // Check if BrandBadge model exists in database
+    brandBadge = await prisma.brandBadge.findFirst({
+      where: {
+        userId,
+      },
+      include: {
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            logoUrl: true,
+            verificationStatus: true,
+          },
+        },
+      },
+    })
+
+    // Get affiliated accounts (other members of the same brand)
+    if (brandBadge) {
+      try {
+        const brandMembers = await prisma.brandMember.findMany({
+          where: {
+            brandId: brandBadge.brandId,
+            userId: { not: userId }, // Exclude current user
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                avatar: true,
+              },
+            },
+          },
+          take: 10, // Limit to 10 affiliated accounts
+        })
+        affiliatedAccounts = brandMembers.map((m) => m.user)
+      } catch (error) {
+        // If brandMember table doesn't exist, use empty array
+        console.error('Error fetching brand members:', error)
+        affiliatedAccounts = []
+      }
+    }
+  } catch (error) {
+    // If BrandBadge table doesn't exist, use null
+    console.error('Error fetching brand badge:', error)
+    brandBadge = null
+    affiliatedAccounts = []
+  }
+
   return {
     ...user,
     isFollowing,
@@ -132,6 +189,14 @@ async function getUserProfile(userId: string, currentUserId?: string) {
     remixedPosts: remixedPosts.map((r) => r.post),
     followingCount,
     followersCount,
+    brandBadge: brandBadge && brandBadge.brand
+      ? {
+          badgeType: brandBadge.badgeType,
+          badgeIconUrl: brandBadge.badgeIconUrl,
+          brand: brandBadge.brand,
+        }
+      : null,
+    affiliatedAccounts,
   }
 }
 

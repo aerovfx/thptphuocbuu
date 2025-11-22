@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useSession, update as updateSession } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import {
   ArrowLeft,
   MoreHorizontal,
@@ -22,6 +22,8 @@ import {
   User,
   Camera,
   Upload,
+  Building2,
+  Award,
 } from 'lucide-react'
 import Avatar from '@/components/Common/Avatar'
 import SocialFeed from '@/components/Social/SocialFeed'
@@ -53,6 +55,23 @@ interface UserProfileProps {
     remixedPosts?: any[]
     followingCount: number
     followersCount: number
+    brandBadge?: {
+      badgeType: 'GOLD' | 'SILVER' | 'BLUE'
+      badgeIconUrl: string | null
+      brand: {
+        id: string
+        name: string
+        logoUrl: string | null
+        verificationStatus: string
+      }
+    } | null
+    affiliatedAccounts?: Array<{
+      id: string
+      firstName: string
+      lastName: string
+      email: string
+      avatar: string | null
+    }>
   }
   currentUser: any
 }
@@ -174,7 +193,8 @@ export default function UserProfile({ user, currentUser }: UserProfileProps) {
       const data = await response.json()
       setAvatar(data.url)
       // Update session to reflect new avatar
-      await updateSession()
+      // Refresh router to update session
+      router.refresh()
       // Small delay before reload to ensure session is updated
       setTimeout(() => {
         window.location.reload()
@@ -208,9 +228,8 @@ export default function UserProfile({ user, currentUser }: UserProfileProps) {
 
       const data = await response.json()
       setCoverPhoto(data.url)
-      // Update session if avatar was also updated
-      const { update } = await import('next-auth/react')
-      await update()
+      // Refresh router to update session
+      router.refresh()
       // Small delay before reload to ensure session is updated
       setTimeout(() => {
         window.location.reload()
@@ -427,10 +446,81 @@ export default function UserProfile({ user, currentUser }: UserProfileProps) {
                     <Check size={14} className="text-black" />
                   </div>
                 )}
+                {/* Brand Badge */}
+                {user.brandBadge && (
+                  <div
+                    className={`px-2 py-1 rounded text-xs font-poppins font-semibold flex items-center space-x-1 ${
+                      user.brandBadge.badgeType === 'GOLD'
+                        ? 'bg-yellow-500 text-yellow-900'
+                        : user.brandBadge.badgeType === 'SILVER'
+                        ? 'bg-gray-400 text-gray-900'
+                        : 'bg-blue-500 text-blue-900'
+                    }`}
+                    title={`Thương hiệu: ${user.brandBadge.brand.name}`}
+                  >
+                    {user.brandBadge.badgeIconUrl ? (
+                      <img
+                        src={user.brandBadge.badgeIconUrl}
+                        alt="Badge"
+                        className="w-4 h-4 rounded"
+                      />
+                    ) : (
+                      <Award size={14} />
+                    )}
+                    <span>{user.brandBadge.badgeType}</span>
+                  </div>
+                )}
               </div>
               <p className="text-bluelock-dark/60 dark:text-gray-500 font-poppins mb-3">{handle}</p>
+              {/* Affiliated Brand */}
+              {user.brandBadge && (
+                <div className="mb-3 p-3 bg-bluelock-light dark:bg-gray-800 rounded-lg border border-bluelock-blue/30 dark:border-gray-700">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Building2 size={16} className="text-bluelock-green" />
+                    <span className="text-sm font-semibold text-bluelock-dark dark:text-white font-poppins">
+                      Liên kết với {user.brandBadge.brand.name}
+                    </span>
+                    {user.brandBadge.brand.verificationStatus === 'APPROVED' && (
+                      <Check size={14} className="text-green-500" />
+                    )}
+                  </div>
+                  {user.brandBadge.brand.logoUrl && (
+                    <img
+                      src={user.brandBadge.brand.logoUrl}
+                      alt={user.brandBadge.brand.name}
+                      className="w-8 h-8 rounded object-cover"
+                    />
+                  )}
+                </div>
+              )}
               {user.bio && (
                 <p className="text-bluelock-dark dark:text-white font-poppins mb-3">{user.bio}</p>
+              )}
+              {/* Affiliated Accounts */}
+              {user.affiliatedAccounts && user.affiliatedAccounts.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-bluelock-dark dark:text-white font-poppins mb-2">
+                    Tài khoản liên kết:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {user.affiliatedAccounts.map((account) => (
+                      <button
+                        key={account.id}
+                        onClick={() => router.push(`/users/${account.id}`)}
+                        className="flex items-center space-x-2 px-3 py-1.5 bg-bluelock-light dark:bg-gray-800 rounded-lg hover:bg-bluelock-light-2 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <Avatar
+                          src={account.avatar}
+                          name={`${account.firstName} ${account.lastName}`}
+                          size="sm"
+                        />
+                        <span className="text-sm font-poppins text-bluelock-dark dark:text-white">
+                          {account.firstName} {account.lastName}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
               <div className="flex items-center space-x-4 text-sm text-bluelock-dark/60 dark:text-gray-500 font-poppins mb-3">
                 {user.phone && (
@@ -501,7 +591,10 @@ export default function UserProfile({ user, currentUser }: UserProfileProps) {
                 initialPosts={user.posts}
                 currentUserId={currentUser?.user?.id || null}
                 isGuest={!currentUser}
-                onInteractionRequired={() => router.push('/login')}
+                onInteractionRequired={() => {
+                  router.push('/login')
+                  return false
+                }}
               />
             )}
             {activeTab !== 'posts' && (

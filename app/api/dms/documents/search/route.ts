@@ -20,21 +20,38 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
-    const searchType = searchParams.get('searchType') || 'hybrid' // 'text' | 'semantic' | 'hybrid'
+    const searchType = searchParams.get('searchType') || 'text' // 'text' | 'semantic' | 'hybrid'
 
     if (!q.trim()) {
       return NextResponse.json({ error: 'Query không được để trống' }, { status: 400 })
     }
 
-    // Try semantic search if enabled
+    // Check if user has Premium or Admin access for AI features
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isPremium: true, role: true },
+    })
+
+    const hasAIAccess = user?.isPremium === true || user?.role === 'ADMIN'
+
+    // Try semantic search if enabled and user has access
     let semanticResults: Array<{ id: string; score: number }> = []
-    if (searchType === 'semantic' || searchType === 'hybrid') {
+    if ((searchType === 'semantic' || searchType === 'hybrid') && hasAIAccess) {
       try {
         semanticResults = await semanticSearch(q)
       } catch (error) {
         console.error('Semantic search error:', error)
         // Continue with text search if semantic fails
       }
+    } else if (searchType === 'semantic' || searchType === 'hybrid') {
+      // User doesn't have access, return error
+      return NextResponse.json(
+        { 
+          error: 'Tính năng AI chỉ dành cho tài khoản Premium và Quản trị viên',
+          requiresPremium: true 
+        },
+        { status: 403 }
+      )
     }
 
     const results: any[] = []

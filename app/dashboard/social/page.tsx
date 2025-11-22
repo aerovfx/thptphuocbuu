@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import SocialFeed from '@/components/Social/SocialFeed'
 import CreatePost from '@/components/Social/CreatePost'
 import SharedLayout from '@/components/Layout/SharedLayout'
-import RightSidebar from '@/components/Layout/RightSidebar'
 
 async function getPosts() {
   // Auto-publish scheduled posts that are due
@@ -78,13 +77,6 @@ export default async function SocialPage() {
     <SharedLayout
       title="Mạng xã hội"
       showCreatePost={true}
-      rightSidebar={
-        <RightSidebar
-          trendingTopics={trendingTopics}
-          currentUser={session}
-          showWhoToFollow={false}
-        />
-      }
     >
       <div className="divide-y divide-gray-800">
         <div className="p-4 border-b border-gray-800" data-create-post>

@@ -3,7 +3,6 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import SharedLayout from '@/components/Layout/SharedLayout'
-import RightSidebar from '@/components/Layout/RightSidebar'
 import OutgoingDocumentDetail from '@/components/DMS/OutgoingDocumentDetail'
 
 async function getDocument(id: string, userId: string, role: string) {
@@ -100,7 +99,6 @@ export default async function OutgoingDocumentDetailPage({
   return (
     <SharedLayout
       title={document.title}
-      rightSidebar={<RightSidebar trendingTopics={trendingTopics} currentUser={session} />}
     >
       <OutgoingDocumentDetail document={document} currentUser={session} />
     </SharedLayout>

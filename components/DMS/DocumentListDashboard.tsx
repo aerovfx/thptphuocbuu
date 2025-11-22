@@ -18,6 +18,7 @@ import {
   User,
   Tag,
 } from "lucide-react";
+import Avatar from '@/components/Common/Avatar';
 
 interface Document {
   id: string;
@@ -41,6 +42,7 @@ interface Document {
       id: string;
       firstName: string;
       lastName: string;
+      avatar: string | null;
     };
     status: string;
     deadline: string | null;
@@ -241,29 +243,6 @@ export default function DocumentListDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white font-poppins">
-            Văn bản đến
-          </h1>
-          <p className="text-sm text-gray-400 mt-1 font-poppins">
-            Quản lý và theo dõi văn bản đến
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            if (typeof window !== 'undefined') {
-              window.location.href = '/dashboard/dms/incoming/upload'
-            }
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-poppins"
-        >
-          <FileText className="w-4 h-4 inline mr-2" />
-          Upload văn bản
-        </button>
-      </div>
-
       {/* Filters */}
       <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -341,125 +320,119 @@ export default function DocumentListDashboard({
               const daysUntilDeadline = getDaysUntilDeadline(doc.deadline);
               const isUrgent = daysUntilDeadline !== null && daysUntilDeadline <= 3;
 
+              // Calculate progress based on status
+              const getProgress = (status: string) => {
+                switch (status) {
+                  case 'PENDING': return 0
+                  case 'PROCESSING': return 33
+                  case 'APPROVED': return 66
+                  case 'COMPLETED': return 100
+                  case 'REJECTED': return 0
+                  case 'ARCHIVED': return 100
+                  default: return 0
+                }
+              }
+
+              const progress = getProgress(doc.status)
+              const primaryAssignee = doc.assignments.length > 0 ? doc.assignments[0].assignedTo : null
+
               return (
                 <div
                   key={doc.id}
-                  className="p-4 hover:bg-gray-800/50 transition-colors cursor-pointer"
+                  className="p-4 hover:bg-gray-800/50 transition-colors cursor-pointer border-b border-gray-800 last:border-b-0"
                   onClick={() => onDocumentClick?.(doc.id)}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       {/* Header */}
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-2 mb-2">
                         {getStatusBadge(doc.status)}
                         {getPriorityBadge(doc.priority)}
-                        {doc.aiCategory && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-500/20 text-purple-400 font-poppins">
-                            <Tag className="w-3 h-3" />
-                            {getTypeLabel(doc.aiCategory)}
-                          </span>
-                        )}
                       </div>
 
                       {/* Title */}
-                      <h3 className="text-lg font-semibold text-white mb-1 font-poppins">
+                      <h3 className="text-base font-semibold text-white mb-2 line-clamp-1 font-poppins">
                         {doc.title}
                       </h3>
 
-                      {/* Document Number */}
-                      {doc.documentNumber && (
-                        <p className="text-sm text-gray-400 mb-2 font-poppins">
-                          Số: {doc.documentNumber}
-                        </p>
-                      )}
-
-                      {/* Summary */}
-                      {doc.summary && (
-                        <p className="text-sm text-gray-400 mb-3 line-clamp-2 font-poppins">
-                          {doc.summary}
-                        </p>
-                      )}
-
-                      {/* Metadata */}
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 font-poppins">
+                      {/* Metadata - Compact */}
+                      <div className="space-y-1 mb-3">
                         {doc.sender && (
-                          <div className="flex items-center gap-1">
-                            <User className="w-4 h-4" />
-                            <span>{doc.sender}</span>
+                          <div className="text-xs text-gray-400 font-poppins">
+                            {doc.sender}
                           </div>
                         )}
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
+                        <div className="flex items-center space-x-4 text-xs text-gray-500 font-poppins">
                           <span>Nhận: {formatDate(doc.receivedDate)}</span>
-                        </div>
-                        {doc.deadline && (
-                          <div
-                            className={`flex items-center gap-1 ${
-                              isUrgent ? "text-red-600 font-medium" : ""
-                            }`}
-                          >
-                            <Clock className="w-4 h-4" />
-                            <span>
+                          {doc.deadline && (
+                            <span className={isUrgent ? "text-red-400 font-medium" : ""}>
                               Hạn: {formatDate(doc.deadline)}
                               {daysUntilDeadline !== null && (
                                 <span className="ml-1">
-                                  ({daysUntilDeadline > 0
-                                    ? `Còn ${daysUntilDeadline} ngày`
-                                    : "Quá hạn"})
+                                  ({daysUntilDeadline > 0 ? `Còn ${daysUntilDeadline} ngày` : "Quá hạn"})
                                 </span>
                               )}
                             </span>
-                          </div>
-                        )}
-                        {doc.ocrConfidence && (
-                          <div className="flex items-center gap-1">
-                            <span>OCR: {Math.round(doc.ocrConfidence * 100)}%</span>
-                          </div>
-                        )}
-                        {doc.aiConfidence && (
-                          <div className="flex items-center gap-1">
-                            <span>AI: {Math.round(doc.aiConfidence * 100)}%</span>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
 
-                      {/* Assignments */}
-                      {doc.assignments.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {doc.assignments.map((assignment) => (
-                            <div
-                              key={assignment.id}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs"
-                            >
-                              <User className="w-3 h-3" />
-                              <span>
-                                {assignment.assignedTo.firstName}{" "}
-                                {assignment.assignedTo.lastName}
-                              </span>
-                            </div>
-                          ))}
+                      {/* Progress Bar */}
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-400 font-poppins">Tiến độ</span>
+                          <span className="text-xs font-semibold text-white font-poppins">{progress}%</span>
                         </div>
-                      )}
+                        <div className="w-full bg-gray-800 rounded-full h-1.5">
+                          <div
+                            className={`h-1.5 rounded-full transition-all ${
+                              progress === 100 ? 'bg-green-500' :
+                              progress >= 66 ? 'bg-blue-500' :
+                              progress >= 33 ? 'bg-yellow-500' :
+                              'bg-gray-600'
+                            }`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 ml-4">
-                      <button
-                        className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onDocumentClick) {
-                            onDocumentClick(doc.id);
-                          } else if (typeof window !== 'undefined') {
-                            window.location.href = `/dashboard/dms/incoming/${doc.id}`;
-                          }
-                        }}
-                        title="Xem chi tiết"
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
-                      <button
-                        className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                    {/* Right Side - Avatar and Actions */}
+                    <div className="flex flex-col items-end gap-3 flex-shrink-0">
+                      {/* Primary Assignee Avatar */}
+                      {primaryAssignee ? (
+                        <div className="relative group">
+                          <Avatar
+                            src={primaryAssignee.avatar}
+                            name={`${primaryAssignee.firstName} ${primaryAssignee.lastName}`}
+                            size="md"
+                          />
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-gray-900"></div>
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center">
+                          <span className="text-xs text-gray-400">?</span>
+                        </div>
+                      )}
+
+                      {/* Action Icons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onDocumentClick) {
+                              onDocumentClick(doc.id);
+                            } else if (typeof window !== 'undefined') {
+                              window.location.href = `/dashboard/dms/incoming/${doc.id}`;
+                            }
+                          }}
+                          title="Xem"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
                         onClick={async (e) => {
                           e.stopPropagation();
                           try {
@@ -491,12 +464,12 @@ export default function DocumentListDashboard({
                             alert('Không thể tải xuống văn bản');
                           }
                         }}
-                        title="Tải xuống"
-                      >
-                        <Download className="w-5 h-5" />
-                      </button>
-                      <button
-                        className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors relative group"
+                          title="Tải xuống"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                        <button
+                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors relative group"
                         onClick={(e) => {
                           e.stopPropagation();
                           // Toggle dropdown menu (simple implementation)
@@ -570,10 +543,11 @@ export default function DocumentListDashboard({
                             document.addEventListener('click', closeMenu);
                           }, 0);
                         }}
-                        title="Thêm tùy chọn"
-                      >
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
+                          title="Thêm tùy chọn"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

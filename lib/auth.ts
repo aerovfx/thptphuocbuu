@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
+import { logger } from './logger'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -13,32 +14,100 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
+        logger.debug('[Auth] authorize called with:', {
+          email: credentials?.email ? `${credentials.email.substring(0, 3)}***` : 'missing',
+          hasPassword: !!credentials?.password,
+        })
+
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email và mật khẩu là bắt buộc')
+          logger.error('[Auth] Missing credentials')
+          return null
         }
 
         try {
+          // Normalize email (trim and lowercase)
+          const normalizedEmail = credentials.email.trim().toLowerCase()
+          // Trim password to ensure consistency with registration and login flows
+          const normalizedPassword = credentials.password.trim()
+          logger.debug(`[Auth] Normalized email: ${normalizedEmail}`)
+
+          // Force reconnect to ensure fresh connection
+          await prisma.$connect()
+
+          // Find user with normalized email
           const user = await prisma.user.findUnique({
-            where: { email: credentials.email }
+            where: { email: normalizedEmail }
           })
 
           if (!user) {
-            throw new Error('Email hoặc mật khẩu không đúng')
+            logger.error(`[Auth] User not found: ${normalizedEmail}`)
+            
+            // Debug: List all users to see what's in DB and check for exact match (dev only)
+            if (process.env.NODE_ENV === 'development') {
+              const allUsers = await prisma.user.findMany({
+                select: { email: true, firstName: true, lastName: true },
+              })
+              logger.debug(`[Auth] Debug: Found ${allUsers.length} total users in DB`)
+              logger.debug(`[Auth] Debug: Searching for normalized: "${normalizedEmail}"`)
+              
+              // Check if email exists with different case
+              const matchingUser = allUsers.find(u => u.email.toLowerCase() === normalizedEmail)
+              if (matchingUser) {
+                logger.debug(`[Auth] Debug: Found user with different case: "${matchingUser.email}"`)
+                // Try to find again with the exact email from DB
+                const userWithExactEmail = await prisma.user.findUnique({
+                  where: { email: matchingUser.email }
+                })
+                if (userWithExactEmail && userWithExactEmail.password) {
+                  logger.debug(`[Auth] Found user using exact email from DB: ${userWithExactEmail.email}`)
+                  // Continue with this user
+                  const isPasswordValid = await bcrypt.compare(
+                    normalizedPassword,
+                    userWithExactEmail.password
+                  )
+                  if (isPasswordValid) {
+                    logger.debug(`[Auth] Password valid for user: ${userWithExactEmail.email}`)
+                    return {
+                      id: userWithExactEmail.id,
+                      email: userWithExactEmail.email,
+                      name: `${userWithExactEmail.firstName} ${userWithExactEmail.lastName}`,
+                      role: userWithExactEmail.role,
+                      image: userWithExactEmail.avatar
+                    }
+                  } else {
+                    logger.error(`[Auth] Invalid password for user: ${userWithExactEmail.email}`)
+                  }
+                }
+              } else {
+                logger.error(`[Auth] No matching user found even with case-insensitive search`)
+              }
+            }
+            
+            return null
           }
+
+          logger.debug(`[Auth] User found: ${user.firstName} ${user.lastName}, Role: ${user.role}`)
 
           // Check if user has password (not OAuth-only user)
           if (!user.password) {
-            throw new Error('Tài khoản này chỉ đăng nhập bằng Google. Vui lòng sử dụng Google để đăng nhập.')
+            logger.error(`[Auth] User has no password: ${normalizedEmail}`)
+            return null
           }
 
+          logger.debug(`[Auth] Comparing password...`)
           const isPasswordValid = await bcrypt.compare(
-            credentials.password,
+            normalizedPassword,
             user.password
           )
 
+          logger.debug(`[Auth] Password valid: ${isPasswordValid}`)
+
           if (!isPasswordValid) {
-            throw new Error('Email hoặc mật khẩu không đúng')
+            logger.error(`[Auth] Invalid password for: ${normalizedEmail}`)
+            return null
           }
+
+          logger.debug(`[Auth] Login successful: ${normalizedEmail}`)
 
           return {
             id: user.id,
@@ -48,7 +117,8 @@ export const authOptions: NextAuthOptions = {
             image: user.avatar
           }
         } catch (error: any) {
-          throw new Error(error.message || 'Đăng nhập thất bại')
+          logger.error('[Auth] Login error:', error)
+          return null
         }
       }
     }),
@@ -159,7 +229,7 @@ export const authOptions: NextAuthOptions = {
             return true
           }
         } catch (error) {
-          console.error('OAuth sign in error:', error)
+          logger.error('OAuth sign in error:', error)
           return false
         }
       }
