@@ -520,6 +520,356 @@ export default function DashboardContent({
             <DocumentChart userId={currentUser.user.id} role={currentUser.user.role} />
           )}
         </div>
+
+        {/* General Report Section */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white font-poppins">Báo cáo tổng quan</h2>
+            <button className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-poppins text-sm flex items-center space-x-2">
+              <Download size={16} />
+              <span>Tải báo cáo</span>
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-poppins mb-1">Tổng giao dịch</p>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 font-poppins">
+                {stats?.incomingDocs || 0}
+              </p>
+              <p className="text-xs text-green-600 dark:text-green-400 font-poppins mt-1 flex items-center">
+                <TrendingUp size={12} className="mr-1" />
+                2% tăng
+              </p>
+            </div>
+            <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800">
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-poppins mb-1">Trường hợp hủy</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400 font-poppins">
+                {stats?.pendingIncoming || 0}
+              </p>
+              <p className="text-xs text-red-600 dark:text-red-400 font-poppins mt-1 flex items-center">
+                <TrendingDown size={12} className="mr-1" />
+                0.1% giảm
+              </p>
+            </div>
+            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-poppins mb-1">Văn bản đến</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400 font-poppins">
+                {stats?.incomingDocs || 0}
+              </p>
+              <p className="text-xs text-green-600 dark:text-green-400 font-poppins mt-1 flex items-center">
+                <TrendingUp size={12} className="mr-1" />
+                49% tăng
+              </p>
+            </div>
+            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-poppins mb-1">Văn bản đi</p>
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 font-poppins">
+                {stats?.outgoingDocs || 0}
+              </p>
+              <p className="text-xs text-green-600 dark:text-green-400 font-poppins mt-1 flex items-center">
+                <TrendingUp size={12} className="mr-1" />
+                52% tăng
+              </p>
+            </div>
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-poppins mb-1">Người dùng mới</p>
+              <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 font-poppins">
+                {stats?.students || stats?.friends || 0}
+              </p>
+              <p className="text-xs text-green-600 dark:text-green-400 font-poppins mt-1 flex items-center">
+                <TrendingUp size={12} className="mr-1" />
+                52% tăng
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-4xl font-bold font-poppins mb-2">
+                  {stats?.completedIncoming || 0}
+                </p>
+                <p className="text-blue-100 font-poppins text-sm mb-4">
+                  Văn bản đã hoàn thành trong tháng này sau các khoản phí liên quan, & trước thuế.
+                </p>
+                <button className="px-4 py-2 bg-white text-blue-600 rounded-lg font-poppins font-semibold hover:bg-blue-50 transition-colors">
+                  Tải báo cáo
+                </button>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold font-poppins mb-1">47%</p>
+                <p className="text-blue-100 font-poppins text-sm">Tăng trưởng</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Weekly Top Documents & Recent Activities & Schedules */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Weekly Top Documents */}
+          <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white font-poppins">Văn bản hàng tuần</h2>
+                <div className="flex items-center space-x-2">
+                  <button className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-poppins hover:bg-gray-200 dark:hover:bg-gray-700">
+                    Xuất Excel
+                  </button>
+                  <button className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-poppins hover:bg-gray-200 dark:hover:bg-gray-700">
+                    Xuất PDF
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-poppins">Hình ảnh</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-poppins">Tên văn bản</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-poppins">Trạng thái</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-poppins">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                  {(stats?.recentDocuments || []).slice(0, 5).map((doc: any) => (
+                    <tr key={doc.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                          <FileText className="text-blue-600 dark:text-blue-400" size={20} />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white font-poppins">
+                          {doc.title || 'Văn bản không có tiêu đề'}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 font-poppins">
+                          {doc.createdBy?.firstName} {doc.createdBy?.lastName}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full font-poppins ${
+                          doc.status === 'COMPLETED' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : doc.status === 'PENDING'
+                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+                        }`}>
+                          {doc.status === 'COMPLETED' ? 'Hoàn thành' : doc.status === 'PENDING' ? 'Chờ xử lý' : doc.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                        <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-poppins mr-3">
+                          Sửa
+                        </button>
+                        <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 font-poppins">
+                          Xóa
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {(!stats?.recentDocuments || stats.recentDocuments.length === 0) && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400 font-poppins">
+                        Chưa có văn bản nào
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-poppins">Hiển thị 1-5 của {(stats?.recentDocuments || []).length}</p>
+              <div className="flex space-x-2">
+                <button className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded-lg font-poppins hover:bg-gray-50 dark:hover:bg-gray-800">
+                  Trước
+                </button>
+                <button className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded-lg font-poppins hover:bg-gray-50 dark:hover:bg-gray-800">
+                  Sau
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Schedules */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white font-poppins">Lịch trình</h2>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="text-center mb-4">
+                  <p className="text-lg font-bold text-gray-900 dark:text-white font-poppins">
+                    {new Date().toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="grid grid-cols-7 gap-1 mb-4">
+                  {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day) => (
+                    <div key={day} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 font-poppins py-2">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: 35 }).map((_, i) => {
+                    const date = new Date()
+                    date.setDate(1)
+                    date.setDate(date.getDate() + i - date.getDay())
+                    const day = date.getDate()
+                    const isToday = date.toDateString() === new Date().toDateString()
+                    const hasTask = (stats?.upcomingTasks || []).some((task: any) => {
+                      if (!task.dueDate) return false
+                      const taskDate = new Date(task.dueDate)
+                      return taskDate.toDateString() === date.toDateString()
+                    })
+                    
+                    return (
+                      <div
+                        key={i}
+                        className={`text-center text-sm font-poppins py-2 ${
+                          isToday
+                            ? 'bg-blue-500 text-white rounded-lg'
+                            : hasTask
+                            ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 rounded-lg'
+                            : 'text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        {day > 0 && day <= 31 ? day : ''}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="space-y-3 mt-6">
+                {(stats?.upcomingTasks || []).slice(0, 5).map((task: any) => (
+                  <div key={task.id} className="flex items-start space-x-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white font-poppins">
+                        {task.title}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-poppins">
+                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString('vi-VN') : 'Không có hạn'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {(!stats?.upcomingTasks || stats.upcomingTasks.length === 0) && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 font-poppins text-center py-4">
+                    Không có lịch trình
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activities & Transactions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Recent Activities */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white font-poppins">Hoạt động gần đây</h2>
+            </div>
+            <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
+              {(stats?.recentActivities || []).slice(0, 10).map((activity: any) => (
+                <div key={activity.id} className="flex items-start space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                    {activity.user?.avatar ? (
+                      <img src={activity.user.avatar} alt="" className="w-10 h-10 rounded-full" />
+                    ) : (
+                      <span className="text-blue-600 dark:text-blue-400 font-poppins font-semibold">
+                        {activity.user?.firstName?.[0] || 'U'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-900 dark:text-white font-poppins">
+                      <span className="font-semibold">
+                        {activity.user?.firstName} {activity.user?.lastName}
+                      </span>
+                      {' '}
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {activity.action === 'CREATE' ? 'đã tạo' : activity.action === 'UPDATE' ? 'đã cập nhật' : activity.action === 'APPROVE' ? 'đã phê duyệt' : 'đã thực hiện'}
+                      </span>
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-poppins mt-1">
+                      {new Date(activity.createdAt).toLocaleString('vi-VN')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {(!stats?.recentActivities || stats.recentActivities.length === 0) && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-poppins text-center py-8">
+                  Chưa có hoạt động nào
+                </p>
+              )}
+              {(stats?.recentActivities || []).length > 10 && (
+                <button className="w-full mt-4 px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg font-poppins">
+                  Xem thêm
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Transactions */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white font-poppins">Giao dịch</h2>
+            </div>
+            <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
+              {(stats?.recentDocuments || []).slice(0, 10).map((doc: any) => (
+                <div key={doc.id} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                      {doc.createdBy?.avatar ? (
+                        <img src={doc.createdBy.avatar} alt="" className="w-10 h-10 rounded-full" />
+                      ) : (
+                        <span className="text-green-600 dark:text-green-400 font-poppins font-semibold">
+                          {doc.createdBy?.firstName?.[0] || 'U'}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white font-poppins">
+                        {doc.createdBy?.firstName} {doc.createdBy?.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-poppins">
+                        {new Date(doc.createdAt).toLocaleDateString('vi-VN')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-semibold font-poppins ${
+                      doc.status === 'COMPLETED' 
+                        ? 'text-green-600 dark:text-green-400'
+                        : doc.status === 'PENDING'
+                        ? 'text-yellow-600 dark:text-yellow-400'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      {doc.status === 'COMPLETED' ? '+' : doc.status === 'PENDING' ? '~' : '-'}
+                      {doc.status === 'COMPLETED' ? '100' : doc.status === 'PENDING' ? '0' : '0'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-poppins">
+                      {doc.status === 'COMPLETED' ? 'Hoàn thành' : doc.status === 'PENDING' ? 'Chờ xử lý' : doc.status}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {(!stats?.recentDocuments || stats.recentDocuments.length === 0) && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-poppins text-center py-8">
+                  Chưa có giao dịch nào
+                </p>
+              )}
+              {(stats?.recentDocuments || []).length > 10 && (
+                <button className="w-full mt-4 px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg font-poppins">
+                  Xem thêm
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </SharedLayout>
   )

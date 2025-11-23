@@ -12,6 +12,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx scripts/seed.ts",
     "create-admin": "tsx scripts/create-admin.ts",
+    "check-env": "tsx scripts/check-environment.ts",
     "analyze": "ANALYZE=true next build",
     "deploy": "./deploy.sh",
     "docker:build": "docker build -t gcr.io/gen-lang-client-0712182643/phuocbuu:latest .",

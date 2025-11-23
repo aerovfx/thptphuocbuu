@@ -27,6 +27,7 @@ import {
   Globe,
 } from 'lucide-react'
 import Avatar from '../Common/Avatar'
+import ThemeToggle from '../Common/ThemeToggle'
 
 interface Class {
   id: string
@@ -265,54 +266,53 @@ export default function ClassesPageContent({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 w-full">
+    <div className="min-h-screen bg-gray-50 dark:bg-black w-full transition-colors duration-300">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 transition-colors duration-300">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="text-sm text-gray-500 font-poppins mb-1">
+              <div className="text-sm text-gray-500 dark:text-gray-400 font-poppins mb-1">
                 Dashboard
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 font-poppins flex items-center">
-                <button
-                  onClick={handleBackClick}
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white font-poppins flex items-center">
+                <Link
+                  href="/dashboard"
                   className="mr-2 hover:text-blue-600 transition-colors cursor-pointer"
                   aria-label="Quay lại dashboard"
-                  type="button"
                 >
                   ←
-                </button>
+                </Link>
                 Classes
               </h1>
             </div>
             <div className="flex items-center space-x-4">
               <button 
                 onClick={handleSearchClick}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 aria-label="Search"
               >
-                <Search size={20} className="text-gray-600" />
+                <Search size={20} className="text-gray-600 dark:text-gray-400" />
               </button>
               <button 
                 onClick={handleNotificationClick}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors relative"
                 aria-label="Notifications"
               >
-                <Bell size={20} className="text-gray-600" />
+                <Bell size={20} className="text-gray-600 dark:text-gray-400" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
               <button 
                 onClick={handleSettingsClick}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors relative"
                 aria-label="Settings"
               >
-                <Settings size={20} className="text-gray-600" />
+                <Settings size={20} className="text-gray-600 dark:text-gray-400" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
               <div 
                 onClick={handleUserMenuClick}
-                className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
+                className="flex items-center space-x-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-colors"
               >
                 <Avatar
                   src={currentUser.user.image}
@@ -320,17 +320,17 @@ export default function ClassesPageContent({
                   size="sm"
                 />
                 <div className="text-left">
-                  <div className="text-sm font-medium text-gray-900 font-poppins">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white font-poppins">
                     {currentUser.user.name?.split(' ')[0] || 'User'}
                   </div>
-                  <div className="text-xs text-gray-500 font-poppins">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 font-poppins">
                     {currentUser.user.role === 'ADMIN' && 'Admin'}
                     {currentUser.user.role === 'TEACHER' && 'Teacher'}
                     {currentUser.user.role === 'STUDENT' && 'Student'}
                     {currentUser.user.role === 'PARENT' && 'Parent'}
                   </div>
                 </div>
-                <ChevronDown size={16} className="text-gray-600" />
+                <ChevronDown size={16} className="text-gray-600 dark:text-gray-400" />
               </div>
             </div>
           </div>
@@ -340,8 +340,8 @@ export default function ClassesPageContent({
                 onClick={() => handleViewModeChange('grid')}
                 className={`p-2 rounded-lg transition-colors ${
                   viewMode === 'grid'
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'hover:bg-gray-100 text-gray-600'
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
                 }`}
                 aria-label="Grid view"
                 type="button"
@@ -352,8 +352,8 @@ export default function ClassesPageContent({
                 onClick={() => handleViewModeChange('list')}
                 className={`p-2 rounded-lg transition-colors ${
                   viewMode === 'list'
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'hover:bg-gray-100 text-gray-600'
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
                 }`}
                 aria-label="List view"
                 type="button"
@@ -364,8 +364,8 @@ export default function ClassesPageContent({
                 onClick={handleFilterClick}
                 className={`p-2 rounded-lg transition-colors ${
                   showFilter
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'hover:bg-gray-100 text-gray-600'
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
                 }`}
                 aria-label="Filter"
                 type="button"
@@ -389,7 +389,7 @@ export default function ClassesPageContent({
 
       {/* Search Bar */}
       {showSearch && (
-        <div className="px-6 py-4 bg-white border-b border-gray-200">
+        <div className="px-6 py-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 transition-colors duration-300">
           <div className="max-w-md">
             <input
               type="text"
@@ -397,7 +397,7 @@ export default function ClassesPageContent({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-poppins"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-poppins bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors duration-300"
               autoFocus
             />
           </div>
@@ -406,15 +406,15 @@ export default function ClassesPageContent({
 
       {/* Filter Panel */}
       {showFilter && (
-        <div className="px-6 py-4 bg-white border-b border-gray-200">
+        <div className="px-6 py-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 transition-colors duration-300">
           <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium text-gray-700 font-poppins">Lọc theo:</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 font-poppins">Lọc theo:</span>
             <button 
               onClick={() => handleFilterStatusChange('all')}
               className={`px-4 py-2 text-sm rounded-lg font-poppins transition-colors ${
                 filterStatus === 'all'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
               type="button"
             >
@@ -424,8 +424,8 @@ export default function ClassesPageContent({
               onClick={() => handleFilterStatusChange('active')}
               className={`px-4 py-2 text-sm rounded-lg font-poppins transition-colors ${
                 filterStatus === 'active'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
               type="button"
             >
@@ -435,8 +435,8 @@ export default function ClassesPageContent({
               onClick={() => handleFilterStatusChange('completed')}
               className={`px-4 py-2 text-sm rounded-lg font-poppins transition-colors ${
                 filterStatus === 'completed'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
               type="button"
             >
@@ -465,7 +465,7 @@ export default function ClassesPageContent({
                 <Link
                   key={cls.id}
                   href={`/dashboard/classes/${cls.id}`}
-                  className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border-2 border-gray-200 hover:border-gray-300 overflow-hidden relative"
+                  className="bg-white dark:bg-gray-900 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border-2 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 overflow-hidden relative"
                 >
                   {/* Gradient graphic on left side */}
                   <div className={`absolute left-0 top-0 w-24 h-full bg-gradient-to-br ${getGradientColor(index)} opacity-20`}></div>
@@ -481,7 +481,7 @@ export default function ClassesPageContent({
                       <div className="relative" ref={setMenuRef(cls.id)}>
                         <button
                           onClick={(e) => handleClassMenuClick(e, cls.id)}
-                          className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                           aria-label="Class menu"
                           type="button"
                         >
@@ -496,7 +496,7 @@ export default function ClassesPageContent({
                                 handleViewClass(cls.id)
                                 setSelectedClassMenu(null)
                               }}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-poppins"
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-poppins"
                               type="button"
                             >
                               Xem chi tiết
@@ -510,7 +510,7 @@ export default function ClassesPageContent({
                                     handleEditClass(cls.id)
                                     setSelectedClassMenu(null)
                                   }}
-                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-poppins"
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-poppins"
                                   type="button"
                                 >
                                   Chỉnh sửa
@@ -533,18 +533,18 @@ export default function ClassesPageContent({
                         )}
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500 font-poppins mb-2 font-medium">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 font-poppins mb-2 font-medium">
                       {cls._count.enrollments} Trainees • {cls._count.materials} Materials
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 font-poppins mb-3">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white font-poppins mb-3">
                       {cls.name}
                     </h3>
-                    <p className="text-sm text-gray-600 font-poppins mb-4 line-clamp-2 leading-relaxed">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 font-poppins mb-4 line-clamp-2 leading-relaxed">
                       {cls.description || 'No description available'}
                     </p>
                     <div className="mb-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-gray-700 font-poppins">
+                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 font-poppins">
                           Class Progress
                         </span>
                       </div>
@@ -569,9 +569,9 @@ export default function ClassesPageContent({
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between pt-4 border-t-2 border-gray-200">
+                    <div className="flex items-center justify-between pt-4 border-t-2 border-gray-200 dark:border-gray-700">
                       <div>
-                        <div className="text-xs text-gray-500 font-poppins mb-2 font-medium">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 font-poppins mb-2 font-medium">
                           Trainees
                         </div>
                         <div className="flex items-center -space-x-2">
@@ -596,14 +596,14 @@ export default function ClassesPageContent({
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs text-gray-500 font-poppins mb-2 font-medium">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 font-poppins mb-2 font-medium">
                           Instructor
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow-sm">
+                          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white dark:border-gray-900 shadow-sm">
                             {getInitials(cls.teacher.firstName, cls.teacher.lastName).charAt(0)}
                           </div>
-                          <span className="text-sm font-semibold text-gray-900 font-poppins">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white font-poppins">
                             {cls.teacher.firstName.charAt(0)} {cls.teacher.lastName}
                           </span>
                         </div>
@@ -619,7 +619,7 @@ export default function ClassesPageContent({
         {/* All Classes */}
         {allClasses.length > 0 && (
           <div>
-            <h2 className="text-xl font-bold text-gray-900 font-poppins mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white font-poppins mb-6">
               All Classes
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -627,7 +627,7 @@ export default function ClassesPageContent({
                 <Link
                   key={cls.id}
                   href={`/dashboard/classes/${cls.id}`}
-                  className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-4 border-2 border-gray-200 hover:border-gray-300 relative overflow-hidden"
+                  className="bg-white dark:bg-gray-900 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-4 border-2 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 relative overflow-hidden"
                 >
                   {/* Gradient graphic */}
                   <div className={`absolute left-0 top-0 w-16 h-16 bg-gradient-to-br ${getGradientColor(index + 2)} opacity-20 rounded-br-2xl`}></div>
@@ -643,7 +643,7 @@ export default function ClassesPageContent({
                       <div className="relative" ref={setMenuRef(cls.id)}>
                         <button
                           onClick={(e) => handleClassMenuClick(e, cls.id)}
-                          className="p-1 hover:bg-gray-100 rounded-lg transition-colors z-20 relative"
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors z-20 relative"
                           aria-label="Class menu"
                           type="button"
                         >
@@ -658,7 +658,7 @@ export default function ClassesPageContent({
                                 handleViewClass(cls.id)
                                 setSelectedClassMenu(null)
                               }}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-poppins"
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-poppins"
                               type="button"
                             >
                               Xem chi tiết
@@ -672,7 +672,7 @@ export default function ClassesPageContent({
                                     handleEditClass(cls.id)
                                     setSelectedClassMenu(null)
                                   }}
-                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-poppins"
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-poppins"
                                   type="button"
                                 >
                                   Chỉnh sửa
@@ -701,10 +701,10 @@ export default function ClassesPageContent({
                       <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-sm"></div>
                     </div>
                     
-                    <div className="text-xs text-gray-500 font-poppins mb-2 font-medium">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 font-poppins mb-2 font-medium">
                       {cls._count.enrollments} Trainees • {cls._count.materials} Materials
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 font-poppins mb-3 line-clamp-1">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white font-poppins mb-3 line-clamp-1">
                       {cls.name}
                     </h3>
                     
@@ -715,15 +715,15 @@ export default function ClassesPageContent({
                     </div>
                     
                     <div>
-                      <div className="text-xs text-gray-500 font-poppins mb-1.5 font-medium">Trainees</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 font-poppins mb-1.5 font-medium">Trainees</div>
                       <div className="flex items-center -space-x-2">
-                        <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-bold border-2 border-white shadow-sm">
+                        <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-bold border-2 border-white dark:border-gray-900 shadow-sm">
                           J
                         </div>
-                        <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-[10px] font-bold border-2 border-white shadow-sm">
+                        <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-[10px] font-bold border-2 border-white dark:border-gray-900 shadow-sm">
                           G
                         </div>
-                        <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 text-[10px] font-bold border-2 border-white shadow-sm">
+                        <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 text-[10px] font-bold border-2 border-white dark:border-gray-900 shadow-sm">
                           +{Math.max(0, cls._count.enrollments - 2)}
                         </div>
                       </div>
@@ -738,7 +738,7 @@ export default function ClassesPageContent({
         {/* Empty State */}
         {filteredClasses.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-gray-400 text-lg font-poppins mb-2">
+            <div className="text-gray-400 dark:text-gray-500 text-lg font-poppins mb-2">
               No classes found
             </div>
             {canCreate && (
@@ -753,6 +753,7 @@ export default function ClassesPageContent({
           </div>
         )}
       </div>
+      <ThemeToggle />
     </div>
   )
 }

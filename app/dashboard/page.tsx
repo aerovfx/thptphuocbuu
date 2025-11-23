@@ -30,6 +30,11 @@ async function getStats(userId: string, role: string) {
       assignments,
       completedAssignments,
       activeTasks,
+      // Additional data for comprehensive dashboard
+      recentDocuments,
+      recentActivities,
+      upcomingTasks,
+      recentUsers,
     ] = await Promise.all([
       isAdmin 
         ? prisma.class.count()
@@ -106,6 +111,123 @@ async function getStats(userId: string, role: string) {
               status: true,
             },
           }),
+      // Recent documents (top 10 by activity)
+      isAdmin
+        ? prisma.incomingDocument.findMany({
+            take: 10,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              createdBy: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+            },
+          })
+        : prisma.incomingDocument.findMany({
+            where: { createdById: userId },
+            take: 10,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              createdBy: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+            },
+          }),
+      // Recent activities (from audit logs, posts, comments)
+      isAdmin
+        ? prisma.auditLog.findMany({
+            take: 20,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+            },
+          }).catch(() => [] as any[])
+        : prisma.auditLog.findMany({
+            where: { userId },
+            take: 20,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+            },
+          }).catch(() => [] as any[]),
+      // Upcoming tasks (for calendar/schedule)
+      isAdmin
+        ? prisma.task.findMany({
+            where: {
+              status: { not: 'COMPLETED' },
+              dueDate: { gte: now },
+            },
+            take: 20,
+            orderBy: { dueDate: 'asc' },
+            include: {
+              assignee: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+            },
+          }).catch(() => [] as any[])
+        : prisma.task.findMany({
+            where: {
+              assigneeId: userId,
+              status: { not: 'COMPLETED' },
+              dueDate: { gte: now },
+            },
+            take: 20,
+            orderBy: { dueDate: 'asc' },
+            include: {
+              assignee: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+            },
+          }).catch(() => [] as any[]),
+      // Recent users (for activity feed)
+      isAdmin
+        ? prisma.user.findMany({
+            take: 10,
+            orderBy: { createdAt: 'desc' },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+              email: true,
+              role: true,
+              createdAt: true,
+            },
+          })
+        : [],
     ])
 
     // Calculate average progress for active tasks
@@ -150,6 +272,10 @@ async function getStats(userId: string, role: string) {
       assignments,
       completedAssignments,
       workProgress: averageProgress,
+      recentDocuments: recentDocuments || [],
+      recentActivities: recentActivities || [],
+      upcomingTasks: upcomingTasks || [],
+      recentUsers: recentUsers || [],
     }
   } else if (role === 'STUDENT') {
     // Count friendships separately for one-way relationship model (user1Id follows user2Id)
