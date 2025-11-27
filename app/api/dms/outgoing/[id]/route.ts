@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { syncDocumentToSpacesAndDepartments, getDocumentSpacesAndDepartments } from '@/lib/document-sync'
 import { z } from 'zod'
 
 const updateSchema = z.object({
@@ -143,6 +144,12 @@ export async function PUT(
       updateData.sendDate = validatedData.sendDate ? new Date(validatedData.sendDate) : null
     }
     if (validatedData.template) updateData.template = validatedData.template
+    if (validatedData.targetSpaces !== undefined) {
+      // Convert to JSON string if array
+      updateData.targetSpaces = Array.isArray(validatedData.targetSpaces)
+        ? JSON.stringify(validatedData.targetSpaces)
+        : validatedData.targetSpaces
+    }
 
     const document = await prisma.outgoingDocument.update({
       where: { id },
@@ -157,6 +164,45 @@ export async function PUT(
         },
       },
     })
+
+    // Sync với spaces nếu targetSpaces thay đổi
+    if (validatedData.targetSpaces !== undefined) {
+      try {
+        // Lấy spaces hiện tại
+        const currentLinks = await getDocumentSpacesAndDepartments(id, 'OUTGOING')
+        const currentSpaceIds = currentLinks.spaces.map((s: any) => s.id)
+
+        // Parse targetSpaces mới
+        let newSpaceIds: string[] = []
+        if (document.targetSpaces) {
+          try {
+            const parsed = typeof document.targetSpaces === 'string' 
+              ? JSON.parse(document.targetSpaces) 
+              : document.targetSpaces
+            newSpaceIds = Array.isArray(parsed) ? parsed : []
+          } catch (e) {
+            console.warn('Failed to parse targetSpaces:', document.targetSpaces)
+          }
+        }
+
+        // Tìm spaces cần thêm và xóa
+        const spacesToAdd = newSpaceIds.filter((sid) => !currentSpaceIds.includes(sid))
+        const spacesToRemove = currentSpaceIds.filter((sid) => !newSpaceIds.includes(sid))
+
+        // Đồng bộ
+        if (spacesToAdd.length > 0 || spacesToRemove.length > 0) {
+          await syncDocumentToSpacesAndDepartments({
+            documentId: id,
+            documentType: 'OUTGOING',
+            spaceIds: spacesToAdd,
+            removeFromSpaces: spacesToRemove,
+          })
+        }
+      } catch (syncError) {
+        console.error('Error syncing document spaces after update:', syncError)
+        // Không throw error, chỉ log
+      }
+    }
 
     return NextResponse.json(document)
   } catch (error) {

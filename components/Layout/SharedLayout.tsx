@@ -20,6 +20,8 @@ import {
   LayoutDashboard,
   Crown,
   Shield,
+  Building2,
+  Briefcase,
 } from 'lucide-react'
 import Avatar from '../Common/Avatar'
 import ThemeToggle from '../Common/ThemeToggle'
@@ -41,12 +43,37 @@ export default function SharedLayout({
   showCreatePost = false,
   title,
 }: SharedLayoutProps) {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
-  const currentUser = session
+  const [mounted, setMounted] = useState(false)
+  const [clientPathname, setClientPathname] = useState<string | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  
+  // Ensure client-side only rendering to avoid hydration mismatch
+  // Use two separate effects to ensure proper timing
+  useEffect(() => {
+    // First, set mounted after initial render
+    setMounted(true)
+  }, [])
+  
+  useEffect(() => {
+    // Then, set clientPathname only after mounted is true
+    if (mounted) {
+      setClientPathname(pathname)
+    }
+  }, [mounted, pathname])
+  
+  // Only use session after mount and when status is not loading to avoid hydration mismatch
+  // On server, status is typically 'loading', so we treat as no session
+  const currentUser = mounted && status !== 'loading' ? session : null
+  const isAuthenticated = mounted && status === 'authenticated'
+  
+  // Use clientPathname instead of pathname to avoid hydration mismatch
+  // Only use clientPathname after component has fully mounted AND clientPathname is set
+  // This ensures server and client initial render are identical
+  const effectivePathname = mounted && clientPathname ? clientPathname : null
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -76,7 +103,7 @@ export default function SharedLayout({
     { name: 'Tin nhắn', href: '/messages', icon: Mail, requireAuth: true },
     { name: 'Dấu trang', href: '/bookmarks', icon: Bookmark, requireAuth: true },
     { name: 'Premium', href: '/dashboard/premium', icon: Crown, requireAuth: true },
-    { name: 'Hồ sơ', href: currentUser ? '/dashboard' : '/login', icon: User },
+    { name: 'Hồ sơ', href: '/dashboard/profile', icon: User, requireAuth: true },
   ]
 
   const dashboardNavigation: Array<{
@@ -90,19 +117,48 @@ export default function SharedLayout({
     { name: 'Lớp học', href: '/dashboard/classes', icon: BookOpen },
     { name: 'Mạng xã hội', href: '/dashboard/social', icon: MessageSquare },
     { name: 'Văn bản', href: '/dashboard/documents', icon: FileText },
+    { name: 'Spaces', href: '/dashboard/spaces', icon: Building2, requireAuth: true },
+    { name: 'Tổ chuyên môn', href: '/dashboard/departments', icon: Briefcase, requireAuth: true },
     { name: 'Người dùng', href: '/dashboard/users', icon: Users },
     { name: 'Premium', href: '/dashboard/premium', icon: Crown, requireAuth: true },
     { name: 'Cài đặt', href: '/dashboard/settings', icon: Settings },
     { name: 'Admin Panel', href: '/dashboard/admin', icon: Shield, adminOnly: true },
   ]
 
-  const isDashboard = pathname?.startsWith('/dashboard')
+  // Use pathname to determine navigation items
+  // CRITICAL: Always use dashboardNavigation on initial render (both server and client)
+  // to ensure hydration consistency. Only switch to navigation after mount and
+  // confirmation that pathname is not a dashboard route.
+  // 
+  // On server: mounted = false -> use dashboardNavigation
+  // On client initial: mounted = false -> use dashboardNavigation (must match server)
+  // On client after mount: mounted = true, clientPathname has value -> can safely switch based on pathname
+  // 
+  // IMPORTANT: We use a memoized value to ensure navItems is stable during initial render
   const navItems: Array<{
     name: string
     href: string
     icon: any
     requireAuth?: boolean
-  }> = isDashboard ? dashboardNavigation : navigation
+    adminOnly?: boolean
+  }> = (() => {
+    // CRITICAL: Always use dashboardNavigation until component is fully mounted
+    // This ensures server and client initial render are identical
+    // We only check mounted, not clientPathname, to avoid any timing issues
+    // clientPathname will be null on both server and client initial render
+    if (!mounted) {
+      return dashboardNavigation
+    }
+    
+    // After mount, check clientPathname to decide
+    // Only switch if we're sure we're not on a dashboard route
+    if (clientPathname && !clientPathname.startsWith('/dashboard')) {
+      return navigation
+    }
+    
+    // Default to dashboardNavigation for all dashboard routes or when clientPathname is null
+    return dashboardNavigation
+  })()
 
   const handlePostClick = () => {
     if (currentUser) {
@@ -129,32 +185,80 @@ export default function SharedLayout({
               <Logo size={40} className="cursor-pointer" />
             </div>
 
-            <nav className="space-y-2 flex-1">
-              {navItems
-                .filter((item) => {
-                  // Only show admin-only items to ADMIN users
-                  if ((item as any).adminOnly && session?.user?.role !== 'ADMIN') {
-                    return false
-                  }
-                  return true
-                })
-                .map((item) => {
-                  const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
-                  const isDisabled = (item.requireAuth === true) && !currentUser
+            <nav className="space-y-2 flex-1" suppressHydrationWarning>
+              {(() => {
+                // CRITICAL: Filter items consistently on both server and client
+                // On server or before mount, show all items to ensure hydration match
+                // After mount, filter admin-only items based on user role
+                const filteredItems = !mounted
+                  ? navItems // Show all items on server and initial client render
+                  : navItems.filter((item) => {
+                      const isAdminOnly = (item as any).adminOnly === true
+                      if (isAdminOnly) {
+                        // Only show admin-only items to ADMIN users after mount
+                        return status === 'authenticated' && session?.user?.role === 'ADMIN'
+                      }
+                      return true
+                    })
 
+                return filteredItems.map((item) => {
+                  // Calculate isActive only after mount to ensure consistency
+                  // On server, always use false to match initial client render
+                  const isActive = mounted && effectivePathname 
+                    ? (effectivePathname === item.href || effectivePathname.startsWith(item.href + '/')) 
+                    : false
+                  const requiresAuth = item.requireAuth === true
+                  const isDisabled = mounted && status === 'unauthenticated' && requiresAuth
+
+                  // Build className string consistently - use static classes on server
+                  // Only add dynamic classes after mount to avoid hydration mismatch
+                  // CRITICAL: Must be identical on server and initial client render
+                  const baseClasses = 'flex items-center space-x-4 px-4 py-3 rounded-full hover:bg-bluelock-light-2 dark:hover:bg-gray-900 transition-colors font-poppins'
+                  
+                  // On server or before mount, use static classes only
+                  if (!mounted) {
+                    const staticClassName = `${baseClasses} text-bluelock-dark dark:text-white`.trim()
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={staticClassName}
+                        suppressHydrationWarning
+                      >
+                        <item.icon size={24} />
+                        <span>{item.name}</span>
+                      </Link>
+                    )
+                  }
+                  
+                  // After mount, use dynamic classes
+                  const activeClasses = isActive 
+                    ? 'font-bold text-bluelock-green dark:text-white' 
+                    : 'text-bluelock-dark dark:text-white'
+                  const disabledClasses = isDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                  const className = `${baseClasses} ${activeClasses} ${disabledClasses}`.trim()
+
+                  // After mount, render with dynamic behavior
                   return (
                     <Link
                       key={item.name}
-                      href={isDisabled ? '/login' : item.href}
-                      className={`flex items-center space-x-4 px-4 py-3 rounded-full hover:bg-bluelock-light-2 dark:hover:bg-gray-900 transition-colors font-poppins ${
-                        isActive ? 'font-bold text-bluelock-green dark:text-white' : 'text-bluelock-dark dark:text-white'
-                      } ${isDisabled ? 'opacity-50' : ''}`}
+                      href={item.href}
+                      onClick={(e) => {
+                        // Check auth on click - only redirect if we're sure user is not authenticated
+                        if (requiresAuth && status === 'unauthenticated') {
+                          e.preventDefault()
+                          router.push('/login')
+                        }
+                      }}
+                      className={className}
+                      suppressHydrationWarning
                     >
-                    <item.icon size={24} />
-                    <span>{item.name}</span>
-                  </Link>
-                )
-              })}
+                      <item.icon size={24} />
+                      <span>{item.name}</span>
+                    </Link>
+                  )
+                })
+              })()}
             </nav>
 
             {currentUser ? (

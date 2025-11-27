@@ -16,10 +16,34 @@ export async function POST(request: Request) {
 
     const normalizedEmail = email.trim().toLowerCase()
 
+    // Ensure Prisma connection
+    try {
+      await prisma.$connect()
+    } catch (connectError: any) {
+      console.error('Prisma connection error:', connectError)
+      // Continue anyway, Prisma might already be connected
+    }
+
     // Find user
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    })
+    let user
+    try {
+      user = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        select: {
+          id: true,
+          email: true,
+          resetPasswordToken: true,
+          resetPasswordExpires: true,
+        },
+      })
+    } catch (queryError: any) {
+      console.error('Prisma query error:', queryError)
+      // If it's a table not found error, provide helpful message
+      if (queryError?.message?.includes('does not exist')) {
+        throw new Error(`Database table error: ${queryError.message}. Please run: npx prisma db push`)
+      }
+      throw queryError
+    }
 
     // Always return success to prevent email enumeration
     // But only create token if user exists
@@ -29,13 +53,22 @@ export async function POST(request: Request) {
       const resetTokenExpires = new Date(Date.now() + 3600000) // 1 hour from now
 
       // Save reset token to database
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          resetPasswordToken: resetToken,
-          resetPasswordExpires: resetTokenExpires,
-        },
-      })
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            resetPasswordToken: resetToken,
+            resetPasswordExpires: resetTokenExpires,
+          },
+        })
+      } catch (updateError: any) {
+        console.error('Prisma update error:', updateError)
+        // If it's a table not found error, provide helpful message
+        if (updateError?.message?.includes('does not exist')) {
+          throw new Error(`Database table error: ${updateError.message}. Please run: npx prisma db push`)
+        }
+        throw updateError
+      }
 
       // In development, log the reset link
       if (process.env.NODE_ENV === 'development') {
@@ -58,7 +91,21 @@ export async function POST(request: Request) {
       message: 'Nếu email tồn tại trong hệ thống, bạn sẽ nhận được link đặt lại mật khẩu.',
     })
   } catch (error: any) {
+    console.error('Forgot password error:', error)
     logger.error('Forgot password error:', error)
+    
+    // Check if it's a Prisma error about missing table
+    if (error?.message?.includes('does not exist')) {
+      console.error('Database table missing. Please run: npx prisma db push')
+      return NextResponse.json(
+        { 
+          error: 'Lỗi cấu hình database. Vui lòng liên hệ quản trị viên.',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        },
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json(
       { 
         error: 'Đã xảy ra lỗi. Vui lòng thử lại sau.',

@@ -67,24 +67,22 @@ export default function LoginPage() {
         const errorMsg = result.error
         console.error('Login error:', errorMsg)
         
-        if (errorMsg.includes('Email hoặc mật khẩu')) {
+        // Map NextAuth error codes to user-friendly messages
+        if (errorMsg === 'CredentialsSignin') {
+          setError('Email hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.')
+        } else if (errorMsg.includes('Email hoặc mật khẩu')) {
           setError(errorMsg)
         } else if (errorMsg.includes('OAuth')) {
           setError('Tài khoản này chỉ đăng nhập bằng Google.')
-        } else if (errorMsg === 'CredentialsSignin') {
-          setError('Email hoặc mật khẩu không đúng')
+        } else if (errorMsg.includes('SessionRequired')) {
+          setError('Vui lòng đăng nhập để tiếp tục.')
         } else {
-          setError(errorMsg || 'Email hoặc mật khẩu không đúng')
+          setError('Email hoặc mật khẩu không đúng. Vui lòng thử lại.')
         }
       } else if (result?.ok) {
-        // Verify session before redirect
-        const session = await getSession()
-        if (session) {
-          router.push('/dashboard')
-          router.refresh()
-        } else {
-          setError('Đăng nhập thành công nhưng không thể tạo session. Vui lòng thử lại.')
-        }
+        // Login successful - redirect to dashboard
+        // Use window.location for a full page reload to ensure session is loaded
+        window.location.href = '/dashboard'
       } else {
         // No error but not ok - might be a redirect issue
         setError('Đã xảy ra lỗi không xác định. Vui lòng thử lại.')

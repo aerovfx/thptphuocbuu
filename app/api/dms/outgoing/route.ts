@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { autoSyncDocument } from '@/lib/document-sync'
 import { z } from 'zod'
 
 const outgoingDocumentSchema = z.object({
@@ -63,6 +64,14 @@ export async function POST(request: Request) {
         createdById: session.user.id,
       },
     })
+
+    // Auto-sync với spaces và departments của người tạo
+    try {
+      await autoSyncDocument(document.id, 'OUTGOING', session.user.id, document.targetSpaces || null)
+    } catch (syncError) {
+      console.error('Error auto-syncing document:', syncError)
+      // Không throw error, chỉ log vì document đã được tạo thành công
+    }
 
     return NextResponse.json(document, { status: 201 })
   } catch (error) {

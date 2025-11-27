@@ -8,11 +8,14 @@ import {
   BookOpen, Users, FileText, MessageSquare, Plus, Bell, Activity, CheckCircle, 
   Clock, Target, Settings, Download, TrendingUp, TrendingDown, ArrowUp, 
   ArrowDown, ChevronRight, RefreshCw, Calendar, AlertCircle, FileCheck, 
-  Lightbulb, MoreVertical, ChevronDown
+  Lightbulb, MoreVertical, ChevronDown, LayoutDashboard, Building2, Briefcase, 
+  Shield, Crown, BarChart3
 } from 'lucide-react'
 import SharedLayout from '../Layout/SharedLayout'
 import PremiumBanner from '../Premium/PremiumBanner'
 import DocumentChart from './DocumentChart'
+import { DashboardModule } from '@/lib/dashboard-modules'
+import { usePathname } from 'next/navigation'
 
 // Dynamic import recharts to reduce initial bundle size
 const RechartsChart = dynamic(
@@ -60,6 +63,13 @@ const iconMap: Record<string, any> = {
   Users,
   FileText,
   MessageSquare,
+  LayoutDashboard,
+  Building2,
+  Briefcase,
+  Shield,
+  Crown,
+  Settings,
+  BarChart3,
 }
 
 interface DashboardContentProps {
@@ -67,6 +77,7 @@ interface DashboardContentProps {
   trendingTopics: Array<{ category: string; name: string; posts: string }>
   currentUser: any
   stats?: any
+  modules?: DashboardModule[]
 }
 
 export default function DashboardContent({
@@ -74,8 +85,10 @@ export default function DashboardContent({
   trendingTopics,
   currentUser,
   stats: initialStats,
+  modules = [],
 }: DashboardContentProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const [activeCard, setActiveCard] = useState<string | null>(null)
   const [statCards, setStatCards] = useState(initialStatCards)
   const [stats, setStats] = useState(initialStats)
@@ -181,18 +194,30 @@ export default function DashboardContent({
       title={`Chào mừng, ${userName}!`}
     >
       <div className="p-6 max-w-[1600px] mx-auto">
-        {/* Top Navigation Bar */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button className="px-4 py-2 bg-blue-500 text-white rounded-lg font-poppins font-medium">
-              Trang chủ
-            </button>
-            <button className="px-4 py-2 text-gray-400 hover:text-white rounded-lg font-poppins transition-colors">
-              Ngân sách
-            </button>
-            <button className="px-4 py-2 text-gray-400 hover:text-white rounded-lg font-poppins transition-colors">
-              Nhóm
-            </button>
+        {/* Top Navigation Bar - Module Navigation */}
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center space-x-2 flex-wrap">
+            {modules
+              .filter((m) => m.category === 'overview' || m.category === 'management')
+              .slice(0, 5)
+              .map((module) => {
+                const IconComponent = iconMap[module.icon] || FileText
+                const isActive = pathname === module.href || pathname?.startsWith(module.href + '/')
+                return (
+                  <Link
+                    key={module.id}
+                    href={module.href}
+                    className={`px-4 py-2 rounded-lg font-poppins font-medium transition-colors flex items-center space-x-2 ${
+                      isActive
+                        ? 'bg-blue-500 text-white'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    <IconComponent size={18} />
+                    <span>{module.title}</span>
+                  </Link>
+                )
+              })}
           </div>
           <div className="flex items-center space-x-3">
             <select className="px-4 py-2 bg-gray-800 text-white rounded-lg font-poppins border border-gray-700">

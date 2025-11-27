@@ -33,6 +33,7 @@ interface IncomingDocument {
   deadline: string | null
   fileName: string
   fileUrl: string
+  tags?: string | null // JSON array string
   createdBy: {
     id: string
     firstName: string
@@ -387,6 +388,34 @@ export default function IncomingDocumentsList({
                           </span>
                         )}
                       </div>
+                      {/* Tags */}
+                      {doc.tags && (() => {
+                        try {
+                          const tagsArray = typeof doc.tags === 'string' ? JSON.parse(doc.tags) : doc.tags
+                          if (Array.isArray(tagsArray) && tagsArray.length > 0) {
+                            return (
+                              <div className="flex items-center flex-wrap gap-1.5 mt-2">
+                                {tagsArray.slice(0, 3).map((tag: string, index: number) => (
+                                  <span
+                                    key={index}
+                                    className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/50 font-poppins"
+                                  >
+                                    #{tag}
+                                  </span>
+                                ))}
+                                {tagsArray.length > 3 && (
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-400 font-poppins">
+                                    +{tagsArray.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          }
+                        } catch (e) {
+                          // Invalid JSON, ignore
+                        }
+                        return null
+                      })()}
                     </div>
 
                     {/* Progress Bar */}

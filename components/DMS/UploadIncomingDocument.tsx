@@ -5,10 +5,24 @@ import { useRouter } from 'next/navigation'
 import { Upload, FileText, X, AlertCircle } from 'lucide-react'
 import { InlineHelp } from '@/components/Common/Tooltip'
 import { helpTexts } from '@/lib/tooltip-help-texts'
+import TagInput from '@/components/Common/TagInput'
 
 interface UploadIncomingDocumentProps {
   currentUser: any
 }
+
+// Danh sách người gửi mặc định
+const DEFAULT_SENDERS = [
+  'Sở Giáo dục và Đào tạo TP. Hồ Chí Minh',
+  'Bộ Giáo dục và Đào tạo',
+  'UBND TP. Hồ Chí Minh',
+  'Sở Nội vụ TP. Hồ Chí Minh',
+  'Phòng Giáo dục và Đào tạo Quận/Huyện',
+  'Ban Giám hiệu',
+  'Phòng Hành chính',
+  'Phòng Tài chính',
+  'Phòng Tổ chức',
+]
 
 export default function UploadIncomingDocument({ currentUser }: UploadIncomingDocumentProps) {
   const router = useRouter()
@@ -19,9 +33,36 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
   const [priority, setPriority] = useState('NORMAL')
   const [deadline, setDeadline] = useState('')
   const [notes, setNotes] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [extracting, setExtracting] = useState(false)
+  const [showSenderDropdown, setShowSenderDropdown] = useState(false)
+
+  // Suggested tags based on common document categories
+  const suggestedTags = [
+    'Giáo dục',
+    'Đào tạo',
+    'Tuyển sinh',
+    'Thi cử',
+    'Học phí',
+    'Học bổng',
+    'Kỷ luật',
+    'Khen thưởng',
+    'Cơ sở vật chất',
+    'Nhân sự',
+    'Tài chính',
+    'Hành chính',
+    'Pháp chế',
+    'An toàn',
+    'Y tế',
+    'Thể dục thể thao',
+    'Hoạt động ngoại khóa',
+    'Công khai',
+    'Nội bộ',
+    'Khẩn cấp',
+  ]
 
   const validateFile = (file: File): string | null => {
     const maxSize = 10 * 1024 * 1024 // 10MB
@@ -39,7 +80,37 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
     return null
   }
 
-  const handleFileSelect = (selectedFile: File) => {
+  const extractContentFromFile = async (selectedFile: File) => {
+    try {
+      setExtracting(true)
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+
+      const response = await fetch('/api/dms/extract-content', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.preview) {
+        // Auto-fill notes with extracted content
+        if (!notes) {
+          setNotes(data.preview)
+        } else {
+          // Append if notes already has content
+          setNotes((prev) => (prev ? `${prev}\n\n---\n${data.preview}` : data.preview))
+        }
+      }
+    } catch (error) {
+      console.error('Error extracting content:', error)
+      // Don't show error to user, just silently fail
+    } finally {
+      setExtracting(false)
+    }
+  }
+
+  const handleFileSelect = async (selectedFile: File) => {
     const validationError = validateFile(selectedFile)
     if (validationError) {
       setError(validationError)
@@ -48,12 +119,16 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
 
     setError(null)
     setFile(selectedFile)
+    
     // Auto-fill title from filename if empty
     if (!title) {
       const fileName = selectedFile.name
       const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.')) || fileName
       setTitle(nameWithoutExt)
     }
+
+    // Extract content from file
+    await extractContentFromFile(selectedFile)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,6 +185,7 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
       if (priority) formData.append('priority', priority)
       if (deadline) formData.append('deadline', new Date(deadline).toISOString())
       if (notes) formData.append('notes', notes)
+      if (tags.length > 0) formData.append('tags', JSON.stringify(tags))
 
       const response = await fetch('/api/dms/incoming', {
         method: 'POST',
@@ -232,13 +308,42 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
               helpText={helpTexts.sender.content}
               className="mb-2"
             />
-            <input
-              type="text"
-              value={sender}
-              onChange={(e) => setSender(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins"
-              placeholder="Nhập người/nơi gửi văn bản"
-            />
+            <div className="relative">
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={sender}
+                  onChange={(e) => setSender(e.target.value)}
+                  onFocus={() => setShowSenderDropdown(true)}
+                  className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins"
+                  placeholder="Nhập người/nơi gửi văn bản hoặc chọn từ danh sách"
+                  list="sender-list"
+                />
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setSender(e.target.value)
+                      setShowSenderDropdown(false)
+                    }
+                  }}
+                  className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins"
+                  onBlur={() => setTimeout(() => setShowSenderDropdown(false), 200)}
+                >
+                  <option value="">Chọn người gửi...</option>
+                  {DEFAULT_SENDERS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <datalist id="sender-list">
+                {DEFAULT_SENDERS.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+            </div>
           </div>
 
           {/* Type and Priority */}
@@ -299,17 +404,28 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
           {/* Notes */}
           <div>
             <InlineHelp
-              label="Ghi chú"
+              label="Ghi chú / Mô tả"
               helpText={helpTexts.notes.content}
               className="mb-2"
             />
+            {extracting && (
+              <div className="mb-2 text-sm text-blue-400 font-poppins flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+                <span>Đang trích xuất nội dung từ file...</span>
+              </div>
+            )}
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={4}
+              rows={6}
               className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins"
-              placeholder="Nhập ghi chú (nếu có)"
+              placeholder="Nội dung sẽ được tự động trích xuất từ file. Bạn có thể chỉnh sửa nếu cần."
             />
+            {notes && (
+              <p className="mt-1 text-xs text-gray-500 font-poppins">
+                Nội dung đã được trích xuất tự động từ file. Vui lòng kiểm tra và chỉnh sửa nếu cần.
+              </p>
+            )}
           </div>
 
           {/* Actions */}

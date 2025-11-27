@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { BookOpen, Users, FileText, MessageSquare } from 'lucide-react'
 import DashboardContent from '@/components/Dashboard/DashboardContent'
+import { getModulesByRole } from '@/lib/dashboard-modules'
 
 async function getStats(userId: string, role: string) {
   const now = new Date()
@@ -445,12 +446,16 @@ export default async function DashboardPage() {
     { category: 'Chủ đề nổi trội ở Việt Nam', name: 'Học trực tuyến', posts: '856' },
   ]
 
+  // Lấy danh sách module theo role
+  const userModules = getModulesByRole(session.user.role)
+
   return (
     <DashboardContent
       statCards={statCards}
       trendingTopics={trendingTopics}
       currentUser={session}
       stats={stats}
+      modules={userModules}
     />
   )
 }

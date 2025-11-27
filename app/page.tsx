@@ -74,7 +74,35 @@ async function getPublicPosts() {
 }
 
 export default async function Home() {
-  const session = await getServerSession(authOptions)
+  // Safely get session with error handling for JWT decryption errors
+  let session = null
+  try {
+    session = await getServerSession(authOptions)
+  } catch (error: any) {
+    // Handle JWT decryption errors (e.g., when NEXTAUTH_SECRET changes)
+    // This can happen when:
+    // 1. NEXTAUTH_SECRET was changed
+    // 2. Old session cookies exist from previous deployment
+    // 3. Cookie is corrupted
+    if (
+      error?.message?.includes('decryption') || 
+      error?.code === 'JWT_SESSION_ERROR' ||
+      error?.message?.includes('JWT') ||
+      error?.name === 'JWTDecodeError'
+    ) {
+      // Silently handle JWT errors - user will need to login again
+      // Don't log as error to avoid noise in production
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[Auth] Session decryption failed, treating as no session')
+      }
+      session = null
+    } else {
+      // Log other errors but don't crash the page
+      console.error('[Auth] Unexpected error getting session:', error)
+      session = null
+    }
+  }
+  
   const posts = await getPublicPosts()
 
   return <HomePage initialPosts={posts} session={session} />

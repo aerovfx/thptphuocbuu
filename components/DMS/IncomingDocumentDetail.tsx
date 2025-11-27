@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   FileText,
@@ -70,6 +70,50 @@ export default function IncomingDocumentDetail({
     document.fileUrl.toLowerCase().endsWith('.pdf') ||
     document.mimeType === 'application/pdf'
   )
+
+  // Parse tags safely - ensure consistent parsing
+  const parseTags = (tags: any): string[] => {
+    if (!tags) return []
+    try {
+      const tagsArray = typeof tags === 'string' ? JSON.parse(tags) : tags
+      return Array.isArray(tagsArray) ? tagsArray : []
+    } catch {
+      return []
+    }
+  }
+
+  // Always use document.tags (which is initialized from initialDocument)
+  // This ensures server and client render the same content
+  const tagsArray = useMemo(() => {
+    return parseTags(document.tags)
+  }, [document.tags])
+  
+  // Format dates consistently
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return ''
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return ''
+      return date.toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    } catch {
+      return ''
+    }
+  }
+
+  const isDeadlineOverdue = (deadline: string | null | undefined): boolean => {
+    if (!deadline) return false
+    try {
+      const deadlineDate = new Date(deadline)
+      if (isNaN(deadlineDate.getTime())) return false
+      return deadlineDate < new Date()
+    } catch {
+      return false
+    }
+  }
 
   const StatusIcon = statusLabels[document.status]?.icon || FileText
   const statusInfo = statusLabels[document.status] || {
@@ -244,6 +288,19 @@ export default function IncomingDocumentDetail({
                 {typeLabels[document.type] || document.type}
               </span>
             </div>
+            {/* Tags */}
+            {tagsArray.length > 0 && (
+              <div className="flex items-center flex-wrap gap-2 mt-3" suppressHydrationWarning>
+                {tagsArray.map((tag: string, index: number) => (
+                  <span
+                    key={`tag-${index}-${tag}`}
+                    className="px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/50 font-poppins"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex items-center space-x-2">
             {isPDF && (
@@ -313,11 +370,7 @@ export default function IncomingDocumentDetail({
             <div>
               <p className="text-sm text-gray-400 font-poppins">Ngày nhận</p>
               <p className="text-white font-poppins">
-                {new Date(document.receivedDate).toLocaleDateString('vi-VN', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
+                {formatDate(document.receivedDate)}
               </p>
             </div>
           </div>
@@ -328,15 +381,11 @@ export default function IncomingDocumentDetail({
                 <p className="text-sm text-gray-400 font-poppins">Hạn xử lý</p>
                 <p
                   className={`font-poppins ${
-                    new Date(document.deadline) < new Date() ? 'text-red-400' : 'text-white'
+                    isDeadlineOverdue(document.deadline) ? 'text-red-400' : 'text-white'
                   }`}
                 >
-                  {new Date(document.deadline).toLocaleDateString('vi-VN', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                  {new Date(document.deadline) < new Date() && (
+                  {formatDate(document.deadline)}
+                  {isDeadlineOverdue(document.deadline) && (
                     <span className="ml-2 text-xs">(Quá hạn)</span>
                   )}
                 </p>
@@ -360,6 +409,23 @@ export default function IncomingDocumentDetail({
             </div>
           </div>
         </div>
+
+        {/* Tags Section */}
+        {tagsArray.length > 0 && (
+          <div className="mt-6 pt-6 border-t border-gray-800" suppressHydrationWarning>
+            <p className="text-sm text-gray-400 font-poppins mb-3">Tags</p>
+            <div className="flex items-center flex-wrap gap-2">
+              {tagsArray.map((tag: string, index: number) => (
+                <span
+                  key={`tag-section-${index}-${tag}`}
+                  className="px-3 py-1 rounded-full text-sm font-medium bg-purple-500/20 text-purple-400 border border-purple-500/50 font-poppins"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Scrum Board */}
@@ -436,7 +502,7 @@ export default function IncomingDocumentDetail({
                   </span>
                   {assignment.deadline && (
                     <p className="text-xs text-gray-500 mt-1 font-poppins">
-                      Hạn: {new Date(assignment.deadline).toLocaleDateString('vi-VN')}
+                      Hạn: {formatDate(assignment.deadline)}
                     </p>
                   )}
                 </div>

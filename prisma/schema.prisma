@@ -15,6 +15,18 @@ enum UserRole {
   TEACHER
   STUDENT
   PARENT
+  SUPER_ADMIN // IT quản trị hệ thống
+  BGH // Ban Giám Hiệu
+  BAN_TT // Ban Truyền Thông
+  TRUONG_TONG // Trưởng Tổ
+  QUAN_NHIEM // Quản nhiệm / Giáo viên chủ nhiệm
+  TRUONG_HANH_CHINH // Trưởng hành chính
+  BAO_VE // Bảo vệ
+  LAO_CONG // Lao công
+  DOAN_TN // Đoàn Thanh Niên
+  DANG_BO // Đảng bộ
+  TAI_CHINH // Ban Tài chính / Kế toán
+  Y_TE // Ban Y tế
 }
 
 enum UserStatus {
@@ -118,7 +130,6 @@ model User {
   teacherGrades   Grade[]           @relation("TeacherGrades")
   studentGrades   Grade[]           @relation("StudentGrades")
   announcements   Announcement[]
-  lessonCompletions LessonCompletion[]
 
   // Social Media Relations
   posts                  Post[]          @relation("AuthorPosts")
@@ -175,6 +186,16 @@ model User {
   createdRoles    Role[]               @relation("RoleCreator")
   assignedByRoles UserRoleAssignment[] @relation("AssignedByUser")
   adminAuditLogs  AdminAuditLog[]      @relation("AdminAuditLogs")
+
+  // Organizational Structure Relations
+  spaceMembers      SpaceMember[]
+  departmentMembers DepartmentMember[]
+  ledDepartments    Department[]       @relation("DepartmentLeaders")
+  spaceProgressLogs SpaceProgressLog[] @relation("SpaceProgressLogs")
+  spaceTasksCreated SpaceTask[]        @relation("SpaceTaskCreators")
+  assignedTasks     SpaceTask[]        @relation("AssignedTasks")
+  spaceTaskComments SpaceTaskComment[] @relation("SpaceTaskComments")
+  spaceActivityLogs SpaceActivityLog[] @relation("SpaceActivityLogs")
 
   @@map("users")
 }
@@ -249,31 +270,15 @@ model Lesson {
   id          String   @id @default(cuid())
   title       String
   description String?
-  content     String?  // HTML content
+  content     String? // HTML content
   order       Int      @default(0)
-  duration    Int?     // Duration in minutes
+  duration    Int? // Duration in minutes
   chapterId   String
   chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Track lesson completion for students
-  completions LessonCompletion[]
-
   @@map("lessons")
-}
-
-model LessonCompletion {
-  id        String   @id @default(cuid())
-  lessonId  String
-  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  completedAt DateTime @default(now())
-  completedCount Int   @default(1) // How many times completed
-
-  @@unique([lessonId, userId])
-  @@map("lesson_completions")
 }
 
 model Submission {
@@ -555,6 +560,8 @@ model IncomingDocument {
   receivedDate DateTime  @default(now())
   priority     String    @default("NORMAL") // URGENT, HIGH, NORMAL, LOW
   deadline     DateTime?
+  tags         String? // JSON array of tags: ["tag1", "tag2", ...]
+  notes        String? // Ghi chú
 
   // Document Type
   documentTypeCode String? // Mã loại văn bản (CV, QĐ, TB, etc.)
@@ -617,6 +624,16 @@ model OutgoingDocument {
   status    DocumentStatus @default(PENDING)
   priority  String         @default("NORMAL")
   sendDate  DateTime?
+  tags      String? // JSON array of tags: ["tag1", "tag2", ...]
+
+  // Workflow & Spaces
+  targetSpaces    String? // JSON array of space IDs
+  effectiveDate   DateTime? // Ngày có hiệu lực
+  expiryDate      DateTime? // Ngày hết hiệu lực
+  confidentiality String? // PUBLIC, INTERNAL, PRIVATE
+  version         Int       @default(1)
+  publishedAt     DateTime? // Thời gian publish
+  archivedPdfUrl  String? // URL của PDF đã archive
 
   // Document Type
   documentTypeCode String? // Mã loại văn bản (CV, QĐ, TB, etc.)
@@ -632,6 +649,9 @@ model OutgoingDocument {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([status])
+  @@index([publishedAt])
+  @@index([effectiveDate])
   @@map("outgoing_documents")
 }
 
@@ -769,52 +789,10 @@ model DocumentVersion {
   createdBy   User    @relation("DocumentVersionsCreated", fields: [createdById], references: [id])
   changeNote  String? // Ghi chú thay đổi
 
-  // Relations
-  ocrExtracts OCRExtract[]
-  embeddings  DocumentEmbedding[]
-
   createdAt DateTime @default(now())
 
   @@unique([documentId, versionNumber])
   @@map("document_versions")
-}
-
-// OCR Extract Results
-model OCRExtract {
-  id                String          @id @default(cuid())
-  documentVersionId String
-  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
-
-  // OCR Results
-  text       String // Full extracted text
-  pages      Int? // Số trang
-  language   String? // Ngôn ngữ phát hiện
-  confidence Float? // Độ tin cậy trung bình
-
-  // Processing info
-  provider       String? // Tesseract, Google Vision, Azure, etc.
-  processingTime Int? // Thời gian xử lý (ms)
-
-  createdAt DateTime @default(now())
-
-  @@map("ocr_extracts")
-}
-
-// Document Embeddings (for semantic search)
-model DocumentEmbedding {
-  id                String          @id @default(cuid())
-  documentVersionId String
-  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
-
-  // Embedding data
-  vector     String // JSON array of floats (1536 for OpenAI, 768 for others)
-  model      String // Model used (text-embedding-ada-002, etc.)
-  chunkIndex Int? // Index if document is chunked
-
-  createdAt DateTime @default(now())
-
-  @@unique([documentVersionId, chunkIndex])
-  @@map("document_embeddings")
 }
 
 // Workflow Engine
@@ -978,18 +956,6 @@ model NewsDepartment {
   updatedAt DateTime @updatedAt
 
   @@map("news_departments")
-}
-
-model NewsTag {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  slug        String  @unique
-  description String?
-  color       String? // Màu hiển thị
-
-  createdAt DateTime @default(now())
-
-  @@map("news_tags")
 }
 
 // ============================================
@@ -1318,4 +1284,653 @@ model AdminAuditLog {
   @@index([targetType, targetId])
   @@index([createdAt])
   @@map("admin_audit_logs")
+}
+
+// ============================================
+// Organizational Structure Models
+// ============================================
+
+enum SpaceType {
+  SCHOOL_HUB // Public hub
+  BGH_SPACE // Ban Giám Hiệu (private)
+  BAN_TT // Ban Truyền Thông (semi-public)
+  TO_CHUYEN_MON // Tổ Chuyên Môn (private)
+  TO_HANH_CHINH // Tổ Hành chính
+  BAO_VE // Bảo vệ
+  LAO_CONG // Lao công
+  LOP // Lớp học (per-class)
+  DOAN_DANG // Đoàn / Đảng bộ
+  TAI_CHINH // Ban Tài chính
+  Y_TE // Ban Y tế
+  PUBLIC_NEWS // Public News / Gallery
+}
+
+enum SpaceVisibility {
+  PUBLIC // Công khai
+  INTERNAL // Nội bộ
+  PRIVATE // Riêng tư
+}
+
+enum DepartmentType {
+  TO_CHUYEN_MON // Tổ Chuyên Môn (Toán, Văn, etc.)
+  TO_HANH_CHINH // Tổ Hành chính
+  BAN_TT // Ban Truyền Thông
+  BAN_TAI_CHINH // Ban Tài chính
+  BAN_Y_TE // Ban Y tế
+  DOAN_DANG // Đoàn / Đảng bộ
+  OTHER // Khác
+}
+
+// Space - Không gian làm việc
+model Space {
+  id          String          @id @default(cuid())
+  name        String
+  code        String          @unique
+  description String?
+  type        SpaceType
+  visibility  SpaceVisibility @default(INTERNAL)
+  parentId    String? // Parent space (hierarchical)
+  parent      Space?          @relation("SpaceHierarchy", fields: [parentId], references: [id])
+  children    Space[]         @relation("SpaceHierarchy")
+
+  // Metadata
+  icon     String?
+  color    String? // Màu hiển thị
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  // Timeline & Progress
+  startDate    DateTime? // Ngày bắt đầu hoạt động
+  endDate      DateTime? // Ngày kết thúc hoạt động
+  progress     Int       @default(0) // Tiến độ (0-100)
+  academicYear String? // Năm học (format: YYYY-YYYY+1, ví dụ: 2025-2026)
+  archivedAt   DateTime? // Ngày lưu trữ (khi progress đạt 100%)
+
+  // Overview Content (JSON) - Deprecated, use dedicated models below
+  overview String? // JSON object containing: mission, members, workflow, tools, timelines, rules, kpis, resources, security
+
+  // Agile/Scrum Framework
+  framework       String?      @default("AGILE") // AGILE, SCRUM, KANBAN, WATERFALL
+  sprintDuration  Int?         @default(14) // Sprint duration in days (default 2 weeks)
+  currentSprintId String? // Current active sprint
+  currentSprint   SpaceSprint? @relation("CurrentSprint", fields: [currentSprintId], references: [id])
+
+  // Relations
+  members      SpaceMember[]
+  departments  Department[]
+  documents    SpaceDocument[]
+  progressLogs SpaceProgressLog[]
+  tasks        SpaceTask[]
+
+  // 8 Core Criteria + 2 Additional
+  mission      SpaceMission?
+  workflows    SpaceWorkflow[]
+  tools        SpaceTool[]
+  rules        SpaceRule[]
+  kpis         SpaceKPI[]
+  resources    SpaceResource[]
+  sprints      SpaceSprint[]      @relation("SpaceSprints")
+  timelines    SpaceTimeline[]
+  security     SpaceSecurity?
+  activityLogs SpaceActivityLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([parentId])
+  @@index([isActive])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([academicYear])
+  @@index([archivedAt])
+  @@map("spaces")
+}
+
+// Space Progress Log - Nhật ký tiến độ của Space
+model SpaceProgressLog {
+  id      String @id @default(cuid())
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Progress data
+  progress    Int     @default(0) // Tiến độ tại thời điểm này (0-100)
+  milestone   String? // Mốc tiến độ (ví dụ: "Hoàn thành giai đoạn 1")
+  description String? // Mô tả chi tiết
+  checklist   String? // JSON array of checklist items: [{"id": "1", "text": "Task 1", "completed": false}]
+  order       Int     @default(0) // Order in the board
+
+  // Metadata
+  createdById String
+  createdBy   User     @relation("SpaceProgressLogs", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([spaceId])
+  @@index([createdAt])
+  @@map("space_progress_logs")
+}
+
+// Space Task - Công việc trong Space (Jira-style)
+model SpaceTask {
+  id      String @id @default(cuid())
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Task content
+  title       String
+  description String?
+  column      String    @default("todo") // Column name: todo, in-progress, review, done, etc.
+  order       Int       @default(0) // Order within column
+  priority    String?   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  dueDate     DateTime?
+
+  // Rich content
+  images      String? // JSON array of image URLs
+  attachments String? // JSON array of attachment objects: [{"name": "...", "url": "...", "type": "..."}]
+  checklist   String? // JSON array: [{"id": "...", "text": "...", "completed": false}]
+  tags        String? // JSON array of tag strings
+
+  // Metadata
+  createdById  String
+  createdBy    User    @relation("SpaceTaskCreators", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedTasks", fields: [assignedToId], references: [id])
+
+  // Comments
+  comments      SpaceTaskComment[]
+  commentsCount Int                @default(0) // Denormalized for performance
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([spaceId])
+  @@index([column])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([dueDate])
+  @@map("space_tasks")
+}
+
+// Space Task Comment - Bình luận trên task
+model SpaceTaskComment {
+  id     String    @id @default(cuid())
+  taskId String
+  task   SpaceTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  content     String
+  createdById String
+  createdBy   User   @relation("SpaceTaskComments", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+  @@index([createdAt])
+  @@map("space_task_comments")
+}
+
+// Space Member - Thành viên & vai trò trong space
+model SpaceMember {
+  id      String @id @default(cuid())
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Role in this space
+  role            String  @default("MEMBER") // OWNER, ADMIN, MODERATOR, MEMBER, VIEWER, LEADER, DESIGNER, EDITOR, WRITER, etc.
+  roleDescription String? // Mô tả vai trò cụ thể - Ví dụ: "Quản lý tiến độ & phê duyệt nội dung"
+  canRead         Boolean @default(true)
+  canWrite        Boolean @default(false)
+  canManage       Boolean @default(false)
+  canApprove      Boolean @default(false) // Quyền phê duyệt
+  canPublish      Boolean @default(false) // Quyền xuất bản
+
+  // Metadata
+  joinedAt  DateTime @default(now())
+  invitedBy String? // User ID who invited
+
+  @@unique([spaceId, userId])
+  @@index([spaceId])
+  @@index([userId])
+  @@index([role])
+  @@map("space_members")
+}
+
+// Department / Team - Tổ chuyên môn
+model Department {
+  id          String         @id @default(cuid())
+  name        String
+  code        String         @unique
+  description String?
+  type        DepartmentType
+  spaceId     String? // Space mà tổ này thuộc về
+  space       Space?         @relation(fields: [spaceId], references: [id])
+
+  // Leader
+  leaderId String? // Trưởng tổ
+  leader   User?   @relation("DepartmentLeaders", fields: [leaderId], references: [id])
+
+  // Subject/Subject area (for Tổ Chuyên Môn)
+  subject String? // Toán, Văn, Lý, Hóa, etc.
+
+  // Metadata
+  icon     String?
+  color    String?
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  // Relations
+  members   DepartmentMember[]
+  documents DepartmentDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([spaceId])
+  @@index([leaderId])
+  @@index([subject])
+  @@map("departments")
+}
+
+// Department Member - Thành viên trong tổ
+model DepartmentMember {
+  id           String     @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Role in department
+  role     String  @default("MEMBER") // LEADER, DEPUTY, MEMBER
+  isActive Boolean @default(true)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([departmentId, userId])
+  @@index([departmentId])
+  @@index([userId])
+  @@map("department_members")
+}
+
+// Space Document - Văn bản gắn với space
+// Note: documentId là polymorphic reference (có thể là OutgoingDocument hoặc IncomingDocument)
+// Không thể tạo foreign key trực tiếp, chỉ lưu ID và type
+model SpaceDocument {
+  id           String          @id @default(cuid())
+  spaceId      String
+  space        Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  documentId   String // Reference to OutgoingDocument or IncomingDocument (polymorphic)
+  documentType String // "OUTGOING" | "INCOMING"
+  visibility   SpaceVisibility @default(INTERNAL)
+  assignedAt   DateTime        @default(now())
+
+  @@unique([spaceId, documentId, documentType])
+  @@index([spaceId])
+  @@index([documentId, documentType])
+  @@map("space_documents")
+}
+
+// Department Document - Văn bản gắn với tổ
+model DepartmentDocument {
+  id           String     @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  documentId   String
+  documentType String // "OUTGOING" | "INCOMING"
+
+  createdAt DateTime @default(now())
+
+  @@unique([departmentId, documentId, documentType])
+  @@index([departmentId])
+  @@index([documentId, documentType])
+  @@map("department_documents")
+}
+
+// ============================================
+// Space 8 Core Criteria Models (Agile/Scrum Framework)
+// ============================================
+
+// 1. Mission & Scope - Sứ mệnh và phạm vi hoạt động của Space
+model SpaceMission {
+  id      String @id @default(cuid())
+  spaceId String @unique
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Mission content
+  vision         String? // Tầm nhìn
+  mission        String // Sứ mệnh - Space được tạo ra để làm gì?
+  scope          String? // Phạm vi hoạt động - Đang phụ trách mảng/nhánh nào?
+  expectedOutput String? // Kết quả đầu ra mong muốn
+  objectives     String? // JSON array: ["objective1", "objective2"]
+  values         String? // JSON array: ["value1", "value2"]
+  description    String? // Mô tả chi tiết
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("space_missions")
+}
+
+// 2. Workflow/SOP - Quy trình làm việc chuẩn (Agile/Scrum)
+model SpaceWorkflow {
+  id      String @id @default(cuid())
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Workflow definition
+  name        String // Tên quy trình
+  type        String  @default("SCRUM") // SCRUM, KANBAN, CUSTOM, SOP
+  description String? // Mô tả quy trình
+
+  // Workflow steps (JSON) - Các bước chi tiết
+  // Format: [{"id": "1", "name": "Nhận yêu cầu", "order": 1, "description": "...", "assignee": "..."}, ...]
+  steps String? // JSON array: [{"id": "1", "name": "Nhận yêu cầu", "order": 1, "description": "...", "assignee": "..."}, ...]
+
+  // SOP Details - Quy trình chuẩn
+  sopContent String? // Nội dung SOP chi tiết (Markdown)
+  diagramUrl String? // Link đến sơ đồ quy trình (nếu có)
+
+  // Scrum-specific
+  sprintDuration    Int?    @default(14) // Days
+  dailyStandupTime  String? // "09:00"
+  sprintPlanningDay String? // "Monday"
+  retrospectiveDay  String? // "Friday"
+
+  isActive Boolean @default(true)
+  order    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([spaceId])
+  @@index([isActive])
+  @@map("space_workflows")
+}
+
+// 3. Tools - Công cụ sử dụng
+model SpaceTool {
+  id      String @id @default(cuid())
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Tool info
+  name        String
+  category    String? // DEVELOPMENT, COMMUNICATION, PROJECT_MANAGEMENT, etc.
+  description String?
+  url         String? // Link to tool
+  icon        String? // Icon URL or name
+
+  // Configuration
+  config String? // JSON: tool-specific configuration
+
+  isActive Boolean @default(true)
+  order    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([spaceId])
+  @@index([category])
+  @@map("space_tools")
+}
+
+// 4. Rules - Quy tắc phối hợp & chuẩn giao tiếp
+model SpaceRule {
+  id      String @id @default(cuid())
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Rule content
+  title       String
+  description String?
+  category    String? // COMMUNICATION, FILE_MANAGEMENT, REPORTING, CODE_REVIEW, COMMIT, MEETING, etc.
+  content     String // Nội dung quy tắc (Markdown) - Ví dụ: "Nhắn việc => tag đúng người", "Mọi file phải lưu vào thư mục chuẩn"
+
+  // Enforcement
+  isRequired Boolean @default(false) // Bắt buộc hay không
+  priority   String  @default("NORMAL") // HIGH, NORMAL, LOW
+
+  isActive Boolean @default(true)
+  order    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([spaceId])
+  @@index([category])
+  @@index([isActive])
+  @@map("space_rules")
+}
+
+// 5. KPIs - Chỉ số đánh giá
+model SpaceKPI {
+  id      String @id @default(cuid())
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // KPI definition
+  name        String
+  description String?
+  category    String? // VELOCITY, QUALITY, EFFICIENCY, SATISFACTION, etc.
+
+  // Measurement
+  targetValue       Float? // Giá trị mục tiêu
+  currentValue      Float? // Giá trị hiện tại
+  unit              String? // "points", "hours", "%", etc.
+  measurementPeriod String? @default("SPRINT") // SPRINT, MONTH, QUARTER, YEAR
+
+  // Tracking
+  formula    String? // Công thức tính (nếu có)
+  dataSource String? // Nguồn dữ liệu
+
+  isActive Boolean @default(true)
+  order    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // History tracking
+  history SpaceKPIHistory[]
+
+  @@index([spaceId])
+  @@index([category])
+  @@index([isActive])
+  @@map("space_kpis")
+}
+
+// KPI History - Lịch sử giá trị KPI
+model SpaceKPIHistory {
+  id    String   @id @default(cuid())
+  kpiId String
+  kpi   SpaceKPI @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  value      Float
+  recordedAt DateTime @default(now())
+  notes      String?
+
+  @@index([kpiId])
+  @@index([recordedAt])
+  @@map("space_kpi_history")
+}
+
+// 6. Resources - Tài liệu quan trọng / Mẫu biểu (Templates & Resources)
+model SpaceResource {
+  id      String @id @default(cuid())
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Resource info
+  name        String
+  type        String // DOCUMENT, LINK, TOOL, TEMPLATE, BRAND_GUIDE, POLICY, etc.
+  description String?
+  url         String? // Link to resource
+  fileUrl     String? // File attachment URL
+
+  // Metadata
+  category String? // TEMPLATE, DOCUMENTATION, BRAND_GUIDE, POLICY, REFERENCE, etc.
+  tags     String? // JSON array of tags
+  isPublic Boolean @default(false) // Có thể chia sẻ công khai không
+
+  // Template-specific
+  templateType String? // WRITING_TEMPLATE, REPORT_TEMPLATE, etc.
+  usage        String? // Hướng dẫn sử dụng template
+
+  isActive Boolean @default(true)
+  order    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([spaceId])
+  @@index([type])
+  @@index([category])
+  @@index([templateType])
+  @@map("space_resources")
+}
+
+// 7. Timeline - Lịch làm việc & deadline cố định
+model SpaceTimeline {
+  id      String @id @default(cuid())
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Timeline item
+  title       String
+  description String?
+  type        String  @default("MILESTONE") // MILESTONE, EVENT, DEADLINE, RELEASE, MEETING, REPORT, PUBLISH_CYCLE
+
+  // Dates
+  startDate DateTime?
+  endDate   DateTime?
+  dueDate   DateTime? // Deadline
+
+  // Recurring schedule (for fixed deadlines)
+  isRecurring       Boolean @default(false) // Lặp lại định kỳ
+  recurrencePattern String? // JSON: {"type": "WEEKLY", "dayOfWeek": 1, "time": "09:00"} hoặc {"type": "MONTHLY", "day": 1}
+  // WEEKLY, MONTHLY, DAILY, etc.
+
+  // Status
+  status String @default("PLANNED") // PLANNED, IN_PROGRESS, COMPLETED, CANCELLED
+
+  // Relations
+  relatedSprintId String? // Link to sprint if applicable
+  relatedTaskIds  String? // JSON array of task IDs
+
+  isActive Boolean @default(true)
+  order    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([spaceId])
+  @@index([type])
+  @@index([status])
+  @@index([startDate])
+  @@index([dueDate])
+  @@index([isRecurring])
+  @@map("space_timelines")
+}
+
+// 8. Sprint - Sprint trong Scrum
+model SpaceSprint {
+  id      String @id @default(cuid())
+  spaceId String
+  space   Space  @relation("SpaceSprints", fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Current sprint relation (one-to-many: one sprint can be current for multiple spaces)
+  currentSpaces Space[] @relation("CurrentSprint")
+
+  // Sprint info
+  name        String
+  number      Int // Sprint number (1, 2, 3...)
+  description String?
+
+  // Dates
+  startDate     DateTime
+  endDate       DateTime
+  actualEndDate DateTime? // Ngày kết thúc thực tế
+
+  // Goals
+  goal        String? // Sprint goal
+  userStories String? // JSON array of user story IDs
+
+  // Status
+  status String @default("PLANNED") // PLANNED, ACTIVE, COMPLETED, CANCELLED
+
+  // Metrics
+  plannedVelocity Int? // Story points planned
+  actualVelocity  Int? // Story points completed
+  burndownData    String? // JSON: burndown chart data
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([spaceId, number])
+  @@index([spaceId])
+  @@index([status])
+  @@index([startDate])
+  @@map("space_sprints")
+}
+
+// 9. Security & Access - Quy định bảo mật & quyền truy cập
+model SpaceSecurity {
+  id      String @id @default(cuid())
+  spaceId String @unique
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Security rules
+  confidentialityLevel String  @default("INTERNAL") // PUBLIC, INTERNAL, CONFIDENTIAL, SECRET
+  dataSharingRules     String? // Quy định chia sẻ dữ liệu (Markdown)
+  // Ví dụ: "Nội dung nội bộ không được chia sẻ ngoài Space"
+
+  // Access control
+  approvalRequired Boolean @default(false) // Cần phê duyệt trước khi xuất bản
+  approvalRoles    String? // JSON array: ["ADMIN", "LEADER"] - Ai được phép phê duyệt
+  publishRoles     String? // JSON array: ["ADMIN", "LEADER"] - Ai được phép xuất bản
+
+  // External sharing
+  allowExternalSharing Boolean @default(false)
+  externalSharingRules String? // Quy định chia sẻ với bên ngoài
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("space_securities")
+}
+
+// 10. Activity Log - Dòng thời gian hoạt động (Activity Timeline/Log)
+model SpaceActivityLog {
+  id      String @id @default(cuid())
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Activity content
+  title       String // Tiêu đề hoạt động
+  description String? // Mô tả chi tiết (1-2 dòng)
+  type        String  @default("UPDATE") // UPDATE, COMPLETED, IN_PROGRESS, PLANNED, MILESTONE
+
+  // Status summary
+  completedItems  String? // JSON array: ["Việc đã hoàn thành 1", "Việc đã hoàn thành 2"]
+  inProgressItems String? // JSON array: ["Việc đang xử lý 1", "Việc đang xử lý 2"]
+  plannedItems    String? // JSON array: ["Việc sắp làm 1", "Việc sắp làm 2"]
+
+  // Period
+  periodStart DateTime? // Bắt đầu kỳ (tuần/tháng)
+  periodEnd   DateTime? // Kết thúc kỳ
+  periodType  String? // WEEK, MONTH, QUARTER, YEAR
+
+  // Metadata
+  createdById String
+  createdBy   User   @relation("SpaceActivityLogs", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([spaceId])
+  @@index([type])
+  @@index([periodStart])
+  @@index([createdAt])
+  @@map("space_activity_logs")
 }

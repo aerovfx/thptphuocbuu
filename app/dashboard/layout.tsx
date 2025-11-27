@@ -7,7 +7,26 @@ export default async function Layout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authOptions)
+  // Safely get session with error handling for JWT decryption errors
+  let session = null
+  try {
+    session = await getServerSession(authOptions)
+  } catch (error: any) {
+    // Handle JWT decryption errors - redirect to login
+    if (
+      error?.message?.includes('decryption') || 
+      error?.code === 'JWT_SESSION_ERROR' ||
+      error?.message?.includes('JWT') ||
+      error?.name === 'JWTDecodeError'
+    ) {
+      // Session is invalid, redirect to login
+      redirect('/login?error=SessionExpired')
+    } else {
+      // Log other errors but still redirect to login
+      console.error('[Auth] Error getting session in dashboard layout:', error)
+      redirect('/login?error=AuthError')
+    }
+  }
 
   if (!session) {
     redirect('/login')

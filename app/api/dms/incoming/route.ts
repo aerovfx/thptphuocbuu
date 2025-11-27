@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { autoSyncDocument } from '@/lib/document-sync'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
@@ -15,6 +16,7 @@ const incomingDocumentSchema = z.object({
   priority: z.enum(['URGENT', 'HIGH', 'NORMAL', 'LOW']).default('NORMAL'),
   deadline: z.string().datetime().optional().nullable(),
   notes: z.string().optional(),
+  tags: z.string().optional(), // JSON array string
 })
 
 export async function POST(request: Request) {
@@ -40,6 +42,7 @@ export async function POST(request: Request) {
     const priority = formData.get('priority') as string | null
     const deadline = formData.get('deadline') as string | null
     const notes = formData.get('notes') as string | null
+    const tags = formData.get('tags') as string | null
 
     if (!file) {
       return NextResponse.json({ error: 'File không được để trống' }, { status: 400 })
@@ -61,6 +64,7 @@ export async function POST(request: Request) {
       priority: priority && ['URGENT', 'HIGH', 'NORMAL', 'LOW'].includes(priority) ? priority : 'NORMAL',
       deadline: deadline && deadline.trim() ? deadline.trim() : undefined,
       notes: notes && notes.trim() ? notes.trim() : undefined,
+      tags: tags && tags.trim() ? tags.trim() : undefined,
     }
 
     // Validate input
@@ -112,8 +116,17 @@ export async function POST(request: Request) {
         originalFileUrl: fileUrl, // Will be updated after OCR if needed
         status: 'PENDING',
         createdById: session.user.id,
+        tags: tagsJson || null,
       },
     })
+
+    // Auto-sync với spaces và departments của người tạo
+    try {
+      await autoSyncDocument(document.id, 'INCOMING', session.user.id, null)
+    } catch (syncError) {
+      console.error('Error auto-syncing document:', syncError)
+      // Không throw error, chỉ log vì document đã được tạo thành công
+    }
 
     // TODO: Trigger OCR processing in background
     // await processOCR(document.id)

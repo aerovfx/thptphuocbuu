@@ -28,9 +28,6 @@ const nextConfig = {
     minimumCacheTTL: 60,
   },
   
-  // Optimize font loading
-  optimizeFonts: true,
-  
   // Optimize on-demand compilation in development
   // Keep pages in memory longer to reduce recompilation
   onDemandEntries: {
@@ -40,8 +37,8 @@ const nextConfig = {
     pagesBufferLength: 10,
   },
   
-  // Enable SWC minification
-  swcMinify: true,
+  // Note: optimizeFonts and swcMinify are now default in Next.js 16
+  // and no longer need to be explicitly set
   
   // Optimize production builds
   productionBrowserSourceMaps: false,

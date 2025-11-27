@@ -31,8 +31,24 @@ export default function ForgotPasswordPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        const errorMsg = data.error || 'Đã xảy ra lỗi. Vui lòng thử lại.'
-        console.error('Forgot password error:', data)
+        // Extract error message from response
+        let errorMsg = 'Đã xảy ra lỗi. Vui lòng thử lại.'
+        
+        if (data.error) {
+          errorMsg = data.error
+        } else if (data.message) {
+          errorMsg = data.message
+        } else if (typeof data === 'string') {
+          errorMsg = data
+        }
+        
+        console.error('Forgot password error:', {
+          status: response.status,
+          error: data.error,
+          details: data.details,
+          fullResponse: data
+        })
+        
         setError(errorMsg)
         setLoading(false)
         return

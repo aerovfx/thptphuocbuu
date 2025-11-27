@@ -169,15 +169,23 @@ async function getUserProfile(userId: string, currentUserId?: string) {
           take: 10, // Limit to 10 affiliated accounts
         })
         affiliatedAccounts = brandMembers.map((m) => m.user)
-      } catch (error) {
+      } catch (error: any) {
         // If brandMember table doesn't exist, use empty array
-        console.error('Error fetching brand members:', error)
+        // P2021 = Table does not exist
+        // P2001 = Record not found
+        if (error?.code !== 'P2021' && error?.code !== 'P2001') {
+          console.error('Error fetching brand members:', error)
+        }
         affiliatedAccounts = []
       }
     }
-  } catch (error) {
-    // If BrandBadge table doesn't exist, use null
-    console.error('Error fetching brand badge:', error)
+  } catch (error: any) {
+    // If BrandBadge table doesn't exist (P2021) or other Prisma errors, use null
+    // P2021 = Table does not exist
+    // P2001 = Record not found
+    if (error?.code !== 'P2021' && error?.code !== 'P2001') {
+      console.error('Error fetching brand badge:', error)
+    }
     brandBadge = null
     affiliatedAccounts = []
   }

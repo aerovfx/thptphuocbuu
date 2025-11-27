@@ -6,6 +6,7 @@ import { prisma } from './prisma'
 import { logger } from './logger'
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -14,12 +15,14 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
+        console.log('[Auth] authorize called')
         logger.debug('[Auth] authorize called with:', {
           email: credentials?.email ? `${credentials.email.substring(0, 3)}***` : 'missing',
           hasPassword: !!credentials?.password,
         })
 
         if (!credentials?.email || !credentials?.password) {
+          console.error('[Auth] Missing credentials')
           logger.error('[Auth] Missing credentials')
           return null
         }
@@ -29,17 +32,20 @@ export const authOptions: NextAuthOptions = {
           const normalizedEmail = credentials.email.trim().toLowerCase()
           // Trim password to ensure consistency with registration and login flows
           const normalizedPassword = credentials.password.trim()
+          console.log(`[Auth] Normalized email: ${normalizedEmail}`)
           logger.debug(`[Auth] Normalized email: ${normalizedEmail}`)
 
           // Force reconnect to ensure fresh connection
           await prisma.$connect()
 
           // Find user with normalized email
+          console.log(`[Auth] Searching for user: ${normalizedEmail}`)
           const user = await prisma.user.findUnique({
             where: { email: normalizedEmail }
           })
 
           if (!user) {
+            console.error(`[Auth] User not found: ${normalizedEmail}`)
             logger.error(`[Auth] User not found: ${normalizedEmail}`)
             
             // Debug: List all users to see what's in DB and check for exact match (dev only)
@@ -86,27 +92,34 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
+          console.log(`[Auth] User found: ${user.firstName} ${user.lastName}, Role: ${user.role}`)
           logger.debug(`[Auth] User found: ${user.firstName} ${user.lastName}, Role: ${user.role}`)
 
           // Check if user has password (not OAuth-only user)
           if (!user.password) {
+            console.error(`[Auth] User has no password: ${normalizedEmail}`)
             logger.error(`[Auth] User has no password: ${normalizedEmail}`)
             return null
           }
 
+          console.log(`[Auth] Comparing password...`)
           logger.debug(`[Auth] Comparing password...`)
           const isPasswordValid = await bcrypt.compare(
             normalizedPassword,
             user.password
           )
 
+          console.log(`[Auth] Password valid: ${isPasswordValid}`)
           logger.debug(`[Auth] Password valid: ${isPasswordValid}`)
 
           if (!isPasswordValid) {
+            console.error(`[Auth] Invalid password for: ${normalizedEmail}`)
             logger.error(`[Auth] Invalid password for: ${normalizedEmail}`)
+            // Return null to trigger CredentialsSignin error
             return null
           }
 
+          console.log(`[Auth] Login successful: ${normalizedEmail}`)
           logger.debug(`[Auth] Login successful: ${normalizedEmail}`)
 
           return {
@@ -117,8 +130,15 @@ export const authOptions: NextAuthOptions = {
             image: user.avatar
           }
         } catch (error: any) {
+          console.error('[Auth] Login error:', error)
+          console.error('[Auth] Error stack:', error?.stack)
           logger.error('[Auth] Login error:', error)
+          // Return null to trigger CredentialsSignin error
+          // This ensures consistent error handling
           return null
+        } finally {
+          // Ensure Prisma connection is properly managed
+          // Don't disconnect here as it's a singleton
         }
       }
     }),
@@ -147,6 +167,18 @@ export const authOptions: NextAuthOptions = {
     error: '/login',
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      // If url is a relative URL, make it absolute
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`
+      }
+      // If url is on the same origin, allow it
+      if (new URL(url).origin === baseUrl) {
+        return url
+      }
+      // Default redirect to dashboard
+      return `${baseUrl}/dashboard`
+    },
     async signIn({ user, account, profile }) {
       // Handle OAuth sign in
       if (account?.provider === 'google') {
@@ -324,6 +356,6 @@ export const authOptions: NextAuthOptions = {
       }
     },
   },
-  debug: false, // Set to false to disable NextAuth debug warnings
+  debug: false, // Set to true only when debugging auth issues (disabled to reduce warnings)
 }
 
