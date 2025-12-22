@@ -162,7 +162,7 @@ export default function SocialFeed({
 
     const isLiked = likedPosts.has(postId)
     const previousLikedPosts = new Set(likedPosts)
-    
+
     // Optimistic update
     const newLikedPosts = new Set(likedPosts)
     if (isLiked) {
@@ -220,7 +220,7 @@ export default function SocialFeed({
     if (e) {
       e.stopPropagation()
     }
-    
+
     if (isGuest || !currentUserId) {
       if (onInteractionRequired) {
         onInteractionRequired('share')
@@ -251,7 +251,7 @@ export default function SocialFeed({
     if (!confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
       return
     }
-    
+
     // Second confirmation
     if (!confirm('Xác nhận lần cuối: Bạn có thực sự muốn xóa bài viết này? Hành động này không thể hoàn tác.')) {
       return
@@ -427,13 +427,13 @@ export default function SocialFeed({
       prevPosts.map((post) =>
         post.id === postId
           ? {
-              ...post,
-              _count: {
-                likes: post._count?.likes || 0,
-                comments: post._count?.comments || 0,
-                reposts: (post._count?.reposts || 0) + (isRemixed ? -1 : 1),
-              },
-            }
+            ...post,
+            _count: {
+              likes: post._count?.likes || 0,
+              comments: post._count?.comments || 0,
+              reposts: (post._count?.reposts || 0) + (isRemixed ? -1 : 1),
+            },
+          }
           : post
       )
     )
@@ -458,13 +458,13 @@ export default function SocialFeed({
           prevPosts.map((post) =>
             post.id === postId
               ? {
-                  ...post,
-                  _count: {
-                    likes: post._count?.likes || 0,
-                    comments: post._count?.comments || 0,
-                    reposts: (post._count?.reposts || 0) + (isRemixed ? 1 : -1),
-                  },
-                }
+                ...post,
+                _count: {
+                  likes: post._count?.likes || 0,
+                  comments: post._count?.comments || 0,
+                  reposts: (post._count?.reposts || 0) + (isRemixed ? 1 : -1),
+                },
+              }
               : post
           )
         )
@@ -488,13 +488,13 @@ export default function SocialFeed({
         prevPosts.map((post) =>
           post.id === postId
             ? {
-                ...post,
-                _count: {
-                  likes: post._count?.likes ?? 0,
-                  comments: post._count?.comments ?? 0,
-                  reposts: (post._count?.reposts ?? 0) + (isRemixed ? 1 : -1),
-                },
-              }
+              ...post,
+              _count: {
+                likes: post._count?.likes ?? 0,
+                comments: post._count?.comments ?? 0,
+                reposts: (post._count?.reposts ?? 0) + (isRemixed ? 1 : -1),
+              },
+            }
             : post
         )
       )
@@ -559,11 +559,10 @@ export default function SocialFeed({
                     <button
                       onClick={(e) => handleFollow(post.author.id, e)}
                       disabled={loadingFollow.has(post.author.id)}
-                      className={`ml-2 px-3 py-1 rounded-full text-xs font-semibold font-poppins transition-colors duration-300 disabled:opacity-50 ${
-                        followingUsers.has(post.author.id)
-                          ? 'bg-bluelock-light-2 dark:bg-gray-800 hover:bg-bluelock-light-3 dark:hover:bg-gray-700 text-bluelock-dark dark:text-white border border-bluelock-blue/30 dark:border-gray-700'
-                          : 'bg-bluelock-green hover:bg-bluelock-green-bright dark:bg-white dark:hover:bg-gray-200 text-black'
-                      } flex items-center space-x-1`}
+                      className={`ml-2 px-3 py-1 rounded-full text-xs font-semibold font-poppins transition-colors duration-300 disabled:opacity-50 ${followingUsers.has(post.author.id)
+                        ? 'bg-bluelock-light-2 dark:bg-gray-800 hover:bg-bluelock-light-3 dark:hover:bg-gray-700 text-bluelock-dark dark:text-white border border-bluelock-blue/30 dark:border-gray-700'
+                        : 'bg-bluelock-green hover:bg-bluelock-green-bright dark:bg-white dark:hover:bg-gray-200 text-black'
+                        } flex items-center space-x-1`}
                       title={followingUsers.has(post.author.id) ? 'Hủy theo dõi' : 'Theo dõi'}
                     >
                       {loadingFollow.has(post.author.id) ? (
@@ -630,21 +629,19 @@ export default function SocialFeed({
               {/* Multiple Images Display */}
               {post.images && post.images.length > 0 && (
                 <div className="mb-3">
-                  <div className={`grid gap-2 ${
-                    post.images.length === 1 ? 'grid-cols-1' :
+                  <div className={`grid gap-2 ${post.images.length === 1 ? 'grid-cols-1' :
                     post.images.length === 2 ? 'grid-cols-2' :
-                    post.images.length === 3 ? 'grid-cols-3' :
-                    post.images.length === 4 ? 'grid-cols-2' :
-                    'grid-cols-3'
-                  }`}>
+                      post.images.length === 3 ? 'grid-cols-3' :
+                        post.images.length === 4 ? 'grid-cols-2' :
+                          'grid-cols-3'
+                    }`}>
                     {post.images.slice(0, 9).map((image, index) => (
                       <div
                         key={index}
-                        className={`relative rounded-2xl overflow-hidden border border-bluelock-blue/30 dark:border-gray-800 cursor-pointer ${
-                          post.images.length === 1 ? 'max-h-96' : 'aspect-square'
-                        }`}
+                        className={`relative rounded-2xl overflow-hidden border border-bluelock-blue/30 dark:border-gray-800 cursor-pointer ${(post.images?.length || 0) === 1 ? 'max-h-96' : 'aspect-square'
+                          }`}
                         onClick={() => {
-                          setLightboxImages(post.images)
+                          setLightboxImages(post.images || [])
                           setLightboxIndex(index)
                           setLightboxOpen(true)
                         }}
@@ -652,14 +649,13 @@ export default function SocialFeed({
                         <img
                           src={image}
                           alt={`Image ${index + 1}`}
-                          className={`w-full h-full hover:opacity-90 transition-opacity ${
-                            post.images.length === 1 ? 'object-contain bg-bluelock-light-2 dark:bg-gray-900' : 'object-cover'
-                          }`}
+                          className={`w-full h-full hover:opacity-90 transition-opacity ${(post.images?.length || 0) === 1 ? 'object-contain bg-bluelock-light-2 dark:bg-gray-900' : 'object-cover'
+                            }`}
                         />
-                        {index === 8 && post.images.length > 9 && (
+                        {index === 8 && (post.images?.length || 0) > 9 && (
                           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                             <span className="text-white text-3xl font-bold font-poppins">
-                              +{post.images.length - 9}
+                              +{(post.images?.length || 0) - 9}
                             </span>
                           </div>
                         )}
@@ -728,27 +724,25 @@ export default function SocialFeed({
 
                 <button
                   onClick={() => handleRemix(post.id)}
-                  className={`flex items-center space-x-1 transition-colors group duration-300 ${
-                    post.author.id === currentUserId
-                      ? 'text-green-500 opacity-50 cursor-not-allowed'
-                      : remixedPosts.has(post.id)
+                  className={`flex items-center space-x-1 transition-colors group duration-300 ${post.author.id === currentUserId
+                    ? 'text-green-500 opacity-50 cursor-not-allowed'
+                    : remixedPosts.has(post.id)
                       ? 'text-green-500'
                       : 'text-bluelock-dark/60 dark:text-gray-500 hover:text-green-500'
-                  }`}
+                    }`}
                   disabled={isGuest || post.author.id === currentUserId}
                   title={
                     post.author.id === currentUserId
                       ? 'Không thể remix bài viết của chính mình'
                       : remixedPosts.has(post.id)
-                      ? 'Hủy remix'
-                      : 'Remix bài viết'
+                        ? 'Hủy remix'
+                        : 'Remix bài viết'
                   }
                 >
-                  <div className={`p-2 rounded-full transition-colors ${
-                    post.author.id === currentUserId
-                      ? 'bg-green-500/20'
-                      : 'group-hover:bg-green-500/10'
-                  }`}>
+                  <div className={`p-2 rounded-full transition-colors ${post.author.id === currentUserId
+                    ? 'bg-green-500/20'
+                    : 'group-hover:bg-green-500/10'
+                    }`}>
                     <ChefHat
                       size={18.75}
                       fill={remixedPosts.has(post.id) || post.author.id === currentUserId ? 'currentColor' : 'none'}
@@ -761,11 +755,10 @@ export default function SocialFeed({
 
                 <button
                   onClick={() => handleLike(post.id)}
-                  className={`flex items-center space-x-1 transition-colors group duration-300 ${
-                    likedPosts.has(post.id)
-                      ? 'text-red-500'
-                      : 'text-bluelock-dark/60 dark:text-gray-500 hover:text-red-500'
-                  }`}
+                  className={`flex items-center space-x-1 transition-colors group duration-300 ${likedPosts.has(post.id)
+                    ? 'text-red-500'
+                    : 'text-bluelock-dark/60 dark:text-gray-500 hover:text-red-500'
+                    }`}
                   disabled={isGuest}
                 >
                   <div className="p-2 rounded-full group-hover:bg-red-500/10 transition-colors">
@@ -813,11 +806,10 @@ export default function SocialFeed({
 
                 <button
                   onClick={() => handleBookmark(post.id)}
-                  className={`flex items-center space-x-1 transition-colors group duration-300 ${
-                    bookmarkedPosts.has(post.id)
-                      ? 'text-bluelock-green dark:text-blue-500'
-                      : 'text-bluelock-dark/60 dark:text-gray-500 hover:text-bluelock-green dark:hover:text-blue-500'
-                  }`}
+                  className={`flex items-center space-x-1 transition-colors group duration-300 ${bookmarkedPosts.has(post.id)
+                    ? 'text-bluelock-green dark:text-blue-500'
+                    : 'text-bluelock-dark/60 dark:text-gray-500 hover:text-bluelock-green dark:hover:text-blue-500'
+                    }`}
                   disabled={isGuest}
                   title={bookmarkedPosts.has(post.id) ? 'Xóa khỏi dấu trang' : 'Lưu vào dấu trang'}
                 >
