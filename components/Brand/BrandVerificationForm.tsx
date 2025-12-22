@@ -77,9 +77,9 @@ export default function BrandVerificationForm({ currentUser }: BrandVerification
       return
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      alert('Kích thước file không được vượt quá 10MB')
+    // Validate file size (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      alert('Kích thước file không được vượt quá 50MB')
       return
     }
 
@@ -295,7 +295,7 @@ export default function BrandVerificationForm({ currentUser }: BrandVerification
               </div>
             )}
             <p className="mt-1 text-xs text-bluelock-dark/60 dark:text-gray-400 font-poppins">
-              File PDF giấy phép đăng ký kinh doanh (tối đa 10MB)
+              File PDF giấy phép đăng ký kinh doanh (tối đa 50MB)
             </p>
           </div>
 

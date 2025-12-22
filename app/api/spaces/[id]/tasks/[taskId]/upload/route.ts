@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { writeFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
-import { join } from 'path'
+import { uploadFileFromFormData } from '@/lib/storage'
 
 export async function POST(
   request: Request,
@@ -38,33 +36,12 @@ export async function POST(
       return NextResponse.json({ error: 'Không có file được upload' }, { status: 400 })
     }
 
-    // Create uploads directory
-    const uploadsDir = join(
-      process.cwd(),
-      'public',
-      'uploads',
-      'spaces',
-      spaceId,
-      'tasks',
-      taskId,
-      type === 'image' ? 'images' : 'attachments'
-    )
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now()
-    const originalName = file.name
-    const fileExtension = originalName.split('.').pop()
-    const fileName = `${timestamp}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-    const filePath = join(uploadsDir, fileName)
-    const fileUrl = `/uploads/spaces/${spaceId}/tasks/${taskId}/${type === 'image' ? 'images' : 'attachments'}/${fileName}`
-
-    // Save file
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    // Upload to Google Cloud Storage
+    const folder = `spaces/${spaceId}/tasks/${taskId}/${type === 'image' ? 'images' : 'attachments'}`
+    const result = await uploadFileFromFormData(file, folder, {
+      public: true,
+      cacheControl: 'public, max-age=31536000',
+    })
 
     // Update task
     const parseJSON = (jsonString: string | null): any[] => {
@@ -78,7 +55,7 @@ export async function POST(
 
     if (type === 'image') {
       const images = parseJSON(task.images)
-      images.push(fileUrl)
+      images.push(result.publicUrl)
       await prisma.spaceTask.update({
         where: { id: taskId },
         data: {
@@ -88,10 +65,10 @@ export async function POST(
     } else {
       const attachments = parseJSON(task.attachments)
       attachments.push({
-        name: originalName,
-        url: fileUrl,
-        type: fileExtension,
-        size: buffer.length,
+        name: file.name,
+        url: result.publicUrl,
+        type: file.name.split('.').pop(),
+        size: result.size,
       })
       await prisma.spaceTask.update({
         where: { id: taskId },
@@ -102,8 +79,8 @@ export async function POST(
     }
 
     return NextResponse.json({
-      url: fileUrl,
-      name: originalName,
+      url: result.publicUrl,
+      name: file.name,
       type: type === 'image' ? 'image' : 'attachment',
     })
   } catch (error) {

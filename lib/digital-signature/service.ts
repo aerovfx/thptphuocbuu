@@ -118,7 +118,6 @@ export class DigitalSignatureService {
           })
 
         case 'VIETTEL':
-        case 'FPT':
         case 'MISA':
           // TODO: Implement other providers
           return {

@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { cache, cacheKeys } from '@/lib/cache'
 
 export async function GET() {
   try {
@@ -12,6 +13,14 @@ export async function GET() {
 
     const userId = session.user.id
     const role = session.user.role
+
+    // Cache dashboard stats per-user for a short TTL to reduce repeated DB counts
+    // (dashboard can poll / re-render frequently).
+    const cacheKey = `${cacheKeys.stats(userId)}:${role}`
+    const cached = cache.get<any>(cacheKey)
+    if (cached) {
+      return NextResponse.json({ ...cached, cached: true })
+    }
 
     if (role === 'TEACHER' || role === 'ADMIN') {
       const now = new Date()
@@ -188,7 +197,7 @@ export async function GET() {
         )
       }
 
-      return NextResponse.json({
+      const payload = {
         classes,
         students,
         documents,
@@ -212,7 +221,10 @@ export async function GET() {
         featuresProposals,
         implementedFeatures,
         timestamp: new Date().toISOString(),
-      })
+      }
+
+      cache.set(cacheKey, payload, 30) // 30s TTL
+      return NextResponse.json({ ...payload, cached: false })
     } else if (role === 'STUDENT') {
       // Count friendships separately for one-way relationship model (user1Id follows user2Id)
       const [followingCount, followersCount] = await Promise.all([
@@ -285,7 +297,7 @@ export async function GET() {
         )
       }
 
-      return NextResponse.json({
+      const payload = {
         classes,
         documents,
         posts,
@@ -295,10 +307,13 @@ export async function GET() {
         pendingAssignments,
         workProgress: averageProgress,
         timestamp: new Date().toISOString(),
-      })
+      }
+
+      cache.set(cacheKey, payload, 30) // 30s TTL
+      return NextResponse.json({ ...payload, cached: false })
     }
 
-    return NextResponse.json({
+    const payload = {
       classes: 0,
       documents: 0,
       posts: 0,
@@ -306,7 +321,9 @@ export async function GET() {
       students: 0,
       workProgress: 0,
       timestamp: new Date().toISOString(),
-    })
+    }
+    cache.set(cacheKey, payload, 30)
+    return NextResponse.json({ ...payload, cached: false })
   } catch (error: any) {
     console.error('Error fetching dashboard stats:', error)
     return NextResponse.json(

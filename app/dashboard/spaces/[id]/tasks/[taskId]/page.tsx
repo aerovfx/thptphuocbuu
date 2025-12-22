@@ -87,7 +87,7 @@ export default async function SpaceTaskDetailPage({
 
   return (
     <SharedLayout title={task.title}>
-      <SpaceTaskDetail task={task as any} currentUser={session} />
+      <SpaceTaskDetail task={task as any} currentUser={session} spaceId={spaceId} />
     </SharedLayout>
   )
 }

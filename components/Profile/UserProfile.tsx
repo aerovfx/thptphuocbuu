@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import {
   ArrowLeft,
   MoreHorizontal,
@@ -24,6 +24,7 @@ import {
   Upload,
   Building2,
   Award,
+  LogOut,
 } from 'lucide-react'
 import Avatar from '@/components/Common/Avatar'
 import SocialFeed from '@/components/Social/SocialFeed'
@@ -98,6 +99,8 @@ export default function UserProfile({ user, currentUser }: UserProfileProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'posts' | 'replies' | 'highlights' | 'media' | 'likes'>('posts')
   const [avatar, setAvatar] = useState(user.avatar)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
   const [coverPhoto, setCoverPhoto] = useState(user.coverPhoto)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
@@ -106,6 +109,32 @@ export default function UserProfile({ user, currentUser }: UserProfileProps) {
   const isOwnProfile = currentUser?.user?.id === user.id
   const displayName = `${user.firstName} ${user.lastName}`
   const handle = `@${user.email.split('@')[0]}`
+
+  // Handle click outside to close menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false)
+      }
+    }
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showUserMenu])
+
+  const handleLogout = async () => {
+    try {
+      await signOut({ callbackUrl: '/login', redirect: true })
+    } catch (error) {
+      console.error('Error during logout:', error)
+      router.push('/login')
+    }
+  }
 
   const handleFollow = async () => {
     if (!session) {
@@ -294,10 +323,10 @@ export default function UserProfile({ user, currentUser }: UserProfileProps) {
 
             {/* User Profile Preview */}
             {currentUser && (
-              <div className="mt-auto pt-4">
-                <button
+              <div className="mt-auto pt-4 relative" ref={userMenuRef}>
+                <div
                   onClick={() => router.push(`/users/${currentUser.user?.id}`)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-full hover:bg-bluelock-light-2 dark:hover:bg-gray-900 transition-colors"
+                  className="flex items-center justify-between px-3 py-2 rounded-full hover:bg-bluelock-light-2 dark:hover:bg-gray-900 cursor-pointer transition-colors"
                 >
                   <div className="flex items-center space-x-3">
                     <Avatar
@@ -314,8 +343,31 @@ export default function UserProfile({ user, currentUser }: UserProfileProps) {
                       </p>
                     </div>
                   </div>
-                  <MoreHorizontal size={18} className="text-bluelock-dark/60 dark:text-gray-500" />
-                </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowUserMenu(!showUserMenu)
+                    }}
+                    className="text-bluelock-dark/60 dark:text-gray-500 hover:text-bluelock-green dark:hover:text-blue-500 hover:bg-bluelock-green/10 dark:hover:bg-blue-500/10 rounded-full p-1 transition-colors"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+                </div>
+                {showUserMenu && (
+                  <div className="absolute bottom-full left-0 mb-2 w-64 bg-bluelock-light-2 dark:bg-gray-900 rounded-2xl shadow-xl border border-bluelock-blue/30 dark:border-gray-800 overflow-hidden z-50">
+                    {/* Arrow */}
+                    <div className="absolute -bottom-2 left-6 w-4 h-4 bg-bluelock-light-2 dark:bg-gray-900 border-r border-b border-bluelock-blue/30 dark:border-gray-800 transform rotate-45"></div>
+                    <div className="p-2">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full px-4 py-3 text-left hover:bg-bluelock-light-3 dark:hover:bg-gray-800 rounded-xl transition-colors font-poppins text-bluelock-dark dark:text-white flex items-center space-x-3"
+                      >
+                        <LogOut size={20} className="text-bluelock-dark/60 dark:text-gray-400" />
+                        <span>Đăng xuất @{currentUser.user?.email?.split('@')[0] || 'user'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

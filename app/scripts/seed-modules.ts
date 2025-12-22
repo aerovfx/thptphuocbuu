@@ -54,7 +54,7 @@ const defaultModules = [
     enabled: true,
     version: '1.0.0',
     config: JSON.stringify({
-      maxFileSize: 10485760, // 10MB
+      maxFileSize: 52428800, // 50MB
       allowedFormats: ['pdf', 'doc', 'docx', 'xls', 'xlsx'],
     }),
   },

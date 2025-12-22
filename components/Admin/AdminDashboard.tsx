@@ -67,7 +67,7 @@ export default function AdminDashboard({ stats, currentUser }: AdminDashboardPro
       link: '/dashboard/admin/users?status=ACTIVE',
     },
     {
-      title: 'Người dùng bị tạm dừng',
+      title: 'Người dùng không hoạt động',
       value: stats.users.suspended,
       icon: XCircle,
       color: 'bg-red-500',

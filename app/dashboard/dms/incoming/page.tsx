@@ -8,8 +8,8 @@ async function getIncomingDocuments(userId: string, role: string) {
   const where: any = {}
 
   // Role-based filtering
-  if (role === 'ADMIN') {
-    // ADMIN can see all incoming documents
+  if (role === 'ADMIN' || role === 'BGH') {
+    // ADMIN and BGH can see all incoming documents
     // where remains empty to show all
   } else if (role === 'STUDENT' || role === 'PARENT') {
     where.assignments = {

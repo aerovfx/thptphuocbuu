@@ -21,7 +21,7 @@ export async function GET(
     await requireAdmin()
     const { id } = await params
 
-    const log = await prisma.adminAuditLog.findUnique({
+    const log = await (prisma as any).adminAuditLog.findUnique({
       where: { id },
       include: {
         actor: {

@@ -168,8 +168,12 @@ export async function PUT(
       return NextResponse.json({ error: 'Văn bản không tồn tại' }, { status: 404 })
     }
 
-    // Check permission
-    if (session.user.role !== 'ADMIN' && existingDoc.createdById !== session.user.id) {
+    // Check permission - ADMIN, BGH, or creator can update
+    const isAdmin = session.user.role === 'ADMIN'
+    const isBGH = session.user.role === 'BGH'
+    const isOwner = existingDoc.createdById === session.user.id
+    
+    if (!isAdmin && !isBGH && !isOwner) {
       return NextResponse.json(
         { error: 'Bạn không có quyền cập nhật văn bản này' },
         { status: 403 }
@@ -323,14 +327,41 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (session.user.role !== 'ADMIN') {
+    const { id } = await params
+
+    // Get document to check ownership
+    const document = await prisma.incomingDocument.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        createdById: true,
+      },
+    })
+
+    if (!document) {
+      return NextResponse.json({ error: 'Văn bản không tồn tại' }, { status: 404 })
+    }
+
+    // Only allow ADMIN or user who created the document to delete
+    // BGH cannot delete documents created by others
+    const isAdmin = session.user.role === 'ADMIN'
+    const isOwner = document.createdById === session.user.id
+    const isBGH = session.user.role === 'BGH'
+
+    if (!isAdmin && !isOwner) {
       return NextResponse.json(
-        { error: 'Chỉ quản trị viên mới có thể xóa văn bản' },
+        { error: 'Bạn chỉ có thể xóa văn bản do chính bạn tạo' },
         { status: 403 }
       )
     }
 
-    const { id } = await params
+    // BGH cannot delete documents created by others
+    if (isBGH && !isOwner) {
+      return NextResponse.json(
+        { error: 'Ban Giám Hiệu không được xóa văn bản của người khác' },
+        { status: 403 }
+      )
+    }
 
     await prisma.incomingDocument.delete({
       where: { id },

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, FileText, Download, Eye, Inbox, Send } from 'lucide-react'
+import { Plus, FileText, Download, Eye, Inbox, Send, User, X } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { vi } from 'date-fns/locale/vi'
 import DocumentListDashboard from './DocumentListDashboard'
@@ -54,6 +54,12 @@ interface IncomingDocument {
     deadline: string | null
   }>
   createdAt: string
+  createdBy?: {
+    id: string
+    firstName: string
+    lastName: string
+    avatar: string | null
+  }
 }
 
 interface OutgoingDocument {
@@ -65,9 +71,19 @@ interface OutgoingDocument {
   recipient: string | null
   createdAt: string
   createdBy: {
+    id: string
     firstName: string
     lastName: string
   }
+}
+
+interface UploaderUser {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  role: string
+  avatar: string | null
 }
 
 interface DocumentsTabsProps {
@@ -100,8 +116,60 @@ export default function DocumentsTabs({
   currentUser,
 }: DocumentsTabsProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'incoming' | 'outgoing'>('all')
+  const [uploaders, setUploaders] = useState<UploaderUser[]>([])
+  const [selectedUploaderId, setSelectedUploaderId] = useState<string | null>(null)
+  const [loadingUploaders, setLoadingUploaders] = useState(false)
 
   const canUpload = currentUser.role === 'ADMIN' || currentUser.role === 'TEACHER'
+
+  // Fetch uploaders on mount
+  useEffect(() => {
+    async function fetchUploaders() {
+      setLoadingUploaders(true)
+      try {
+        const response = await fetch('/api/users/documents-uploaders')
+        if (response.ok) {
+          const data = await response.json()
+          setUploaders(data.users || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch uploaders:', error)
+      } finally {
+        setLoadingUploaders(false)
+      }
+    }
+    fetchUploaders()
+  }, [])
+
+  // Filter documents by uploader
+  const getFilteredDocuments = () => {
+    let filteredIncoming = [...incomingDocuments]
+    let filteredOutgoing = [...outgoingDocuments]
+
+    if (selectedUploaderId) {
+      filteredIncoming = incomingDocuments.filter(
+        (doc) => doc.createdBy?.id === selectedUploaderId
+      )
+      filteredOutgoing = outgoingDocuments.filter(
+        (doc) => doc.createdBy?.id === selectedUploaderId
+      )
+    }
+
+    return { filteredIncoming, filteredOutgoing }
+  }
+
+  const { filteredIncoming, filteredOutgoing } = getFilteredDocuments()
+
+  const getRoleLabel = (role: string) => {
+    const roleLabels: Record<string, string> = {
+      BGH: 'Ban Giám Hiệu',
+      TAI_CHINH: 'Kế toán',
+      ADMIN: 'Quản trị viên',
+      SUPER_ADMIN: 'IT Quản trị',
+      TEACHER: 'Giáo viên',
+    }
+    return roleLabels[role] || ''
+  }
 
   const handleDocumentClick = (documentId: string, type: 'incoming' | 'outgoing' | 'document') => {
     if (type === 'incoming') {
@@ -147,6 +215,42 @@ export default function DocumentsTabs({
             currentUser={currentUser}
           />
         </div>
+
+        {/* Filter by Uploader */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-300 font-poppins flex items-center gap-2">
+              <User size={16} />
+              <span>Lọc theo người đăng:</span>
+            </label>
+            <div className="flex-1 max-w-xs">
+              <select
+                value={selectedUploaderId || ''}
+                onChange={(e) => setSelectedUploaderId(e.target.value || null)}
+                className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-poppins text-sm"
+              >
+                <option value="">Tất cả người đăng</option>
+                {uploaders.map((user) => {
+                  const roleLabel = getRoleLabel(user.role)
+                  return (
+                    <option key={user.id} value={user.id}>
+                      {user.firstName} {user.lastName}{roleLabel ? ` (${roleLabel})` : ''}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+            {selectedUploaderId && (
+              <button
+                onClick={() => setSelectedUploaderId(null)}
+                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                title="Xóa bộ lọc"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
         {/* Tabs */}
@@ -164,7 +268,9 @@ export default function DocumentsTabs({
                 <FileText size={18} />
                 <span>Tất cả</span>
                 <span className="bg-gray-700 text-gray-300 py-0.5 px-2 rounded-full text-xs">
-                  {incomingDocuments.length + outgoingDocuments.length}
+                  {selectedUploaderId 
+                    ? filteredIncoming.length + filteredOutgoing.length
+                    : incomingDocuments.length + outgoingDocuments.length}
                 </span>
               </div>
             </button>
@@ -180,7 +286,7 @@ export default function DocumentsTabs({
                 <Inbox size={18} />
                 <span>Văn bản đến</span>
                 <span className="bg-gray-700 text-gray-300 py-0.5 px-2 rounded-full text-xs">
-                  {incomingDocuments.length}
+                  {selectedUploaderId ? filteredIncoming.length : incomingDocuments.length}
                 </span>
               </div>
             </button>
@@ -196,7 +302,7 @@ export default function DocumentsTabs({
                 <Send size={18} />
                 <span>Văn bản đi</span>
                 <span className="bg-gray-700 text-gray-300 py-0.5 px-2 rounded-full text-xs">
-                  {outgoingDocuments.length}
+                  {selectedUploaderId ? filteredOutgoing.length : outgoingDocuments.length}
                 </span>
               </div>
             </button>
@@ -208,14 +314,14 @@ export default function DocumentsTabs({
         {activeTab === 'all' && (
           <div className="space-y-6">
             {/* Incoming Documents Section */}
-            {incomingDocuments.length > 0 && (
+            {(selectedUploaderId ? filteredIncoming : incomingDocuments).length > 0 && (
               <div>
                 <h2 className="text-lg font-semibold text-white mb-4 font-poppins flex items-center gap-2">
                   <Inbox size={20} />
-                  Văn bản đến ({incomingDocuments.length})
+                  Văn bản đến ({selectedUploaderId ? filteredIncoming.length : incomingDocuments.length})
                 </h2>
                 <DocumentListDashboard
-                  initialDocuments={incomingDocuments.map((doc) => ({
+                  initialDocuments={(selectedUploaderId ? filteredIncoming : incomingDocuments).map((doc) => ({
                     id: doc.id,
                     documentNumber: doc.documentNumber,
                     title: doc.title,
@@ -229,7 +335,13 @@ export default function DocumentsTabs({
                     ocrConfidence: doc.ocrConfidence,
                     aiCategory: doc.aiCategory,
                     aiConfidence: doc.aiConfidence,
-                    assignments: doc.assignments,
+                    assignments: (doc.assignments || []).map((a) => ({
+                      ...a,
+                      assignedTo: {
+                        ...a.assignedTo,
+                        avatar: null,
+                      },
+                    })),
                     createdAt: doc.createdAt,
                   }))}
                   onDocumentClick={(id) => handleDocumentClick(id, 'incoming')}
@@ -238,15 +350,15 @@ export default function DocumentsTabs({
             )}
 
             {/* Outgoing Documents Section */}
-            {outgoingDocuments.length > 0 && (
+            {(selectedUploaderId ? filteredOutgoing : outgoingDocuments).length > 0 && (
               <div>
                 <h2 className="text-lg font-semibold text-white mb-4 font-poppins flex items-center gap-2">
                   <Send size={20} />
-                  Văn bản đi ({outgoingDocuments.length})
+                  Văn bản đi ({selectedUploaderId ? filteredOutgoing.length : outgoingDocuments.length})
                 </h2>
                 <div className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
                   <div className="divide-y divide-gray-800">
-                    {outgoingDocuments.map((doc) => (
+                    {(selectedUploaderId ? filteredOutgoing : outgoingDocuments).map((doc) => (
                       <div
                         key={doc.id}
                         className="p-4 hover:bg-gray-800/50 transition-colors cursor-pointer"
@@ -285,8 +397,9 @@ export default function DocumentsTabs({
               </div>
             )}
 
-            {incomingDocuments.length === 0 &&
-              outgoingDocuments.length === 0 && (
+            {(selectedUploaderId 
+              ? filteredIncoming.length === 0 && filteredOutgoing.length === 0
+              : incomingDocuments.length === 0 && outgoingDocuments.length === 0) && (
                 <div className="bg-gray-900 rounded-lg p-12 text-center">
                   <FileText className="mx-auto text-gray-400 mb-4" size={48} />
                   <p className="text-gray-400 text-lg font-poppins">Chưa có văn bản nào</p>
@@ -297,7 +410,7 @@ export default function DocumentsTabs({
 
         {activeTab === 'incoming' && (
           <DocumentListDashboard
-            initialDocuments={incomingDocuments.map((doc) => ({
+            initialDocuments={(selectedUploaderId ? filteredIncoming : incomingDocuments).map((doc) => ({
               id: doc.id,
               documentNumber: doc.documentNumber,
               title: doc.title,
@@ -311,7 +424,13 @@ export default function DocumentsTabs({
               ocrConfidence: doc.ocrConfidence,
               aiCategory: doc.aiCategory,
               aiConfidence: doc.aiConfidence,
-              assignments: doc.assignments,
+              assignments: (doc.assignments || []).map((a) => ({
+                ...a,
+                assignedTo: {
+                  ...a.assignedTo,
+                  avatar: null,
+                },
+              })),
               createdAt: doc.createdAt,
             }))}
             onDocumentClick={(id) => handleDocumentClick(id, 'incoming')}
@@ -320,14 +439,16 @@ export default function DocumentsTabs({
 
         {activeTab === 'outgoing' && (
           <div className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
-            {outgoingDocuments.length === 0 ? (
+            {(selectedUploaderId ? filteredOutgoing : outgoingDocuments).length === 0 ? (
               <div className="p-12 text-center">
                 <Send className="mx-auto text-gray-400 mb-4" size={48} />
-                <p className="text-gray-400 text-lg font-poppins">Chưa có văn bản đi nào</p>
+                <p className="text-gray-400 text-lg font-poppins">
+                  {selectedUploaderId ? 'Không có văn bản đi nào từ người này' : 'Chưa có văn bản đi nào'}
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-gray-800">
-                {outgoingDocuments.map((doc) => (
+                {(selectedUploaderId ? filteredOutgoing : outgoingDocuments).map((doc) => (
                   <div
                     key={doc.id}
                     className="p-4 hover:bg-gray-800/50 transition-colors cursor-pointer"

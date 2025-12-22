@@ -35,6 +35,19 @@ export async function DELETE(
     // Check if user exists
     const user = await prisma.user.findUnique({
       where: { id },
+      select: {
+        id: true,
+        email: true,
+        status: true,
+        metadata: true,
+        firstName: true,
+        lastName: true,
+        avatar: true,
+        coverPhoto: true,
+        bio: true,
+        phone: true,
+        dateOfBirth: true,
+      },
     })
 
     if (!user) {
@@ -44,10 +57,61 @@ export async function DELETE(
       )
     }
 
-    // Delete user (cascade will handle related records)
-    await prisma.user.delete({
-      where: { id },
-    })
+    // Soft delete: set status to SUSPENDED and revoke sessions/accounts
+    if (user.status === 'SUSPENDED') {
+      return NextResponse.json(
+        { message: 'Người dùng đã bị tạm dừng trước đó' },
+        { status: 200 }
+      )
+    }
+
+    const deletedEmail = `deleted+${id}@thptphuocbuu.local`
+    let nextMetadata: any = {}
+    try {
+      nextMetadata = user.metadata ? JSON.parse(user.metadata) : {}
+    } catch {
+      nextMetadata = {}
+    }
+    nextMetadata.deletedAt = new Date().toISOString()
+    nextMetadata.deletedBy = session.user.id
+    nextMetadata.previousEmail = user.email
+    nextMetadata.previousFirstName = user.firstName
+    nextMetadata.previousLastName = user.lastName
+    nextMetadata.previousAvatar = user.avatar
+    nextMetadata.previousCoverPhoto = user.coverPhoto
+    nextMetadata.previousBio = user.bio
+    nextMetadata.previousPhone = user.phone
+    nextMetadata.previousDateOfBirth = user.dateOfBirth ? user.dateOfBirth.toISOString() : null
+
+    await prisma.$transaction([
+      prisma.session.deleteMany({ where: { userId: id } }),
+      prisma.account.deleteMany({ where: { userId: id } }),
+      prisma.userRoleAssignment.deleteMany({ where: { userId: id } }),
+      prisma.userModuleAccess.deleteMany({ where: { userId: id } }),
+      prisma.user.update({
+        where: { id },
+        data: {
+          status: 'SUSPENDED',
+          // Break future logins and free up email if needed
+          email: deletedEmail,
+          password: null,
+          emailVerified: null,
+          resetPasswordToken: null,
+          resetPasswordExpires: null,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+          // Remove PII
+          firstName: 'Đã',
+          lastName: 'xóa',
+          avatar: null,
+          coverPhoto: null,
+          bio: null,
+          phone: null,
+          dateOfBirth: null,
+          metadata: JSON.stringify(nextMetadata),
+        },
+      }),
+    ])
 
     // Revalidate pages that display users list
     revalidatePath('/dashboard/users')

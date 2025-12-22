@@ -43,6 +43,15 @@ async function getSpace(id: string, userId: string, role: string) {
           },
         },
       },
+      workflows: {
+        where: { isActive: true },
+        orderBy: { order: 'asc' },
+      },
+      sprints: {
+        orderBy: { startDate: 'desc' },
+        take: 5,
+      },
+      currentSprint: true,
       _count: {
         select: {
           members: true,

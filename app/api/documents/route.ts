@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { uploadFileFromFormData } from '@/lib/storage'
 import { validateDocument } from '@/lib/file-validation'
 
 export async function POST(request: Request) {
@@ -38,33 +36,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'documents')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now()
-    const originalName = file.name
-    const fileExtension = originalName.split('.').pop()
-    const fileName = `${timestamp}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-    const filePath = join(uploadsDir, fileName)
-
-    // Save file
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    // Upload to Google Cloud Storage
+    const result = await uploadFileFromFormData(file, 'documents', {
+      public: true,
+      cacheControl: 'public, max-age=31536000',
+    })
 
     // Save to database
     const document = await prisma.document.create({
       data: {
         title,
         description: description || null,
-        fileName: originalName,
-        fileUrl: `/uploads/documents/${fileName}`,
-        fileSize: file.size,
-        mimeType: file.type,
+        fileName: file.name,
+        fileUrl: result.publicUrl,
+        fileSize: result.size,
+        mimeType: result.mimeType,
         type: type as any,
         category: category || null,
         uploadedById: session.user.id,
@@ -89,7 +75,7 @@ export async function GET(request: Request) {
     }
 
     let documents
-    if (session.user.role === 'ADMIN' || session.user.role === 'TEACHER') {
+    if (session.user.role === 'ADMIN' || session.user.role === 'BGH' || session.user.role === 'TEACHER') {
       documents = await prisma.document.findMany({
         include: {
           uploadedBy: {

@@ -15,8 +15,8 @@ const classSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    // Require TEACHER or ADMIN role
-    const { session, error } = await requireRoleAPI(['TEACHER', 'ADMIN'])
+    // Chỉ ADMIN, SUPER_ADMIN, BGH mới có thể tạo lớp học
+    const { session, error } = await requireRoleAPI(['ADMIN', 'SUPER_ADMIN', 'BGH'])
     if (error) {
       return error
     }
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const newClass = await prisma.class.create({
       data: {
         ...validatedData,
-        teacherId: session.user.id,
+        teacherId: session.user.id, // Admin tạo lớp học
       },
       include: {
         teacher: true,
@@ -69,26 +69,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    let classes
-    if (session.user.role === 'TEACHER') {
-      classes = await prisma.class.findMany({
-        where: { teacherId: session.user.id },
-        include: {
-          teacher: true,
-          _count: { select: { enrollments: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-      })
-    } else {
-      classes = await prisma.class.findMany({
-        where: { enrollments: { some: { userId: session.user.id } } },
-        include: {
-          teacher: true,
-          _count: { select: { enrollments: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-      })
+    // Chỉ ADMIN, SUPER_ADMIN, BGH mới có thể xem danh sách lớp học
+    const userRole = session.user.role
+    if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && userRole !== 'BGH') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+
+    // Admin có thể xem tất cả lớp học
+    const classes = await prisma.class.findMany({
+      include: {
+        teacher: true,
+        _count: { select: { enrollments: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
 
     return NextResponse.json(classes)
   } catch (error) {

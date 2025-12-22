@@ -79,9 +79,7 @@ export async function syncDocumentToSpacesAndDepartments({
                 documentType,
               },
             },
-            update: {
-              assignedAt: new Date(),
-            },
+            update: {},
             create: {
               departmentId,
               documentId,

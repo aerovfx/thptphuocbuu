@@ -26,14 +26,13 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { documentType, limit = 100 } = body
 
-    let documents: Array<{ id: string; createdById: string | null; targetSpaces: string | null }> = []
+    let documents: Array<{ id: string; createdById: string | null; targetSpaces?: string | null }> = []
 
     if (documentType === 'INCOMING') {
       documents = await prisma.incomingDocument.findMany({
         select: {
           id: true,
           createdById: true,
-          targetSpaces: true,
         },
         take: limit,
       })
@@ -53,7 +52,6 @@ export async function POST(request: Request) {
           select: {
             id: true,
             createdById: true,
-            targetSpaces: true,
           },
           take: limit,
         }),

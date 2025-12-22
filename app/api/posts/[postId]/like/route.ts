@@ -6,9 +6,10 @@ import { prisma } from '@/lib/prisma'
 // GET - Check if user has liked the post
 export async function GET(
   request: Request,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ liked: false }, { status: 200 })
@@ -17,7 +18,7 @@ export async function GET(
     const like = await prisma.like.findUnique({
       where: {
         postId_userId: {
-          postId: params.postId,
+          postId: postId,
           userId: session.user.id,
         },
       },
@@ -32,9 +33,10 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -44,7 +46,7 @@ export async function POST(
     const existingLike = await prisma.like.findUnique({
       where: {
         postId_userId: {
-          postId: params.postId,
+          postId: postId,
           userId: session.user.id,
         },
       },
@@ -56,7 +58,7 @@ export async function POST(
 
     const like = await prisma.like.create({
       data: {
-        postId: params.postId,
+        postId: postId,
         userId: session.user.id,
       },
     })
@@ -77,9 +79,10 @@ export async function POST(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -90,7 +93,7 @@ export async function DELETE(
       await prisma.like.delete({
         where: {
           postId_userId: {
-            postId: params.postId,
+            postId: postId,
             userId: session.user.id,
           },
         },

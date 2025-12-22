@@ -20,6 +20,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File không được để trống' }, { status: 400 })
     }
 
+    // Protect server from large uploads; extraction is best-effort and should not process huge files.
+    // Users can still upload up to 50MB, but auto-extract preview is skipped for large files.
+    const MAX_EXTRACT_SIZE = 10 * 1024 * 1024 // 10MB
+    if (file.size > MAX_EXTRACT_SIZE) {
+      return NextResponse.json({
+        success: false,
+        preview: '',
+        fullText: '',
+        hasMore: false,
+        error: 'File quá lớn để trích xuất tự động.',
+      })
+    }
+
     const fileExtension = file.name.split('.').pop()?.toLowerCase()
     let extractedText = ''
 
@@ -39,7 +52,8 @@ export async function POST(request: Request) {
           
           // Try to extract text from PDF using pdf-parse
           try {
-            const pdfParse = (await import('pdf-parse')).default
+            const pdfParseModule: any = await import('pdf-parse')
+            const pdfParse = pdfParseModule?.default ?? pdfParseModule
             const pdfData = await pdfParse(buffer)
             extractedText = pdfData.text || ''
           } catch (e) {

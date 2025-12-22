@@ -2,10 +2,8 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
 import { validateImage } from '@/lib/file-validation'
+import { uploadFileFromFormData, deleteFile } from '@/lib/storage'
 
 export async function POST(
   request: Request,
@@ -37,37 +35,40 @@ export async function POST(
       return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'covers')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
+    // Get current user to delete old cover photo
+    const currentUser = await prisma.user.findUnique({
+      where: { id },
+      select: { coverPhoto: true },
+    })
+
+    // Delete old cover photo from GCS if exists
+    if (currentUser?.coverPhoto && currentUser.coverPhoto.includes('storage.googleapis.com')) {
+      // Extract path from GCS URL
+      const urlParts = currentUser.coverPhoto.split('/')
+      const pathIndex = urlParts.findIndex(part => part === 'thptphuocbuu360')
+      if (pathIndex !== -1) {
+        const oldPath = urlParts.slice(pathIndex + 1).join('/')
+        await deleteFile(oldPath)
+      }
     }
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const fileExtension = file.name.split('.').pop()
-    const randomStr = Math.random().toString(36).substring(2, 15)
-    const fileName = `${timestamp}-${randomStr}.${fileExtension}`
-    const filePath = join(uploadsDir, fileName)
-
-    // Save file
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
-
-    const fileUrl = `/uploads/covers/${fileName}`
+    // Upload to Google Cloud Storage
+    const result = await uploadFileFromFormData(file, 'covers', {
+      public: true,
+      cacheControl: 'public, max-age=31536000',
+    })
 
     // Update user cover photo in database
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { coverPhoto: fileUrl },
+      data: { coverPhoto: result.publicUrl },
       select: {
         id: true,
         coverPhoto: true,
       },
     })
 
-    return NextResponse.json({ coverPhoto: updatedUser.coverPhoto, url: fileUrl })
+    return NextResponse.json({ coverPhoto: updatedUser.coverPhoto, url: result.publicUrl })
   } catch (error) {
     console.error('Error uploading cover photo:', error)
     return NextResponse.json(

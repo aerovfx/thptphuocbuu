@@ -1,10 +1,11 @@
 /**
  * File Validation Utilities
- * 
+ *
  * Giới hạn:
- * - Video: thời lượng 0-5s
+ * - Video người dùng thường: dung lượng <= 50MB, không giới hạn thời lượng
+ * - Video người dùng premium: dung lượng <= 100MB, không giới hạn thời lượng
  * - Ảnh: dung lượng <= 5MB
- * - Văn bản: dung lượng <= 10MB
+ * - Văn bản: dung lượng <= 50MB
  */
 
 export interface ValidationResult {
@@ -14,9 +15,12 @@ export interface ValidationResult {
 
 // Constants
 export const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
-export const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024 // 10MB
-export const MAX_VIDEO_DURATION = 5 // 5 seconds
-export const MIN_VIDEO_DURATION = 0 // 0 seconds
+export const MAX_IMAGES_COUNT = 10 // Maximum 10 images per post
+export const MAX_DOCUMENT_SIZE = 50 * 1024 * 1024 // 50MB
+export const MAX_VIDEO_SIZE_NORMAL = 50 * 1024 * 1024 // 50MB for normal users
+export const MAX_VIDEO_SIZE_PREMIUM = 100 * 1024 * 1024 // 100MB for premium users
+export const MAX_VIDEO_DURATION = 5 // 5 seconds (deprecated - kept for backward compatibility)
+export const MIN_VIDEO_DURATION = 0 // 0 seconds (deprecated - kept for backward compatibility)
 
 // Allowed MIME types
 export const ALLOWED_IMAGE_TYPES = [
@@ -72,10 +76,10 @@ export function validateImage(file: File): ValidationResult {
 
 /**
  * Validate video file
- * Note: Duration validation requires client-side or server-side video processing
- * For now, we only validate file size and type
+ * @param file - The video file to validate
+ * @param isPremium - Whether the user has premium access (default: false)
  */
-export function validateVideo(file: File): ValidationResult {
+export function validateVideo(file: File, isPremium: boolean = false): ValidationResult {
   // Check file type
   if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
     return {
@@ -84,14 +88,14 @@ export function validateVideo(file: File): ValidationResult {
     }
   }
 
-  // Note: Video duration validation should be done client-side using HTML5 video element
-  // or server-side using ffmpeg/ffprobe. For now, we'll rely on client-side validation
-  // and add a reasonable size limit as a proxy (5MB for 5 seconds of video)
-  const estimatedMaxSize = 5 * 1024 * 1024 // 5MB as a reasonable limit for 5s video
-  if (file.size > estimatedMaxSize) {
+  // Check file size based on user type
+  const maxSize = isPremium ? MAX_VIDEO_SIZE_PREMIUM : MAX_VIDEO_SIZE_NORMAL
+  const maxSizeMB = maxSize / (1024 * 1024)
+
+  if (file.size > maxSize) {
     return {
       valid: false,
-      error: `Video quá lớn. Vui lòng chọn video có thời lượng từ ${MIN_VIDEO_DURATION}s đến ${MAX_VIDEO_DURATION}s`,
+      error: `Video quá lớn. Dung lượng tối đa là ${maxSizeMB}MB ${isPremium ? '(Premium)' : '(người dùng thường)'}`,
     }
   }
 
@@ -169,13 +173,16 @@ export async function validateVideoDuration(file: File): Promise<ValidationResul
 
 /**
  * Auto-detect file type and validate
+ * @param file - The file to validate
+ * @param fileType - The type of file ('image' | 'video' | 'document')
+ * @param isPremium - Whether the user has premium access (only used for video validation)
  */
-export function validateFile(file: File, fileType: 'image' | 'video' | 'document'): ValidationResult {
+export function validateFile(file: File, fileType: 'image' | 'video' | 'document', isPremium: boolean = false): ValidationResult {
   switch (fileType) {
     case 'image':
       return validateImage(file)
     case 'video':
-      return validateVideo(file)
+      return validateVideo(file, isPremium)
     case 'document':
       return validateDocument(file)
     default:

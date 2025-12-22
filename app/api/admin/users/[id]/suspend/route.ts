@@ -40,6 +40,8 @@ async function createAuditLog(
   }
 }
 
+// App-level simplification: we treat user status as only ACTIVE or UNACTIVE.
+// UNACTIVE is stored as SUSPENDED in DB.
 const suspendSchema = z.object({
   status: z.enum(['ACTIVE', 'SUSPENDED']),
   reason: z.string().optional(),
@@ -70,6 +72,8 @@ export async function POST(
     }
 
     // Update status
+    // If user was previously DELETED/PENDING, reactivating sets to ACTIVE.
+    // Deactivating always sets to SUSPENDED.
     await prisma.user.update({
       where: { id },
       data: { status: validatedData.status },

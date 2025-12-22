@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { grantModulesForPremiumPlan } from '@/lib/module-access'
 import { z } from 'zod'
 
 const subscribeSchema = z.object({
@@ -162,6 +163,19 @@ export async function POST(request: Request) {
         isPremium: true,
       },
     })
+
+    // Grant module access based on premium plan
+    try {
+      const moduleAccess = await grantModulesForPremiumPlan(
+        session.user.id,
+        validatedData.plan,
+        `PREMIUM_${validatedData.plan}`
+      )
+      console.log(`Granted ${moduleAccess.granted} modules for premium plan ${validatedData.plan}`)
+    } catch (error) {
+      // Log but don't fail the subscription if module access fails
+      console.error('Error granting module access for premium:', error)
+    }
 
     return NextResponse.json({
       user: updatedUser,

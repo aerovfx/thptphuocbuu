@@ -33,6 +33,18 @@ export default async function SpacesPage() {
     redirect('/login')
   }
 
+  // Chỉ ADMIN, BGH, TRUONG_TONG, QUAN_NHIEM mới được truy cập
+  if (
+    session.user.role !== 'ADMIN' &&
+    session.user.role !== 'SUPER_ADMIN' &&
+    session.user.role !== 'BGH' &&
+    session.user.role !== 'TRUONG_TONG' &&
+    session.user.role !== 'QUAN_NHIEM'
+  ) {
+    // STUDENT và các role khác redirect về dashboard
+    redirect('/dashboard')
+  }
+
   const spaces = await getSpaces()
   const canCreate =
     session.user.role === 'ADMIN' ||

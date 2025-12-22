@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { requireRBAC } from '@/lib/rbac-middleware'
 
 /**
@@ -8,7 +8,7 @@ import { requireRBAC } from '@/lib/rbac-middleware'
  */
 
 // Example 1: Require specific permission
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const rbacResult = await requireRBAC(request, {
     resource: 'module:user',
     action: 'read',
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 }
 
 // Example 2: Require multiple permissions (AND)
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const rbacResult = await requireRBAC(request, [
     { resource: 'module:user', action: 'read' },
     { resource: 'module:user', action: 'write' },
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 }
 
 // Example 3: Require module access
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   const rbacResult = await requireRBAC(request, {
     moduleKey: 'user_mgmt',
     action: 'write',

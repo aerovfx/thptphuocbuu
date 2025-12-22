@@ -70,26 +70,22 @@ export async function POST(
 
     // If approved, assign default badge to owner
     if (validatedData.status === 'APPROVED') {
-      // Check if badge already exists
-      const existingBadge = await prisma.brandBadge.findUnique({
-        where: {
-          brandId_userId: {
-            brandId: id,
-            userId: brand.createdById,
-          },
-        },
+      // Assign default badge to ALL brand members (owner + linked accounts) if missing.
+      // This ensures "badge xác minh" is consistent for affiliated accounts.
+      const memberIds = await prisma.brandMember.findMany({
+        where: { brandId: id },
+        select: { userId: true },
       })
 
-      if (!existingBadge) {
-        await prisma.brandBadge.create({
-          data: {
-            brandId: id,
-            userId: brand.createdById,
-            badgeType: 'GOLD', // Default to GOLD for verified organizations
-            isActive: true,
-          },
-        })
-      }
+      await prisma.brandBadge.createMany({
+        data: memberIds.map((m) => ({
+          brandId: id,
+          userId: m.userId,
+          badgeType: 'GOLD', // Default to GOLD for verified organizations
+          isActive: true,
+        })),
+        skipDuplicates: true,
+      })
     }
 
     return NextResponse.json({

@@ -272,9 +272,8 @@ export class VNPTSmartCAService {
     }
 
     return {
-      success: true,
-      transactionId: challengeResponse.requestId,
       ...challengeResponse,
+      transactionId: challengeResponse.requestId,
     }
   }
 

@@ -15,6 +15,7 @@ import {
   XCircle,
   MoreVertical,
   Eye,
+  RotateCcw,
 } from 'lucide-react'
 import Link from 'next/link'
 import Avatar from '@/components/Common/Avatar'
@@ -59,16 +60,12 @@ const roleColors: Record<string, string> = {
 
 const statusLabels: Record<string, string> = {
   ACTIVE: 'Hoạt động',
-  SUSPENDED: 'Tạm dừng',
-  DELETED: 'Đã xóa',
-  PENDING: 'Chờ xử lý',
+  SUSPENDED: 'Không hoạt động',
 }
 
 const statusColors: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-  SUSPENDED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-  DELETED: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-  PENDING: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400',
+  SUSPENDED: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400',
 }
 
 export default function AdminUsersManagement({ currentUser }: AdminUsersManagementProps) {
@@ -167,9 +164,15 @@ export default function AdminUsersManagement({ currentUser }: AdminUsersManageme
 
   const handleSuspend = async (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
-    const reason = prompt(`Lý do ${newStatus === 'SUSPENDED' ? 'tạm dừng' : 'kích hoạt'} (tùy chọn):`)
+    const reason = prompt(`Lý do ${newStatus === 'SUSPENDED' ? 'vô hiệu hóa' : 'kích hoạt'} (tùy chọn):`)
 
     try {
+      // If the account was previously hard-soft-deleted, use restore for better recovery.
+      if (currentStatus === 'DELETED') {
+        await handleRestore(userId)
+        return
+      }
+
       const response = await fetch(`/api/admin/users/${userId}/suspend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -211,6 +214,30 @@ export default function AdminUsersManagement({ currentUser }: AdminUsersManageme
     } catch (error) {
       console.error('Error deleting user:', error)
       alert('Đã xảy ra lỗi khi xóa người dùng')
+    }
+  }
+
+  const handleRestore = async (userId: string) => {
+    if (!confirm('Phục hồi người dùng này?')) return
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/restore`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+      if (response.ok) {
+        const extra = data.needsPasswordReset
+          ? '\n\nLưu ý: tài khoản đã bị xoá mật khẩu, hãy dùng “Đặt lại mật khẩu” để người dùng đăng nhập lại.'
+          : ''
+        const warn = data.warning ? `\n\n${data.warning}` : ''
+        alert((data.message || 'Đã phục hồi người dùng') + warn + extra)
+        setShowActionsMenu(null)
+        fetchUsers()
+      } else {
+        alert(data.error || 'Đã xảy ra lỗi')
+      }
+    } catch (error) {
+      console.error('Error restoring user:', error)
+      alert('Đã xảy ra lỗi khi phục hồi người dùng')
     }
   }
 
@@ -271,9 +298,7 @@ export default function AdminUsersManagement({ currentUser }: AdminUsersManageme
             >
               <option value="ALL">Tất cả trạng thái</option>
               <option value="ACTIVE">Hoạt động</option>
-              <option value="SUSPENDED">Tạm dừng</option>
-              <option value="PENDING">Chờ xử lý</option>
-              <option value="DELETED">Đã xóa</option>
+              <option value="SUSPENDED">Không hoạt động</option>
             </select>
           </div>
         </div>
@@ -390,7 +415,7 @@ export default function AdminUsersManagement({ currentUser }: AdminUsersManageme
                                 {user.status === 'ACTIVE' ? (
                                   <>
                                     <Ban size={16} className="inline mr-2" />
-                                    Tạm dừng
+                                    Vô hiệu hóa
                                   </>
                                 ) : (
                                   <>
@@ -399,13 +424,16 @@ export default function AdminUsersManagement({ currentUser }: AdminUsersManageme
                                   </>
                                 )}
                               </button>
-                              <button
-                                onClick={() => handleDelete(user.id)}
-                                className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 font-poppins"
-                              >
-                                <Trash2 size={16} className="inline mr-2" />
-                                Xóa
-                              </button>
+                              {/* Restore button for SUSPENDED users (if they have metadata indicating they were deleted) */}
+                              {user.status === 'SUSPENDED' && (
+                                <button
+                                  onClick={() => handleRestore(user.id)}
+                                  className="w-full text-left px-4 py-2 text-sm text-green-700 dark:text-green-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-poppins"
+                                >
+                                  <RotateCcw size={16} className="inline mr-2" />
+                                  Phục hồi
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>

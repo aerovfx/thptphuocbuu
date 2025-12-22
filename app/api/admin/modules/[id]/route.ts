@@ -7,7 +7,7 @@ import { z } from 'zod'
 // Helper function to check admin permission
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'BGH' && session.user.role !== 'SUPER_ADMIN')) {
     throw new Error('Unauthorized: Admin access required')
   }
   return session
@@ -47,10 +47,29 @@ export async function GET(
 ) {
   try {
     await requireAdmin()
-    const { id } = await params
+    const resolvedParams = await params
+    const { id } = resolvedParams
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Module ID không hợp lệ' },
+        { status: 400 }
+      )
+    }
 
     const module = await prisma.module.findUnique({
       where: { id },
+      select: {
+        id: true,
+        key: true,
+        name: true,
+        description: true,
+        enabled: true,
+        version: true,
+        config: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     })
 
     if (!module) {
@@ -60,7 +79,20 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ data: module })
+    // Format response to ensure all DateTime fields are serializable
+    return NextResponse.json({
+      data: {
+        id: module.id,
+        key: module.key,
+        name: module.name,
+        description: module.description,
+        enabled: module.enabled,
+        version: module.version,
+        config: module.config,
+        createdAt: module.createdAt ? module.createdAt.toISOString() : null,
+        updatedAt: module.updatedAt ? module.updatedAt.toISOString() : null,
+      },
+    })
   } catch (error: any) {
     if (error.message === 'Unauthorized: Admin access required') {
       return NextResponse.json({ error: error.message }, { status: 403 })
@@ -88,7 +120,16 @@ export async function PUT(
 ) {
   try {
     const session = await requireAdmin()
-    const { id } = await params
+    const resolvedParams = await params
+    const { id } = resolvedParams
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Module ID không hợp lệ' },
+        { status: 400 }
+      )
+    }
+    
     const body = await request.json()
 
     const validatedData = updateModuleSchema.parse(body)
@@ -136,10 +177,45 @@ export async function PUT(
       updateData.version = validatedData.version
     }
 
-    const module = await prisma.module.update({
-      where: { id },
-      data: updateData,
-    })
+    // Check if updateData is empty
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: 'Không có dữ liệu nào để cập nhật' },
+        { status: 400 }
+      )
+    }
+
+    let module
+    try {
+      module = await prisma.module.update({
+        where: { id },
+        data: updateData,
+        select: {
+          id: true,
+          key: true,
+          name: true,
+          description: true,
+          enabled: true,
+          version: true,
+          config: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      })
+    } catch (updateError: any) {
+      console.error('Prisma update error:', updateError)
+      // Check if it's a Prisma client sync issue
+      if (updateError.message?.includes('Invalid') || updateError.code === 'P2009') {
+        return NextResponse.json(
+          { 
+            error: 'Lỗi cập nhật module. Vui lòng chạy: npx prisma generate && npx prisma migrate dev',
+            details: process.env.NODE_ENV === 'development' ? updateError.message : undefined
+          },
+          { status: 500 }
+        )
+      }
+      throw updateError
+    }
 
     // Create audit log
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined
@@ -162,9 +238,20 @@ export async function PUT(
       userAgent
     )
 
+    // Format response to ensure all DateTime fields are serializable
     return NextResponse.json({
       message: 'Cập nhật module thành công',
-      data: module,
+      data: {
+        id: module.id,
+        key: module.key,
+        name: module.name,
+        description: module.description,
+        enabled: module.enabled,
+        version: module.version,
+        config: module.config,
+        createdAt: module.createdAt ? module.createdAt.toISOString() : null,
+        updatedAt: module.updatedAt ? module.updatedAt.toISOString() : null,
+      },
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -191,7 +278,15 @@ export async function DELETE(
 ) {
   try {
     const session = await requireAdmin()
-    const { id } = await params
+    const resolvedParams = await params
+    const { id } = resolvedParams
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Module ID không hợp lệ' },
+        { status: 400 }
+      )
+    }
 
     const module = await prisma.module.findUnique({
       where: { id },

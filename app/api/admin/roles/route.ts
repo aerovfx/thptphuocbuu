@@ -7,7 +7,7 @@ import { z } from 'zod'
 // Helper function to check admin permission
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'BGH' && session.user.role !== 'SUPER_ADMIN')) {
     throw new Error('Unauthorized: Admin access required')
   }
   return session
@@ -46,9 +46,15 @@ export async function GET(request: Request) {
     await requireAdmin()
 
     const roles = await prisma.role.findMany({
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
         rolePermissions: {
-          include: {
+          select: {
+            id: true,
             permission: {
               select: {
                 id: true,
@@ -68,7 +74,61 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json({ data: roles })
+    // Serialize DateTime objects
+    const serializeDates = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj
+      if (obj instanceof Date || (typeof obj === 'object' && obj !== null && obj.constructor && obj.constructor.name === 'Date')) {
+        try {
+          return new Date(obj).toISOString()
+        } catch {
+          return obj.toString()
+        }
+      }
+      if (Array.isArray(obj)) return obj.map(serializeDates)
+      if (typeof obj === 'object') {
+        const result: any = {}
+        for (const key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            const value = obj[key]
+            if (value instanceof Date || (typeof value === 'object' && value !== null && value.constructor && value.constructor.name === 'Date')) {
+              try {
+                result[key] = new Date(value).toISOString()
+              } catch {
+                result[key] = value.toString()
+              }
+            } else if (Array.isArray(value)) {
+              result[key] = value.map(serializeDates)
+            } else if (value !== null && typeof value === 'object') {
+              result[key] = serializeDates(value)
+            } else {
+              result[key] = value
+            }
+          }
+        }
+        return result
+      }
+      return obj
+    }
+
+    const serializedRoles = serializeDates(roles)
+    
+    // Final safety net
+    let finalData
+    try {
+      finalData = JSON.parse(JSON.stringify(serializedRoles, (key, value) => {
+        if (value instanceof Date) {
+          return value.toISOString()
+        }
+        if (value && typeof value === 'object' && value.constructor && value.constructor.name === 'Date') {
+          return new Date(value).toISOString()
+        }
+        return value
+      }))
+    } catch {
+      finalData = serializedRoles
+    }
+
+    return NextResponse.json({ data: finalData })
   } catch (error: any) {
     if (error.message === 'Unauthorized: Admin access required') {
       return NextResponse.json({ error: error.message }, { status: 403 })
@@ -150,8 +210,62 @@ export async function POST(request: Request) {
       userAgent
     )
 
+    // Serialize DateTime objects
+    const serializeDates = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj
+      if (obj instanceof Date || (typeof obj === 'object' && obj !== null && obj.constructor && obj.constructor.name === 'Date')) {
+        try {
+          return new Date(obj).toISOString()
+        } catch {
+          return obj.toString()
+        }
+      }
+      if (Array.isArray(obj)) return obj.map(serializeDates)
+      if (typeof obj === 'object') {
+        const result: any = {}
+        for (const key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            const value = obj[key]
+            if (value instanceof Date || (typeof value === 'object' && value !== null && value.constructor && value.constructor.name === 'Date')) {
+              try {
+                result[key] = new Date(value).toISOString()
+              } catch {
+                result[key] = value.toString()
+              }
+            } else if (Array.isArray(value)) {
+              result[key] = value.map(serializeDates)
+            } else if (value !== null && typeof value === 'object') {
+              result[key] = serializeDates(value)
+            } else {
+              result[key] = value
+            }
+          }
+        }
+        return result
+      }
+      return obj
+    }
+
+    const serializedRole = serializeDates(role)
+    
+    // Final safety net
+    let finalData
+    try {
+      finalData = JSON.parse(JSON.stringify(serializedRole, (key, value) => {
+        if (value instanceof Date) {
+          return value.toISOString()
+        }
+        if (value && typeof value === 'object' && value.constructor && value.constructor.name === 'Date') {
+          return new Date(value).toISOString()
+        }
+        return value
+      }))
+    } catch {
+      finalData = serializedRole
+    }
+
     return NextResponse.json(
-      { message: 'Tạo vai trò thành công', data: role },
+      { message: 'Tạo vai trò thành công', data: finalData },
       { status: 201 }
     )
   } catch (error) {

@@ -19,7 +19,7 @@ async function main() {
 
   for (const docType of documentTypes) {
     try {
-      await prisma.documentType.upsert({
+      await prisma.administrativeDocumentType.upsert({
         where: { code: docType.code },
         update: {
           name: docType.name,

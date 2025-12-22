@@ -338,9 +338,7 @@ async function syncAllDocumentsToAllSpaces() {
                   documentType: 'INCOMING',
                 },
               },
-              update: {
-                assignedAt: new Date(),
-              },
+              update: {},
               create: {
                 departmentId: deptId,
                 documentId: doc.id,
@@ -478,9 +476,7 @@ async function syncAllDocumentsToAllSpaces() {
                   documentType: 'OUTGOING',
                 },
               },
-              update: {
-                assignedAt: new Date(),
-              },
+              update: {},
               create: {
                 departmentId: deptId,
                 documentId: doc.id,

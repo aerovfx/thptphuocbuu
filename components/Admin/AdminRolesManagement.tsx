@@ -11,6 +11,10 @@ import {
   X,
   Check,
   Save,
+  Search,
+  Users,
+  Filter,
+  RefreshCw,
 } from 'lucide-react'
 
 interface Role {
@@ -54,6 +58,9 @@ export default function AdminRolesManagement({ currentUser }: AdminRolesManageme
   const [showCreatePermission, setShowCreatePermission] = useState(false)
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [selectedRole, setSelectedRole] = useState<Role | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'users'>('name')
+  const [refreshing, setRefreshing] = useState(false)
 
   // Form states
   const [roleForm, setRoleForm] = useState({
@@ -67,35 +74,114 @@ export default function AdminRolesManagement({ currentUser }: AdminRolesManageme
     description: '',
   })
 
-  const fetchRoles = useCallback(async () => {
+  const fetchRoles = useCallback(async (showLoading = false) => {
+    if (showLoading) setRefreshing(true)
     try {
       const response = await fetch('/api/admin/roles')
       if (response.ok) {
         const data = await response.json()
         setRoles(data.data || [])
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Error fetching roles:', response.status, errorData)
+        if (response.status === 403) {
+          alert('Bạn không có quyền truy cập trang này. Vui lòng đăng nhập với tài khoản admin.')
+        }
       }
     } catch (error) {
       console.error('Error fetching roles:', error)
+    } finally {
+      if (showLoading) setRefreshing(false)
     }
   }, [])
 
   const fetchPermissions = useCallback(async () => {
     try {
+      console.log('[fetchPermissions] Starting fetch...')
       const response = await fetch('/api/admin/permissions')
+      console.log('[fetchPermissions] Got response, status:', response.status)
+      
+      const text = await response.text()
+      console.log('[fetchPermissions] Response text length:', text.length)
+      console.log('[fetchPermissions] Response text (first 1000 chars):', text.substring(0, 1000))
+      console.log('[fetchPermissions] Response text (full):', text)
+      
       if (response.ok) {
-        const data = await response.json()
-        setPermissions(data.data || [])
+        try {
+          const data = JSON.parse(text)
+          console.log('[fetchPermissions] Parsed data:', data)
+          setPermissions(data.data || [])
+        } catch (parseError) {
+          console.error('Error parsing JSON:', parseError)
+          alert(`Error parsing response: ${parseError instanceof Error ? parseError.message : String(parseError)}\n\nResponse: ${text.substring(0, 200)}`)
+        }
+      } else {
+        console.error('[fetchPermissions] Error response, status:', response.status)
+        console.error('[fetchPermissions] Response text (raw):', text)
+        console.error('[fetchPermissions] Response text length:', text?.length || 0)
+        console.error('[fetchPermissions] Response text type:', typeof text)
+        
+        try {
+          // Check if text is empty or just whitespace
+          if (!text || text.trim().length === 0) {
+            console.error('[fetchPermissions] Empty response body')
+            alert(`Error ${response.status}: Server returned empty response\n\nThis usually means the server crashed or returned an invalid response.\n\nPlease check the server console for detailed error logs.`)
+            return
+          }
+          
+          // Check if text is just "{}"
+          const trimmedText = text.trim()
+          if (trimmedText === '{}') {
+            console.error('[fetchPermissions] Response is empty object string "{}"')
+            alert(`Error ${response.status}: Server returned empty object\n\nThis usually means the server crashed or returned an invalid response.\n\nPlease check the server console for detailed error logs.\n\nRaw response: ${text}`)
+            return
+          }
+          
+          console.log('[fetchPermissions] Attempting to parse JSON...')
+          const errorData = JSON.parse(text)
+          console.error('[fetchPermissions] Parsed error data:', errorData)
+          console.error('[fetchPermissions] Error data type:', typeof errorData)
+          console.error('[fetchPermissions] Error data keys:', Object.keys(errorData))
+          console.error('[fetchPermissions] Error data stringified:', JSON.stringify(errorData, null, 2))
+          
+          if (!errorData || typeof errorData !== 'object') {
+            console.error('[fetchPermissions] Error data is not an object:', errorData)
+            alert(`Error ${response.status}: Invalid error response format\n\nParsed value: ${JSON.stringify(errorData)}\n\nRaw response: ${text.substring(0, 500)}`)
+            return
+          }
+          
+          if (Object.keys(errorData).length === 0) {
+            console.error('[fetchPermissions] Error data is empty object')
+            alert(`Error ${response.status}: Server returned empty object\n\nRaw response text: ${text.substring(0, 500)}\n\nPlease check the server console for detailed error logs.\n\nResponse headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`)
+          } else {
+            const errorMessage = errorData.error || errorData.message || 'Unknown error'
+            const errorDetails = errorData.details || (Object.keys(errorData).length > 1 ? errorData : null)
+            alert(`Error ${response.status}: ${errorMessage}${errorDetails ? `\n\nDetails: ${JSON.stringify(errorDetails, null, 2)}` : ''}`)
+          }
+        } catch (parseError) {
+          console.error('[fetchPermissions] Error parsing error response:', parseError)
+          console.error('[fetchPermissions] Parse error type:', typeof parseError)
+          console.error('[fetchPermissions] Parse error message:', parseError instanceof Error ? parseError.message : String(parseError))
+          console.error('[fetchPermissions] Raw text that failed to parse:', text)
+          alert(`Error ${response.status}: Failed to parse error response\n\nParse error: ${parseError instanceof Error ? parseError.message : String(parseError)}\n\nRaw response (first 500 chars): ${text.substring(0, 500)}${text.length > 500 ? '\n\n... (truncated)' : ''}`)
+        }
       }
     } catch (error) {
       console.error('Error fetching permissions:', error)
+      alert(`Network error: ${error instanceof Error ? error.message : String(error)}`)
     }
   }, [])
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
-      await Promise.all([fetchRoles(), fetchPermissions()])
-      setLoading(false)
+      try {
+        await Promise.all([fetchRoles(), fetchPermissions()])
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setLoading(false)
+      }
     }
     loadData()
   }, [fetchRoles, fetchPermissions])
@@ -116,6 +202,7 @@ export default function AdminRolesManagement({ currentUser }: AdminRolesManageme
       if (response.ok) {
         alert('Tạo vai trò thành công')
         setShowCreateRole(false)
+        setEditingRole(null)
         setRoleForm({ name: '', description: '', permissionIds: [] })
         fetchRoles()
       } else {
@@ -129,24 +216,58 @@ export default function AdminRolesManagement({ currentUser }: AdminRolesManageme
 
   const handleCreatePermission = async () => {
     try {
+      console.log('[handleCreatePermission] Starting, form data:', permissionForm)
       const response = await fetch('/api/admin/permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(permissionForm),
       })
 
-      const data = await response.json()
+      console.log('[handleCreatePermission] Response status:', response.status)
+      const text = await response.text()
+      console.log('[handleCreatePermission] Response text:', text.substring(0, 500))
+
       if (response.ok) {
-        alert('Tạo quyền thành công')
-        setShowCreatePermission(false)
-        setPermissionForm({ resource: '', action: '', description: '' })
-        fetchPermissions()
+        try {
+          const data = JSON.parse(text)
+          console.log('[handleCreatePermission] Success, data:', data)
+          alert(data.message || 'Tạo quyền thành công')
+          setShowCreatePermission(false)
+          setPermissionForm({ resource: '', action: '', description: '' })
+          fetchPermissions()
+        } catch (parseError) {
+          console.error('[handleCreatePermission] Error parsing success response:', parseError)
+          alert('Tạo quyền thành công nhưng không thể parse response')
+          setShowCreatePermission(false)
+          setPermissionForm({ resource: '', action: '', description: '' })
+          fetchPermissions()
+        }
       } else {
-        alert(data.error || 'Đã xảy ra lỗi')
+        try {
+          if (!text || text.trim().length === 0) {
+            alert(`Error ${response.status}: Server returned empty response\n\nPlease check the server console for detailed error logs.`)
+            return
+          }
+          
+          if (text.trim() === '{}') {
+            alert(`Error ${response.status}: Server returned empty object\n\nPlease check the server console for detailed error logs.`)
+            return
+          }
+          
+          const errorData = JSON.parse(text)
+          console.error('[handleCreatePermission] Error data:', errorData)
+          
+          const errorMessage = errorData.error || errorData.message || 'Đã xảy ra lỗi'
+          const errorDetails = errorData.details ? `\n\nDetails: ${JSON.stringify(errorData.details, null, 2)}` : ''
+          alert(`Error ${response.status}: ${errorMessage}${errorDetails}`)
+        } catch (parseError) {
+          console.error('[handleCreatePermission] Error parsing error response:', parseError)
+          alert(`Error ${response.status}: Failed to parse error response\n\nRaw response: ${text.substring(0, 500)}`)
+        }
       }
     } catch (error) {
       console.error('Error creating permission:', error)
-      alert('Đã xảy ra lỗi khi tạo quyền')
+      alert(`Network error: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -203,10 +324,74 @@ export default function AdminRolesManagement({ currentUser }: AdminRolesManageme
     return acc
   }, {} as Record<string, Permission[]>)
 
+  // Filter and sort roles
+  const filteredAndSortedRoles = roles
+    .filter((role) => {
+      if (!searchQuery) return true
+      const query = searchQuery.toLowerCase()
+      return (
+        role.name.toLowerCase().includes(query) ||
+        role.description?.toLowerCase().includes(query) ||
+        false
+      )
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name)
+        case 'createdAt':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        case 'users':
+          return b._count.userAssignments - a._count.userAssignments
+        default:
+          return 0
+      }
+    })
+
+  const handleEditRole = (role: Role) => {
+    setEditingRole(role)
+    setRoleForm({
+      name: role.name,
+      description: role.description || '',
+      permissionIds: role.rolePermissions.map((rp) => rp.permission.id),
+    })
+    setShowCreateRole(true)
+  }
+
+  const handleUpdateRole = async () => {
+    if (!editingRole) return
+
+    try {
+      const response = await fetch(`/api/admin/roles/${editingRole.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: roleForm.name,
+          description: roleForm.description,
+          permissions: roleForm.permissionIds,
+        }),
+      })
+
+      const data = await response.json()
+      if (response.ok) {
+        alert('Cập nhật vai trò thành công')
+        setShowCreateRole(false)
+        setEditingRole(null)
+        setRoleForm({ name: '', description: '', permissionIds: [] })
+        fetchRoles()
+      } else {
+        alert(data.error || 'Đã xảy ra lỗi')
+      }
+    } catch (error) {
+      console.error('Error updating role:', error)
+      alert('Đã xảy ra lỗi khi cập nhật vai trò')
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white font-poppins mb-2">
             Quản lý vai trò và quyền
@@ -217,6 +402,14 @@ export default function AdminRolesManagement({ currentUser }: AdminRolesManageme
         </div>
         <div className="flex space-x-2">
           <button
+            onClick={() => fetchRoles(true)}
+            disabled={refreshing}
+            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 font-poppins font-semibold transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={20} className={refreshing ? 'animate-spin' : ''} />
+            <span>Làm mới</span>
+          </button>
+          <button
             onClick={() => setShowCreatePermission(true)}
             className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 font-poppins font-semibold transition-colors"
           >
@@ -224,7 +417,11 @@ export default function AdminRolesManagement({ currentUser }: AdminRolesManageme
             <span>Tạo quyền</span>
           </button>
           <button
-            onClick={() => setShowCreateRole(true)}
+            onClick={() => {
+              setEditingRole(null)
+              setRoleForm({ name: '', description: '', permissionIds: [] })
+              setShowCreateRole(true)
+            }}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 font-poppins font-semibold transition-colors"
           >
             <Plus size={20} />
@@ -233,26 +430,56 @@ export default function AdminRolesManagement({ currentUser }: AdminRolesManageme
         </div>
       </div>
 
+      {/* Search and Filter */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Tìm kiếm vai trò..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-poppins"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Filter size={20} className="text-gray-500 dark:text-gray-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'name' | 'createdAt' | 'users')}
+              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-poppins"
+            >
+              <option value="name">Sắp xếp theo tên</option>
+              <option value="createdAt">Sắp xếp theo ngày tạo</option>
+              <option value="users">Sắp xếp theo số người dùng</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       {/* Roles List */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Roles */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white font-poppins">
-              Vai trò ({roles.length})
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white font-poppins">
+                Vai trò ({filteredAndSortedRoles.length}{searchQuery && ` / ${roles.length}`})
+              </h2>
+            </div>
           </div>
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {loading ? (
               <div className="p-8 text-center text-gray-500 dark:text-gray-400 font-poppins">
                 Đang tải...
               </div>
-            ) : roles.length === 0 ? (
+            ) : filteredAndSortedRoles.length === 0 ? (
               <div className="p-8 text-center text-gray-500 dark:text-gray-400 font-poppins">
-                Chưa có vai trò nào
+                {searchQuery ? 'Không tìm thấy vai trò nào' : 'Chưa có vai trò nào'}
               </div>
             ) : (
-              roles.map((role) => (
+              filteredAndSortedRoles.map((role) => (
                 <div
                   key={role.id}
                   className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
@@ -262,28 +489,55 @@ export default function AdminRolesManagement({ currentUser }: AdminRolesManageme
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-white font-poppins">
-                        {role.name}
-                      </h3>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Shield size={18} className="text-blue-500 dark:text-blue-400" />
+                        <h3 className="font-semibold text-gray-900 dark:text-white font-poppins">
+                          {role.name}
+                        </h3>
+                        {(role.name === 'ADMIN' || role.name === 'admin' || role.name === 'SUPER_ADMIN') && (
+                          <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-semibold rounded">
+                            Quan trọng
+                          </span>
+                        )}
+                      </div>
                       {role.description && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 font-poppins mt-1">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 font-poppins mt-1 ml-6">
                           {role.description}
                         </p>
                       )}
-                      <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400 font-poppins">
-                        <span>{role.rolePermissions.length} quyền</span>
-                        <span>{role._count.userAssignments} người dùng</span>
+                      <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400 font-poppins ml-6">
+                        <span className="flex items-center space-x-1">
+                          <Key size={14} />
+                          <span>{role.rolePermissions.length} quyền</span>
+                        </span>
+                        <span className="flex items-center space-x-1">
+                          <Users size={14} />
+                          <span>{role._count.userAssignments} người dùng</span>
+                        </span>
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteRole(role.id)
-                      }}
-                      className="p-2 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg text-red-600 dark:text-red-400"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditRole(role)
+                        }}
+                        className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400"
+                        title="Chỉnh sửa"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteRole(role.id)
+                        }}
+                        className="p-2 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg text-red-600 dark:text-red-400"
+                        title="Xóa"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -369,11 +623,12 @@ export default function AdminRolesManagement({ currentUser }: AdminRolesManageme
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white font-poppins">
-                Tạo vai trò mới
+                {editingRole ? 'Chỉnh sửa vai trò' : 'Tạo vai trò mới'}
               </h2>
               <button
                 onClick={() => {
                   setShowCreateRole(false)
+                  setEditingRole(null)
                   setRoleForm({ name: '', description: '', permissionIds: [] })
                 }}
                 className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
@@ -452,10 +707,10 @@ export default function AdminRolesManagement({ currentUser }: AdminRolesManageme
                   Hủy
                 </button>
                 <button
-                  onClick={handleCreateRole}
+                  onClick={editingRole ? handleUpdateRole : handleCreateRole}
                   className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-poppins font-semibold"
                 >
-                  Tạo
+                  {editingRole ? 'Cập nhật' : 'Tạo'}
                 </button>
               </div>
             </div>

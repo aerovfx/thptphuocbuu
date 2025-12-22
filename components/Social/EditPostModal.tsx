@@ -2,10 +2,13 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
 import { Image, Smile, MapPin, Calendar, X, Video } from 'lucide-react'
 import Avatar from '../Common/Avatar'
-import { validateImage, validateVideo, validateVideoDuration, ALLOWED_IMAGE_TYPES } from '@/lib/file-validation'
+import { validateImage, validateVideo, ALLOWED_IMAGE_TYPES, MAX_VIDEO_SIZE_NORMAL, MAX_VIDEO_SIZE_PREMIUM } from '@/lib/file-validation'
+import { hasPremiumOrAdminAccess } from '@/lib/premium-check'
+import type { SocialPost } from './social-types'
 
 // Dynamic import emoji picker để tránh SSR issues
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), {
@@ -18,31 +21,8 @@ interface MediaPreview {
   file?: File
 }
 
-interface Post {
-  id: string
-  content: string
-  createdAt: Date
-  imageUrl?: string | null
-  videoUrl?: string | null
-  type?: string
-  locationName?: string | null
-  latitude?: number | null
-  longitude?: number | null
-  scheduledAt?: Date | null
-  author: {
-    id: string
-    firstName: string
-    lastName: string
-    avatar?: string | null
-  }
-  _count?: {
-    likes: number
-    comments: number
-  }
-}
-
 interface EditPostModalProps {
-  post: Post
+  post: SocialPost
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
@@ -50,6 +30,7 @@ interface EditPostModalProps {
 
 export default function EditPostModal({ post, isOpen, onClose, onSuccess }: EditPostModalProps) {
   const router = useRouter()
+  const { data: session } = useSession()
   const [content, setContent] = useState(post.content || '')
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -158,9 +139,12 @@ export default function EditPostModal({ post, isOpen, onClose, onSuccess }: Edit
     if (!file) return
 
     const isImage = ALLOWED_IMAGE_TYPES.includes(file.type)
-    
+
+    // Check if user has premium or admin access
+    const isPremium = hasPremiumOrAdminAccess(session?.user)
+
     // Validate file type and size
-    const validation = isImage ? validateImage(file) : validateVideo(file)
+    const validation = isImage ? validateImage(file) : validateVideo(file, isPremium)
     if (!validation.valid) {
       alert(validation.error)
       if (fileInputRef.current) {
@@ -169,24 +153,13 @@ export default function EditPostModal({ post, isOpen, onClose, onSuccess }: Edit
       return
     }
 
-    // For videos, validate duration (0-5s)
+    // For videos: show info about file size limits
     if (!isImage) {
-      try {
-        const durationValidation = await validateVideoDuration(file)
-        if (!durationValidation.valid) {
-          alert(durationValidation.error)
-          if (fileInputRef.current) {
-            fileInputRef.current.value = ''
-          }
-          return
-        }
-      } catch (error) {
-        alert('Không thể đọc thông tin video. Vui lòng thử lại với video khác.')
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ''
-        }
-      return
-      }
+      const maxSize = isPremium ? MAX_VIDEO_SIZE_PREMIUM : MAX_VIDEO_SIZE_NORMAL
+      const maxSizeMB = maxSize / (1024 * 1024)
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2)
+
+      console.log(`Video đã chọn: ${fileSizeMB}MB / ${maxSizeMB}MB ${isPremium ? '(Premium)' : '(người dùng thường)'}`)
     }
 
     const reader = new FileReader()

@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Google Cloud Run Deployment Script
-# Project ID: gen-lang-client-0712182643
+# Project ID: in360project
 
 set -e
 
-PROJECT_ID="gen-lang-client-0712182643"
+PROJECT_ID="in360project"
 SERVICE_NAME="phuocbuu"
 REGION="asia-southeast1"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"

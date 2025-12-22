@@ -42,11 +42,9 @@ coverage/
 *.db-journal
 prisma/migrations/
 
-# Docker
-Dockerfile
+# Docker (keep Dockerfile for Cloud Build)
 .dockerignore
 docker-compose.yml
 
-# Cloud build
-cloudbuild.yaml
+# Cloud build (keep cloudbuild.yaml for Cloud Build)
 

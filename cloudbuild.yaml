@@ -1,37 +1,35 @@
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/phuocbuu:$SHORT_SHA'
+      - 'gcr.io/$PROJECT_ID/thptphuocbuu360:$BUILD_ID'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/phuocbuu:latest'
+      - 'gcr.io/$PROJECT_ID/thptphuocbuu360:latest'
       - '.'
     timeout: '1200s'
 
   # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/phuocbuu:$SHORT_SHA'
-    timeout: '600s'
-
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'push'
-      - 'gcr.io/$PROJECT_ID/phuocbuu:latest'
+      - '--all-tags'
+      - 'gcr.io/$PROJECT_ID/thptphuocbuu360'
     timeout: '600s'
 
   # Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-service'
     entrypoint: gcloud
     args:
       - 'run'
       - 'deploy'
-      - 'phuocbuu'
+      - 'thptphuocbuu360'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/phuocbuu:$SHORT_SHA'
+      - 'gcr.io/$PROJECT_ID/thptphuocbuu360:$BUILD_ID'
       - '--region'
       - 'asia-southeast1'
       - '--platform'
@@ -54,8 +52,8 @@ steps:
     timeout: '600s'
 
 images:
-  - 'gcr.io/$PROJECT_ID/phuocbuu:$SHORT_SHA'
-  - 'gcr.io/$PROJECT_ID/phuocbuu:latest'
+  - 'gcr.io/$PROJECT_ID/thptphuocbuu360:$BUILD_ID'
+  - 'gcr.io/$PROJECT_ID/thptphuocbuu360:latest'
 
 options:
   machineType: 'E2_HIGHCPU_8'

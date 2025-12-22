@@ -1,7 +1,7 @@
 # 🚀 Quick Start - Deploy to Google Cloud Run
 
 ## Project Information
-- **Project ID**: `gen-lang-client-0712182643`
+- **Project ID**: `in360project`
 - **Service Name**: `phuocbuu`
 - **Region**: `asia-southeast1`
 
@@ -10,7 +10,7 @@
 - [ ] Google Cloud SDK (gcloud) installed
 - [ ] Docker installed and running
 - [ ] Google Cloud account with billing enabled
-- [ ] Project `gen-lang-client-0712182643` created and active
+- [ ] Project `in360project` created and active
 
 ## Quick Deployment (3 Steps)
 
@@ -21,7 +21,7 @@
 gcloud auth login
 
 # Set project
-gcloud config set project gen-lang-client-0712182643
+gcloud config set project in360project
 
 # Configure Docker
 gcloud auth configure-docker
@@ -48,7 +48,7 @@ npm run deploy
 npm run docker:build
 npm run docker:push
 gcloud run deploy phuocbuu \
-  --image gcr.io/gen-lang-client-0712182643/phuocbuu:latest \
+  --image gcr.io/in360project/phuocbuu:latest \
   --platform managed \
   --region asia-southeast1 \
   --allow-unauthenticated \

@@ -8,32 +8,13 @@ import { vi } from 'date-fns/locale/vi'
 import PostComments from './PostComments'
 import Avatar from '../Common/Avatar'
 import ShareMenu from './ShareMenu'
-
-interface Post {
-  id: string
-  content: string
-  createdAt: Date
-  imageUrl?: string | null
-  videoUrl?: string | null
-  type?: string
-  locationName?: string | null
-  latitude?: number | null
-  longitude?: number | null
-  scheduledAt?: Date | null
-  author: {
-    id: string
-    firstName: string
-    lastName: string
-    avatar?: string | null
-  }
-  _count: {
-    likes: number
-    comments: number
-  }
-}
+import LinkEmbed from './LinkEmbed'
+import type { SocialPost } from './social-types'
+import AutoEmbedContent from './AutoEmbedContent'
+import { extractFirstUrl } from '@/lib/media-embed'
 
 interface PostDetailModalProps {
-  post: Post
+  post: SocialPost
   isOpen: boolean
   onClose: () => void
   currentUserId: string | null
@@ -52,8 +33,8 @@ export default function PostDetailModal({
   const router = useRouter()
   const [liked, setLiked] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
-  const [likesCount, setLikesCount] = useState(post._count.likes)
-  const [commentsCount, setCommentsCount] = useState(post._count.comments)
+  const [likesCount, setLikesCount] = useState(post._count?.likes ?? 0)
+  const [commentsCount, setCommentsCount] = useState(post._count?.comments ?? 0)
   const [showComments, setShowComments] = useState(true)
   const [showShareMenu, setShowShareMenu] = useState(false)
   const shareButtonRef = useRef<HTMLButtonElement>(null)
@@ -108,6 +89,8 @@ export default function PostDetailModal({
   }, [isOpen, onClose])
 
   if (!isOpen) return null
+
+  const primaryUrl = post.linkUrl || extractFirstUrl(post.content || '')
 
   const handleLike = async () => {
     if (isGuest || !currentUserId) {
@@ -216,7 +199,7 @@ export default function PostDetailModal({
 
         <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
           {/* Image/Video Section */}
-          {(post.imageUrl || post.videoUrl) && (
+          {(post.imageUrl || post.videoUrl || post.linkUrl) && (
             <div className="md:w-1/2 bg-black flex items-center justify-center overflow-hidden min-h-[300px] md:min-h-0">
               {post.imageUrl ? (
                 <img
@@ -235,12 +218,23 @@ export default function PostDetailModal({
                 >
                   Trình duyệt của bạn không hỗ trợ video.
                 </video>
+              ) : post.linkUrl ? (
+                <div className="w-full h-full p-4" onClick={(e) => e.stopPropagation()}>
+                  <LinkEmbed url={post.linkUrl} />
+                </div>
               ) : null}
+            </div>
+          )}
+          {(!post.imageUrl && !post.videoUrl && !post.linkUrl && primaryUrl) && (
+            <div className="md:w-1/2 bg-black flex items-center justify-center overflow-hidden min-h-[300px] md:min-h-0">
+              <div className="w-full h-full p-4" onClick={(e) => e.stopPropagation()}>
+                <LinkEmbed url={primaryUrl} />
+              </div>
             </div>
           )}
 
           {/* Content Section */}
-          <div className={`${post.imageUrl || post.videoUrl ? 'md:w-1/2' : 'w-full'} flex flex-col overflow-hidden`}>
+          <div className={`${post.imageUrl || post.videoUrl || post.linkUrl ? 'md:w-1/2' : 'w-full'} flex flex-col overflow-hidden`}>
             {/* Header */}
             <div className="p-4 border-b border-gray-200 dark:border-gray-800">
               <div className="flex items-center space-x-3">
@@ -258,6 +252,17 @@ export default function PostDetailModal({
                   >
                     {post.author.firstName} {post.author.lastName}
                   </h3>
+                  {post.author?.brandBadge?.brand?.verificationStatus === 'APPROVED' && (
+                    <div className="mt-1">
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 font-poppins"
+                        title={`Thương hiệu xác minh: ${post.author.brandBadge.brand.name}`}
+                      >
+                        <span className="text-xs">✓</span>
+                        <span className="truncate max-w-[160px]">{post.author.brandBadge.brand.name}</span>
+                      </span>
+                    </div>
+                  )}
                   <span className="text-gray-500 dark:text-gray-400 text-sm font-poppins">
                     @{post.author.firstName.toLowerCase()}
                     {post.author.lastName.toLowerCase().replace(/\s+/g, '')}
@@ -271,9 +276,14 @@ export default function PostDetailModal({
               <div className="space-y-4">
                 {/* Post Text */}
                 {post.content && (
-                  <p className="text-gray-900 dark:text-white whitespace-pre-wrap break-words font-poppins leading-relaxed text-lg">
-                    {post.content}
-                  </p>
+                  <div className="text-gray-900 dark:text-white font-poppins leading-relaxed text-lg">
+                    <AutoEmbedContent
+                      text={post.content}
+                      suppressEmbeds={!!primaryUrl} // media column already shows the primary embed
+                      maxEmbeds={3}
+                      onInteraction={() => onInteractionRequired?.('view')}
+                    />
+                  </div>
                 )}
 
                 {/* Location */}

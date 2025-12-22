@@ -15,7 +15,7 @@ export default async function AdminRolesPage() {
     redirect('/login')
   }
 
-  if (session.user.role !== 'ADMIN') {
+  if (session.user.role !== 'ADMIN' && session.user.role !== 'BGH' && session.user.role !== 'SUPER_ADMIN') {
     redirect('/dashboard')
   }
 

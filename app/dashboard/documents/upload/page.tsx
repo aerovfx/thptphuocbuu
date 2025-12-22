@@ -28,7 +28,7 @@ export default function UploadDocumentPage() {
   const [isDragging, setIsDragging] = useState(false)
 
   const validateFile = (file: File): string | null => {
-    const maxSize = 10 * 1024 * 1024 // 10MB
+    const maxSize = 50 * 1024 * 1024 // 50MB
     const allowedTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx']
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
 
@@ -37,7 +37,7 @@ export default function UploadDocumentPage() {
     }
 
     if (file.size > maxSize) {
-      return 'Kích thước file tối đa 10MB'
+      return 'Kích thước file tối đa 50MB'
     }
 
     return null
@@ -277,7 +277,7 @@ export default function UploadDocumentPage() {
                       <p className="pl-1 font-poppins">hoặc kéo thả file vào đây</p>
                     </div>
                     <p className="text-xs text-gray-500 font-poppins">
-                      PDF, DOC, DOCX, XLS, XLSX (tối đa 10MB)
+                      PDF, DOC, DOCX, XLS, XLSX (tối đa 50MB)
                     </p>
                   </>
                 )}

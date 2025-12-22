@@ -10,8 +10,8 @@ export default async function UploadIncomingDocumentPage() {
     redirect('/login')
   }
 
-  // Chỉ ADMIN và TEACHER mới có thể upload
-  if (session.user.role !== 'ADMIN' && session.user.role !== 'TEACHER') {
+  // ADMIN, BGH, và TEACHER có thể upload
+  if (session.user.role !== 'ADMIN' && session.user.role !== 'BGH' && session.user.role !== 'TEACHER') {
     redirect('/dashboard/dms/incoming')
   }
 

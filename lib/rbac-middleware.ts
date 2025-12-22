@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from './auth'
-import { hasPermission, hasRole, canAccessModule } from './rbac'
+import { hasPermission, hasRole, hasAnyRole, canAccessModule } from './rbac'
 
 /**
  * RBAC Middleware for API Routes

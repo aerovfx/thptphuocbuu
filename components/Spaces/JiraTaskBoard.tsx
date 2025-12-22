@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -11,6 +11,7 @@ import {
   useSensors,
   DragStartEvent,
   DragEndEvent,
+  useDroppable,
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -68,6 +69,7 @@ interface Task {
 interface JiraTaskBoardProps {
   spaceId: string
   canManage: boolean
+  spaceName?: string
 }
 
 const DEFAULT_COLUMNS = [
@@ -138,47 +140,49 @@ function TaskCard({
     return 'border-l-gray-300 dark:border-l-gray-600'
   }
 
+  // Calculate days until due date
+  const getDaysUntilDue = (dueDate: string | null): number | null => {
+    if (!dueDate) return null
+    try {
+      const due = new Date(dueDate)
+      const now = new Date()
+      const diffTime = due.getTime() - now.getTime()
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      return diffDays
+    } catch {
+      return null
+    }
+  }
+
+  const formatDueDate = (dueDate: string | null): string => {
+    if (!dueDate) return ''
+    try {
+      const date = new Date(dueDate)
+      const day = String(date.getDate()).padStart(2, '0')
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      return `${day}-${month}`
+    } catch {
+      return ''
+    }
+  }
+
+  const daysUntilDue = getDaysUntilDue(task.dueDate)
+  const dueDateFormatted = formatDueDate(task.dueDate)
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 border-l-4 ${getBorderColor()} p-3 mb-2 shadow-sm hover:shadow-md transition-shadow cursor-pointer group`}
+      className={`bg-gray-100 dark:bg-gray-700 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all duration-200 relative group ${
+        isDragging ? 'opacity-50 rotate-2 scale-105' : ''
+      }`}
       onClick={() => onSelect(task)}
       {...attributes}
       {...listeners}
     >
-      {/* Priority indicator */}
-      {task.priority && (
-        <div className="flex items-center justify-between mb-2">
-          <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`} />
-          {canManage && (
-            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onEdit(task)
-                }}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-              >
-                <Edit2 className="w-3 h-3 text-gray-600 dark:text-gray-400" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete(task.id)
-                }}
-                className="p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded"
-              >
-                <Trash2 className="w-3 h-3 text-red-600 dark:text-red-400" />
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Images */}
+      {/* Card Image */}
       {images.length > 0 && (
-        <div className="mb-2 rounded overflow-hidden">
+        <div className="mb-2 rounded overflow-hidden -mx-3 -mt-3">
           <img
             src={images[0]}
             alt={task.title}
@@ -190,59 +194,78 @@ function TaskCard({
         </div>
       )}
 
+      {/* Priority indicator (top right) */}
+      {task.priority && (
+        <div className="absolute top-4 right-4">
+          <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`} />
+        </div>
+      )}
+
+      {/* Edit/Delete buttons (on hover) */}
+      {canManage && (
+        <div className="absolute top-3 right-3 flex items-center space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(task)
+            }}
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            title="Chỉnh sửa"
+          >
+            <Edit2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(task.id)
+            }}
+            className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+            title="Xóa"
+          >
+            <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+          </button>
+        </div>
+      )}
+
       {/* Title */}
-      <h4 className="font-semibold text-gray-900 dark:text-white font-poppins text-sm mb-2 line-clamp-2">
+      <h4 className="font-semibold text-white dark:text-white font-poppins text-base mb-3 line-clamp-2">
         {task.title}
       </h4>
 
-      {/* Checklist Progress */}
+      {/* Checklist Progress - Trello style */}
       {totalChecklist > 0 && (
-        <div className="mb-2">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center space-x-1 text-xs text-gray-600 dark:text-gray-400">
-              <CheckSquare className="w-3 h-3" />
-              <span className="font-poppins">{completedChecklist}/{totalChecklist}</span>
-            </div>
-            <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-green-500 transition-all"
-                style={{ width: `${(completedChecklist / totalChecklist) * 100}%` }}
-              />
-            </div>
-          </div>
-          {/* Show first 2 checklist items */}
-          {checklist.slice(0, 2).map((item) => (
-            <div key={item.id} className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400 mb-1">
-              <input
-                type="checkbox"
-                checked={item.completed}
-                disabled
-                className="w-3 h-3 rounded border-gray-300 dark:border-gray-600"
-              />
-              <span
-                className={`font-poppins ${
-                  item.completed ? 'line-through text-gray-400 dark:text-gray-500' : ''
-                }`}
-              >
-                {item.text}
-              </span>
-            </div>
-          ))}
-          {checklist.length > 2 && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 font-poppins mt-1">
-              +{checklist.length - 2} mục khác
-            </div>
-          )}
+        <div className="mb-3 flex items-center space-x-2">
+          <CheckSquare className="w-4 h-4 text-gray-300 dark:text-gray-400" />
+          <span className="text-sm text-white dark:text-gray-300 font-poppins font-medium">
+            {completedChecklist}/{totalChecklist}
+          </span>
+        </div>
+      )}
+
+      {/* Due Date - Trello style */}
+      {task.dueDate && (
+        <div className="mb-3">
+          <span className={`text-sm font-poppins px-3 py-1 rounded ${
+            daysUntilDue !== null && daysUntilDue < 0
+              ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+              : daysUntilDue !== null && daysUntilDue <= 3
+              ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
+              : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
+          }`}>
+            {dueDateFormatted}
+            {daysUntilDue !== null && daysUntilDue >= 0 && ` (${daysUntilDue}d)`}
+            {daysUntilDue !== null && daysUntilDue < 0 && ' (quá hạn)'}
+          </span>
         </div>
       )}
 
       {/* Tags */}
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-2">
+        <div className="flex flex-wrap gap-2 mb-3">
           {tags.slice(0, 3).map((tag, index) => (
             <span
               key={index}
-              className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-poppins"
+              className="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-poppins"
             >
               {tag}
             </span>
@@ -250,45 +273,25 @@ function TaskCard({
         </div>
       )}
 
-      {/* Due Date */}
-      {task.dueDate && (
-        <div className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
-          <Calendar className="w-3 h-3" />
-          <span className="font-poppins">
-            {new Date(task.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-            {(() => {
-              const daysUntilDue = Math.ceil((new Date(task.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-              return daysUntilDue >= 0 ? ` (${daysUntilDue}d)` : ` (quá hạn)`
-            })()}
-          </span>
-        </div>
-      )}
-
-      {/* Footer with icons */}
-      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-400">
-          {totalChecklist > 0 && (
-            <div className="flex items-center space-x-1">
-              <CheckSquare className="w-3 h-3" />
-              <span className="font-poppins">{completedChecklist}/{totalChecklist}</span>
-            </div>
-          )}
+      {/* Footer with icons - Trello style */}
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+        <div className="flex items-center space-x-3">
           {task.commentsCount > 0 && (
-            <div className="flex items-center space-x-1">
-              <MessageSquare className="w-3 h-3" />
-              <span className="font-poppins">{task.commentsCount}</span>
+            <div className="flex items-center space-x-1.5 text-gray-300 dark:text-gray-400 hover:text-white dark:hover:text-gray-300">
+              <MessageSquare className="w-4 h-4" />
+              <span className="text-sm font-poppins text-white dark:text-gray-300">{task.commentsCount}</span>
             </div>
           )}
           {attachments.length > 0 && (
-            <div className="flex items-center space-x-1">
-              <Paperclip className="w-3 h-3" />
-              <span className="font-poppins">{attachments.length}</span>
+            <div className="flex items-center space-x-1.5 text-gray-300 dark:text-gray-400 hover:text-white dark:hover:text-gray-300">
+              <Paperclip className="w-4 h-4" />
+              <span className="text-sm font-poppins text-white dark:text-gray-300">{attachments.length}</span>
             </div>
           )}
           {images.length > 0 && (
-            <div className="flex items-center space-x-1">
-              <Image className="w-3 h-3" />
-              <span className="font-poppins">{images.length}</span>
+            <div className="flex items-center space-x-1.5 text-gray-300 dark:text-gray-400 hover:text-white dark:hover:text-gray-300">
+              <Image className="w-4 h-4" />
+              <span className="text-sm font-poppins text-white dark:text-gray-300">{images.length}</span>
             </div>
           )}
         </div>
@@ -296,7 +299,7 @@ function TaskCard({
           <Avatar
             src={task.assignedTo.avatar}
             name={`${task.assignedTo.firstName} ${task.assignedTo.lastName}`}
-            size="xs"
+            size="sm"
           />
         )}
       </div>
@@ -304,7 +307,7 @@ function TaskCard({
   )
 }
 
-export default function JiraTaskBoard({ spaceId, canManage }: JiraTaskBoardProps) {
+export default function JiraTaskBoard({ spaceId, canManage, spaceName }: JiraTaskBoardProps) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [groupedTasks, setGroupedTasks] = useState<{ [key: string]: Task[] }>({})
   const [loading, setLoading] = useState(true)
@@ -313,15 +316,23 @@ export default function JiraTaskBoard({ spaceId, canManage }: JiraTaskBoardProps
   const [newTitle, setNewTitle] = useState('')
   const [newDescription, setNewDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [isComposing, setIsComposing] = useState(false)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [columns, setColumns] = useState(DEFAULT_COLUMNS)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterPriority, setFilterPriority] = useState<string>('all')
   const [filterAssignee, setFilterAssignee] = useState<string>('all')
+  const [space, setSpace] = useState<{ name: string } | null>(null)
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -329,7 +340,22 @@ export default function JiraTaskBoard({ spaceId, canManage }: JiraTaskBoardProps
 
   useEffect(() => {
     fetchTasks()
+    if (!spaceName) {
+      fetchSpace()
+    }
   }, [spaceId, searchQuery, filterPriority, filterAssignee])
+
+  const fetchSpace = async () => {
+    try {
+      const response = await fetch(`/api/spaces/${spaceId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setSpace({ name: data.name })
+      }
+    } catch (error) {
+      console.error('Error fetching space:', error)
+    }
+  }
 
   const fetchTasks = async () => {
     try {
@@ -363,20 +389,51 @@ export default function JiraTaskBoard({ spaceId, canManage }: JiraTaskBoardProps
     const activeTask = tasks.find((t) => t.id === activeId)
     if (!activeTask) return
 
-    // Determine target column
+    // Determine target column and order
     let targetColumn = activeTask.column
+    let targetOrder = activeTask.order
+
     if (overId.startsWith('column-')) {
+      // Dropped directly on column (empty area)
       targetColumn = overId.replace('column-', '')
+      // Get max order in target column and add 1
+      const targetColumnTasks = tasks.filter((t) => t.column === targetColumn && t.id !== activeId)
+      targetOrder = targetColumnTasks.length > 0 
+        ? Math.max(...targetColumnTasks.map((t) => t.order)) + 1 
+        : 0
     } else {
+      // Dropped on another task
       const overTask = tasks.find((t) => t.id === overId)
       if (overTask) {
         targetColumn = overTask.column
+        // Place after the task we dropped on
+        targetOrder = overTask.order + 1
       }
     }
 
-    if (targetColumn === activeTask.column) return
+    // If column didn't change and order is the same, no update needed
+    if (targetColumn === activeTask.column && targetOrder === activeTask.order) {
+      return
+    }
 
-    // Update task column
+    // Optimistically update UI
+    const updatedTasks = tasks.map((t) => {
+      if (t.id === activeId) {
+        return { ...t, column: targetColumn, order: targetOrder }
+      }
+      // If moving within same column, adjust orders
+      if (targetColumn === activeTask.column && t.column === targetColumn && t.id !== activeId) {
+        if (activeTask.order < targetOrder && t.order > activeTask.order && t.order <= targetOrder) {
+          return { ...t, order: t.order - 1 }
+        } else if (activeTask.order > targetOrder && t.order >= targetOrder && t.order < activeTask.order) {
+          return { ...t, order: t.order + 1 }
+        }
+      }
+      return t
+    })
+    setTasks(updatedTasks)
+
+    // Update task in database
     try {
       const response = await fetch(`/api/spaces/${spaceId}/tasks/${activeId}`, {
         method: 'PUT',
@@ -385,13 +442,22 @@ export default function JiraTaskBoard({ spaceId, canManage }: JiraTaskBoardProps
         },
         body: JSON.stringify({
           column: targetColumn,
+          order: targetOrder,
         }),
       })
 
       if (response.ok) {
+        // Refresh to get correct order from server
         await fetchTasks()
+      } else {
+        // Revert on error
+        await fetchTasks()
+        const errorData = await response.json()
+        console.error('Error updating task:', errorData)
       }
     } catch (error) {
+      // Revert on error
+      await fetchTasks()
       console.error('Error updating task:', error)
     }
   }
@@ -496,10 +562,15 @@ export default function JiraTaskBoard({ spaceId, canManage }: JiraTaskBoardProps
     const columnTasks = groupedTasks[column.id] || []
     const isAdding = showAddForm === column.id
 
+    // Make column droppable
+    const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+      id: `column-${column.id}`,
+    })
+
     const getColumnIcon = () => {
       switch (column.icon) {
         case 'circle':
-          return <Circle className="w-4 h-4 text-yellow-500 dark:text-yellow-400" />
+          return <Circle className="w-4 h-4 text-orange-500 dark:text-orange-400" />
         case 'refresh':
           return <RefreshCw className="w-4 h-4 text-blue-500 dark:text-blue-400" />
         case 'check':
@@ -511,23 +582,48 @@ export default function JiraTaskBoard({ spaceId, canManage }: JiraTaskBoardProps
 
     return (
       <div
+        ref={setDroppableRef}
         id={`column-${column.id}`}
-        className={`${column.color} rounded-lg p-4 border border-gray-200 dark:border-gray-700 min-h-[400px] flex flex-col`}
+        className={`bg-white dark:bg-gray-800 rounded-lg p-4 min-h-[500px] w-[320px] flex-shrink-0 flex flex-col transition-colors border border-gray-200 dark:border-gray-700 ${
+          isOver ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300 dark:border-blue-600' : ''
+        }`}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-2">
             {getColumnIcon()}
-            <h3 className="font-semibold text-gray-900 dark:text-white font-poppins">
+            <h3 className="font-semibold text-sm text-gray-900 dark:text-white font-poppins uppercase tracking-wide">
               {column.name}
             </h3>
           </div>
-          <span className="px-2 py-1 bg-white dark:bg-gray-800 rounded text-xs font-poppins text-gray-600 dark:text-gray-400">
+          <span className="px-2.5 py-1 rounded-full text-xs font-semibold font-poppins bg-gray-900 dark:bg-gray-700 text-white dark:text-gray-300 min-w-[24px] text-center">
             {columnTasks.length}
           </span>
         </div>
 
-        <SortableContext items={columnTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          <div className="flex-1 space-y-2">
+        <SortableContext 
+          items={columnTasks.map((t) => t.id)} 
+          strategy={verticalListSortingStrategy}
+          disabled={isAdding}
+        >
+          <div className="flex-1 space-y-3 min-h-[200px]">
+            {columnTasks.length === 0 && !isAdding ? (
+              <div className="flex items-center justify-center h-full min-h-[200px]">
+                {canManage && (
+                  <button
+                    onClick={() => {
+                      setShowAddForm(column.id)
+                      setNewTitle('')
+                      setNewDescription('')
+                    }}
+                    className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors font-poppins text-sm flex items-center"
+                  >
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    <span>Thêm thẻ</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
             {columnTasks.map((task) => (
               <TaskCard
                 key={task.id}
@@ -539,46 +635,120 @@ export default function JiraTaskBoard({ spaceId, canManage }: JiraTaskBoardProps
               />
             ))}
             {isAdding && canManage && (
-              <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div 
+                    className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                    onMouseDown={(e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                 <form
                   onSubmit={(e) => {
                     e.preventDefault()
+                        e.stopPropagation()
                     handleAddTask(column.id)
                   }}
                   className="space-y-2"
+                      onMouseDown={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                      }}
+                      onTouchStart={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                      }}
+                      onClick={(e) => e.stopPropagation()}
                 >
                   <input
+                        ref={titleInputRef}
                     type="text"
                     value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
+                        onChange={(e) => {
+                          setNewTitle(e.target.value)
+                        }}
+                        onCompositionStart={() => {
+                          setIsComposing(true)
+                        }}
+                        onCompositionUpdate={(e) => {
+                          setNewTitle(e.currentTarget.value)
+                        }}
+                        onCompositionEnd={(e) => {
+                          setNewTitle(e.currentTarget.value)
+                          requestAnimationFrame(() => {
+                            setIsComposing(false)
+                          })
+                        }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation()
+                        }}
+                        onTouchStart={(e) => {
+                          e.stopPropagation()
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                        }}
                     placeholder="Tiêu đề công việc..."
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-poppins text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-poppins text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                     autoFocus
                   />
                   <textarea
+                        ref={descriptionInputRef}
                     value={newDescription}
-                    onChange={(e) => setNewDescription(e.target.value)}
+                        onChange={(e) => {
+                          setNewDescription(e.target.value)
+                        }}
+                        onCompositionStart={() => {
+                          setIsComposing(true)
+                        }}
+                        onCompositionUpdate={(e) => {
+                          setNewDescription(e.currentTarget.value)
+                        }}
+                        onCompositionEnd={(e) => {
+                          setNewDescription(e.currentTarget.value)
+                          requestAnimationFrame(() => {
+                            setIsComposing(false)
+                          })
+                        }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation()
+                        }}
+                        onTouchStart={(e) => {
+                          e.stopPropagation()
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                        }}
                     placeholder="Mô tả (tùy chọn)..."
                     rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-poppins text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-poppins text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                   <div className="flex items-center space-x-2">
                     <button
                       type="submit"
                       disabled={submitting || !newTitle.trim()}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-poppins disabled:opacity-50"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-poppins disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {submitting ? 'Đang thêm...' : 'Thêm'}
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                         setShowAddForm(null)
                         setNewTitle('')
                         setNewDescription('')
                       }}
-                      className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-sm font-poppins"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-sm font-poppins transition-colors"
                     >
                       Hủy
                     </button>
@@ -593,11 +763,13 @@ export default function JiraTaskBoard({ spaceId, canManage }: JiraTaskBoardProps
                   setNewTitle('')
                   setNewDescription('')
                 }}
-                className="w-full p-3 text-left text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 transition-colors font-poppins text-sm flex items-center space-x-2"
+                    className="w-full mt-2 p-2 text-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors font-poppins text-sm flex items-center justify-center"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 mr-1.5" />
                 <span>Thêm thẻ</span>
               </button>
+                )}
+              </>
             )}
           </div>
         </SortableContext>
@@ -615,11 +787,20 @@ export default function JiraTaskBoard({ spaceId, canManage }: JiraTaskBoardProps
     )
   }
 
+  const displaySpaceName = spaceName || space?.name
+
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white font-poppins">
+      <div className="mb-6">
+        {displaySpaceName && (
+          <div className="mb-2">
+            <span className="text-base font-bold text-gray-900 dark:text-white font-poppins">
+              {displaySpaceName}
+            </span>
+          </div>
+        )}
+        <div className="flex items-center space-x-3 mb-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white font-poppins">
             Quản lý nhiệm vụ
           </h2>
           <div className="flex items-center space-x-2">
@@ -708,17 +889,28 @@ export default function JiraTaskBoard({ spaceId, canManage }: JiraTaskBoardProps
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 overflow-x-auto">
+        <div className="flex space-x-4 overflow-x-auto pb-4" style={{ scrollbarWidth: 'thin' }}>
           {columns.map((column) => (
             <Column key={column.id} column={column} />
           ))}
         </div>
         <DragOverlay>
-          {activeId ? (
-            <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg opacity-90">
-              <span className="text-sm font-poppins">Đang kéo...</span>
-            </div>
-          ) : null}
+          {activeId ? (() => {
+            const draggedTask = tasks.find((t) => t.id === activeId)
+            if (!draggedTask) return null
+            return (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-2 border-blue-500 dark:border-blue-400 p-3 w-[260px] rotate-2">
+                <h4 className="font-semibold text-gray-900 dark:text-white font-poppins text-sm mb-2 line-clamp-2">
+                  {draggedTask.title}
+                </h4>
+                {draggedTask.description && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400 font-poppins line-clamp-2">
+                    {draggedTask.description}
+                  </p>
+                )}
+              </div>
+            )
+          })() : null}
         </DragOverlay>
       </DndContext>
 

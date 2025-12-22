@@ -3,11 +3,13 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { extractFirstUrl } from '@/lib/media-embed'
 
 const postUpdateSchema = z.object({
   content: z.string().optional().default(''),
   imageUrl: z.string().optional().nullable().transform((val) => (val && val.trim() ? val.trim() : null)),
   videoUrl: z.string().optional().nullable().transform((val) => (val && val.trim() ? val.trim() : null)),
+  linkUrl: z.string().optional().nullable().transform((val) => (val && val.trim() ? val.trim() : null)),
   type: z.enum(['TEXT', 'IMAGE', 'VIDEO', 'LINK']).optional(),
   locationName: z.string().optional().nullable(),
   latitude: z.number().optional().nullable(),
@@ -30,7 +32,8 @@ const postUpdateSchema = z.object({
   const hasContent = data.content && data.content.trim().length > 0
   const hasImage = data.imageUrl && data.imageUrl.length > 0
   const hasVideo = data.videoUrl && data.videoUrl.length > 0
-  return hasContent || hasImage || hasVideo
+  const hasLink = data.linkUrl && data.linkUrl.length > 0
+  return hasContent || hasImage || hasVideo || hasLink
 }, {
   message: 'Post must have content or media',
   path: ['content'],
@@ -39,15 +42,14 @@ const postUpdateSchema = z.object({
 // PUT - Update post
 export async function PUT(
   request: Request,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    const { postId } = params
 
     // Check if post exists and belongs to user
     const existingPost = await prisma.post.findUnique({
@@ -77,6 +79,7 @@ export async function PUT(
       content: body.content || '',
       imageUrl: body.imageUrl && typeof body.imageUrl === 'string' && body.imageUrl.trim() ? body.imageUrl.trim() : null,
       videoUrl: body.videoUrl && typeof body.videoUrl === 'string' && body.videoUrl.trim() ? body.videoUrl.trim() : null,
+      linkUrl: body.linkUrl && typeof body.linkUrl === 'string' && body.linkUrl.trim() ? body.linkUrl.trim() : null,
       type: body.type,
       locationName: body.locationName && typeof body.locationName === 'string' && body.locationName.trim() ? body.locationName.trim() : null,
       latitude: body.latitude != null ? (typeof body.latitude === 'number' ? body.latitude : parseFloat(String(body.latitude))) : null,
@@ -86,11 +89,21 @@ export async function PUT(
 
     const validatedData = postUpdateSchema.parse(normalizedBody)
 
+    // If user pasted a link in content and didn't explicitly set linkUrl/imageUrl/videoUrl,
+    // auto-detect the first URL and store it in linkUrl for embedding.
+    let linkUrl = validatedData.linkUrl
+    if (!linkUrl && !validatedData.imageUrl && !validatedData.videoUrl && validatedData.content) {
+      const first = extractFirstUrl(validatedData.content)
+      if (first) linkUrl = first
+    }
+
     // Determine post type based on media
     const postType = validatedData.videoUrl
       ? 'VIDEO'
       : validatedData.imageUrl
       ? 'IMAGE'
+      : linkUrl
+      ? 'LINK'
       : 'TEXT'
 
     const updatedPost = await prisma.post.update({
@@ -100,6 +113,7 @@ export async function PUT(
         type: validatedData.type || postType,
         imageUrl: validatedData.imageUrl || null,
         videoUrl: validatedData.videoUrl || null,
+        linkUrl: linkUrl || null,
         locationName: validatedData.locationName || null,
         latitude: validatedData.latitude || null,
         longitude: validatedData.longitude || null,
@@ -149,15 +163,14 @@ export async function PUT(
 // DELETE - Delete post
 export async function DELETE(
   request: Request,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    const { postId } = params
 
     // Check if post exists and belongs to user
     const existingPost = await prisma.post.findUnique({

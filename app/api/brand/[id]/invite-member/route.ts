@@ -74,16 +74,16 @@ export async function POST(
       )
     }
 
-    // Check quota (Premium Standard: 5, Premium Pro: 20, Enterprise: unlimited)
-    const memberCount = await prisma.brandMember.count({
-      where: { brandId },
+    // Check quota (Premium Standard: 5 linked accounts)
+    // Interpreting "tối đa 5 tài khoản liên kết" as 5 members *excluding* the OWNER.
+    const linkedCount = await prisma.brandMember.count({
+      where: { brandId, role: { not: 'OWNER' } },
     })
 
-    // For now, we'll use a simple check. You can enhance this with subscription tiers
-    const maxMembers = 5 // Default for Premium Standard
-    if (memberCount >= maxMembers) {
+    const maxLinkedAccounts = 5
+    if (linkedCount >= maxLinkedAccounts) {
       return NextResponse.json(
-        { error: `Đã đạt giới hạn thành viên (${maxMembers}). Vui lòng nâng cấp gói để thêm thành viên.` },
+        { error: `Đã đạt giới hạn tài khoản liên kết (${maxLinkedAccounts}).` },
         { status: 400 }
       )
     }
@@ -107,6 +107,33 @@ export async function POST(
         },
       },
     })
+
+    // If brand is verified, auto-assign default badge to the invited member (if not already present)
+    // This keeps the verified badge consistent across linked accounts.
+    try {
+      if (brand.verificationStatus === 'APPROVED') {
+        await prisma.brandBadge.upsert({
+          where: {
+            brandId_userId: {
+              brandId,
+              userId: validatedData.userId,
+            },
+          },
+          create: {
+            brandId,
+            userId: validatedData.userId,
+            badgeType: 'GOLD',
+            isActive: true,
+          },
+          update: {
+            isActive: true,
+          },
+        })
+      }
+    } catch (e) {
+      // Non-fatal; membership created successfully.
+      console.error('Error auto-assigning badge for invited member:', e)
+    }
 
     return NextResponse.json({
       membership,

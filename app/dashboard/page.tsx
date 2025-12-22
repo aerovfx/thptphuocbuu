@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { BookOpen, Users, FileText, MessageSquare } from 'lucide-react'
 import DashboardContent from '@/components/Dashboard/DashboardContent'
 import { getModulesByRole } from '@/lib/dashboard-modules'
+import { UserRole } from '@prisma/client'
 
 async function getStats(userId: string, role: string) {
   const now = new Date()
@@ -147,7 +148,7 @@ async function getStats(userId: string, role: string) {
       isAdmin
         ? prisma.auditLog.findMany({
             take: 20,
-            orderBy: { createdAt: 'desc' },
+            orderBy: { timestamp: 'desc' },
             include: {
               user: {
                 select: {
@@ -162,7 +163,7 @@ async function getStats(userId: string, role: string) {
         : prisma.auditLog.findMany({
             where: { userId },
             take: 20,
-            orderBy: { createdAt: 'desc' },
+            orderBy: { timestamp: 'desc' },
             include: {
               user: {
                 select: {
@@ -447,7 +448,7 @@ export default async function DashboardPage() {
   ]
 
   // Lấy danh sách module theo role
-  const userModules = getModulesByRole(session.user.role)
+  const userModules = getModulesByRole(session.user.role as UserRole)
 
   return (
     <DashboardContent

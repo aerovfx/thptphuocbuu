@@ -1,5 +1,6 @@
 # Use the official Node.js runtime as base image
 FROM node:20-alpine AS base
+RUN apk add --no-cache ffmpeg
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -8,7 +9,8 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
-RUN npm ci
+# Install dependencies - use npm install to handle lock file sync issues
+RUN npm install --production=false
 
 # Rebuild the source code only when needed
 FROM base AS builder

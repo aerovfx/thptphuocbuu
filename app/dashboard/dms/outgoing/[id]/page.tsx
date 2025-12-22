@@ -52,8 +52,8 @@ async function getDocument(id: string, userId: string, role: string) {
   }
 
   // Check access permission
-  if (role === 'ADMIN') {
-    // ADMIN can access all documents
+  if (role === 'ADMIN' || role === 'BGH') {
+    // ADMIN and BGH can access all documents
     // No restriction
   } else if (role === 'STUDENT' || role === 'PARENT') {
     const hasAccess = document.approvals.some(

@@ -88,7 +88,8 @@ export default async function AdminPage() {
     redirect('/login')
   }
 
-  if (session.user.role !== 'ADMIN') {
+  // Allow ADMIN, SUPER_ADMIN, and BGH
+  if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN' && session.user.role !== 'BGH') {
     redirect('/dashboard')
   }
 

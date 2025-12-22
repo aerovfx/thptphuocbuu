@@ -13,18 +13,14 @@ export default withAuth(
         return NextResponse.redirect(new URL('/login', req.url))
       }
 
-      // Admin-only routes
-      if (path.startsWith('/dashboard/admin') && token.role !== 'ADMIN') {
+      // Admin-only routes (allow ADMIN, SUPER_ADMIN, and BGH)
+      if (path.startsWith('/dashboard/admin') && token.role !== 'ADMIN' && token.role !== 'SUPER_ADMIN' && token.role !== 'BGH') {
         return NextResponse.redirect(new URL('/dashboard', req.url))
       }
 
-      // Teacher-only routes
-      if (
-        path.startsWith('/dashboard/classes/new') &&
-        token.role !== 'TEACHER' &&
-        token.role !== 'ADMIN'
-      ) {
-        return NextResponse.redirect(new URL('/dashboard/classes', req.url))
+      // Classes module - tạm ẩn, chỉ hiển thị với quản trị admin (ADMIN, SUPER_ADMIN, BGH)
+      if (path.startsWith('/dashboard/classes') && token.role !== 'ADMIN' && token.role !== 'SUPER_ADMIN' && token.role !== 'BGH') {
+        return NextResponse.redirect(new URL('/dashboard', req.url))
       }
 
       if (
@@ -42,7 +38,12 @@ export default withAuth(
     callbacks: {
       authorized: ({ token, req }) => {
         // Allow access to public routes
-        const publicRoutes = ['/login', '/register', '/api/auth']
+        const publicRoutes = [
+          '/login', 
+          '/register', 
+          '/api/auth',
+          '/api/mobile', // Allow all mobile API routes
+        ]
         if (publicRoutes.some((route) => req.nextUrl.pathname.startsWith(route))) {
           return true
         }
@@ -61,7 +62,7 @@ export default withAuth(
 export const config = {
   matcher: [
     '/dashboard/:path*',
-    '/api/:path*',
+    // Don't match API routes - they should be handled by Next.js directly
   ],
 }
 

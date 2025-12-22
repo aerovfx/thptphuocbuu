@@ -48,26 +48,10 @@ export async function GET(
       return NextResponse.json({ error: 'Class not found' }, { status: 404 })
     }
 
-    // Check access
-    if (session.user.role === 'ADMIN') {
-      // ADMIN can access all classes
-    } else if (session.user.role === 'TEACHER') {
-      if (classItem.teacherId !== session.user.id) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-      }
-    } else {
-      // STUDENT/PARENT can only access classes they're enrolled in
-      const isEnrolled = await prisma.classEnrollment.findUnique({
-        where: {
-          userId_classId: {
-            userId: session.user.id,
-            classId: id,
-          },
-        },
-      })
-      if (!isEnrolled) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-      }
+    // Chỉ ADMIN, SUPER_ADMIN, BGH mới có thể truy cập lớp học
+    const userRole = session.user.role
+    if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && userRole !== 'BGH') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     return NextResponse.json(classItem)
@@ -85,8 +69,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Require TEACHER or ADMIN role
-    const { session, error } = await requireRoleAPI(['TEACHER', 'ADMIN'])
+    // Chỉ ADMIN, SUPER_ADMIN, BGH mới có thể chỉnh sửa lớp học
+    const { session, error } = await requireRoleAPI(['ADMIN', 'SUPER_ADMIN', 'BGH'])
     if (error) {
       return error
     }
@@ -102,14 +86,6 @@ export async function PUT(
 
     if (!existingClass) {
       return NextResponse.json({ error: 'Class not found' }, { status: 404 })
-    }
-
-    // Check permission: TEACHER can only edit their own classes
-    if (session.user.role === 'TEACHER' && existingClass.teacherId !== session.user.id) {
-      return NextResponse.json(
-        { error: 'Bạn chỉ có thể chỉnh sửa lớp học của mình' },
-        { status: 403 }
-      )
     }
 
     // Check if code is being changed and if new code already exists
@@ -162,8 +138,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Require TEACHER or ADMIN role
-    const { session, error } = await requireRoleAPI(['TEACHER', 'ADMIN'])
+    // Chỉ ADMIN, SUPER_ADMIN, BGH mới có thể xóa lớp học
+    const { session, error } = await requireRoleAPI(['ADMIN', 'SUPER_ADMIN', 'BGH'])
     if (error) {
       return error
     }
@@ -177,14 +153,6 @@ export async function DELETE(
 
     if (!existingClass) {
       return NextResponse.json({ error: 'Class not found' }, { status: 404 })
-    }
-
-    // Check permission: TEACHER can only delete their own classes
-    if (session.user.role === 'TEACHER' && existingClass.teacherId !== session.user.id) {
-      return NextResponse.json(
-        { error: 'Bạn chỉ có thể xóa lớp học của mình' },
-        { status: 403 }
-      )
     }
 
     // Delete class (cascade will handle related records)

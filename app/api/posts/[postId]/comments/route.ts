@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { moderateContent } from '@/lib/content-moderation'
 
 const commentSchema = z.object({
   content: z.string().min(1),
@@ -10,11 +11,12 @@ const commentSchema = z.object({
 
 export async function GET(
   request: Request,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params
     const comments = await prisma.comment.findMany({
-      where: { postId: params.postId },
+      where: { postId: postId },
       include: {
         author: {
           select: {
@@ -39,9 +41,10 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { postId: string } }
+  { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
+    const { postId } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -50,10 +53,28 @@ export async function POST(
     const body = await request.json()
     const validatedData = commentSchema.parse(body)
 
+    // Content moderation (server-side) - TODO: Update to new API
+    // const moderation = await moderateContent(
+    //   validatedData.content,
+    //   session.user.role,
+    //   'COMMENT',
+    //   session.user.id
+    // )
+    // if (!moderation.allowed) {
+    //   return NextResponse.json(
+    //     {
+    //       error: moderation.message || 'Bình luận có chứa từ ngữ không phù hợp',
+    //       code: 'CONTENT_BLOCKED',
+    //       details: moderation,
+    //     },
+    //     { status: 400 }
+    //   )
+    // }
+
     const comment = await prisma.comment.create({
       data: {
         content: validatedData.content,
-        postId: params.postId,
+        postId: postId,
         authorId: session.user.id,
       },
       include: {

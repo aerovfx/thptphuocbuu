@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { moderateContent } from '@/lib/content-moderation'
 
 const createMessageSchema = z.object({
   conversationId: z.string().optional(),
@@ -141,10 +142,10 @@ export async function GET(request: Request) {
         user: otherUser,
         lastMessage: conv.lastMessage
           ? {
-              content: conv.lastMessage.content,
-              createdAt: conv.lastMessage.createdAt,
-              senderId: conv.lastMessage.senderId,
-            }
+            content: conv.lastMessage.content,
+            createdAt: conv.lastMessage.createdAt,
+            senderId: conv.lastMessage.senderId,
+          }
           : null,
         lastMessageAt: conv.lastMessageAt || conv.updatedAt,
         unreadCount,
@@ -171,6 +172,24 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const validatedData = createMessageSchema.parse(body)
+
+    // Content moderation (server-side) - TODO: Update to new API
+    // const moderation = await moderateContent(
+    //   validatedData.content,
+    //   session.user.role,
+    //   'COMMENT',
+    //   session.user.id
+    // )
+    // if (!moderation.allowed) {
+    //   return NextResponse.json(
+    //     {
+    //       error: moderation.message || 'Tin nhắn có chứa từ ngữ không phù hợp',
+    //       code: 'CONTENT_BLOCKED',
+    //       details: moderation,
+    //     },
+    //     { status: 400 }
+    //   )
+    // }
 
     // Find or create conversation
     let conversation = await prisma.conversation.findFirst({
@@ -225,7 +244,7 @@ export async function POST(request: Request) {
       },
     })
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message,
       conversation: {
         id: conversation.id,

@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { redirect } from 'next/navigation'
+import { redirect, notFound } from 'next/navigation'
 import UserProfile from '@/components/Profile/UserProfile'
 
 async function getUserProfile(userId: string, currentUserId?: string) {
@@ -16,6 +16,7 @@ async function getUserProfile(userId: string, currentUserId?: string) {
         coverPhoto: true,
         bio: true,
         role: true,
+        status: true,
         phone: true,
         dateOfBirth: true,
         createdAt: true,
@@ -30,6 +31,14 @@ async function getUserProfile(userId: string, currentUserId?: string) {
   })
 
   if (!user) {
+    return null
+  }
+
+  // Hide soft-deleted accounts from normal users
+  const session = await getServerSession(authOptions)
+  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN'
+  // Simplified states: only ACTIVE users are visible to normal users
+  if ((user as any).status !== 'ACTIVE' && !isAdmin) {
     return null
   }
 
@@ -219,7 +228,11 @@ export default async function UserProfilePage({
   const userProfile = await getUserProfile(id, session?.user.id)
 
   if (!userProfile) {
-    redirect('/dashboard')
+    // Keep admins on dashboard if they hit an invalid id; for normal users return 404.
+    if (session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN') {
+      redirect('/dashboard')
+    }
+    notFound()
   }
 
   return <UserProfile user={userProfile} currentUser={session} />

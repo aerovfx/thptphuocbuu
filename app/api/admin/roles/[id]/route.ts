@@ -7,7 +7,7 @@ import { z } from 'zod'
 // Helper function to check admin permission
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'BGH' && session.user.role !== 'SUPER_ADMIN')) {
     throw new Error('Unauthorized: Admin access required')
   }
   return session
@@ -238,7 +238,6 @@ export async function DELETE(
 
     const role = await prisma.role.findUnique({
       where: { id },
-      select: { id: true, name: true },
       include: {
         _count: {
           select: {

@@ -35,6 +35,26 @@ async function getPosts() {
           firstName: true,
           lastName: true,
           avatar: true,
+          brandBadges: {
+            where: {
+              isActive: true,
+              brand: { verificationStatus: 'APPROVED' },
+            },
+            take: 1,
+            orderBy: { createdAt: 'desc' },
+            select: {
+              badgeType: true,
+              badgeIconUrl: true,
+              brand: {
+                select: {
+                  id: true,
+                  name: true,
+                  logoUrl: true,
+                  verificationStatus: true,
+                },
+              },
+            },
+          },
         },
       },
       _count: {
@@ -49,7 +69,7 @@ async function getPosts() {
   })
   
   // Filter out scheduled posts that haven't been published yet
-  return posts.filter((post: any) => {
+  const published = posts.filter((post: any) => {
     if (!post.scheduledAt) return true // No schedule = published
     try {
       return new Date(post.scheduledAt) <= now // Scheduled time passed = published
@@ -57,6 +77,23 @@ async function getPosts() {
       return true // If date parsing fails, treat as published
     }
   })
+
+  const normalized = published.map((p: any) => {
+    const brandBadge = p.author?.brandBadges?.[0] || null
+    const author = { ...p.author, brandBadge }
+    delete author.brandBadges
+    return { ...p, author }
+  })
+
+  // Prioritize verified brand posts
+  normalized.sort((a: any, b: any) => {
+    const aBoost = a.author?.brandBadge?.brand?.verificationStatus === 'APPROVED' ? 1 : 0
+    const bBoost = b.author?.brandBadge?.brand?.verificationStatus === 'APPROVED' ? 1 : 0
+    if (aBoost !== bBoost) return bBoost - aBoost
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
+
+  return normalized
 }
 
 async function getTrendingTopics() {

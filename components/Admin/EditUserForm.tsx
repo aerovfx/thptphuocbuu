@@ -194,9 +194,7 @@ export default function EditUserForm({ user, currentUser }: EditUserFormProps) {
               className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins"
             >
               <option value="ACTIVE">Hoạt động</option>
-              <option value="SUSPENDED">Tạm dừng</option>
-              <option value="PENDING">Chờ xử lý</option>
-              <option value="DELETED">Đã xóa</option>
+              <option value="SUSPENDED">Không hoạt động</option>
             </select>
           </div>
 

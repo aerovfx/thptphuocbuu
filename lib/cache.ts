@@ -52,11 +52,17 @@ export const cache = new SimpleCache()
 
 // Feed cache instance (alias for backward compatibility)
 export const feedCache = {
-  getFeed: async (userId: string | null, tab: string, query?: string) => {
+  getFeed: async <T = any>(userId: string | null, tab: string, query?: string): Promise<T | null> => {
     const key = `feed:${userId || 'anonymous'}:${tab}:${query || ''}`
-    return cache.get(key)
+    return cache.get<T>(key)
   },
-  setFeed: async (userId: string | null, tab: string, query: string | undefined, data: any, ttl: number = 300) => {
+  setFeed: async <T = any>(
+    userId: string | null,
+    tab: string,
+    query: string | undefined,
+    data: T,
+    ttl: number = 300
+  ) => {
     const key = `feed:${userId || 'anonymous'}:${tab}:${query || ''}`
     cache.set(key, data, ttl)
   },

@@ -3,6 +3,23 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+async function resolveCurrentUserId(session: any): Promise<string | null> {
+  const id = session?.user?.id
+  const email = session?.user?.email
+
+  if (typeof id === 'string' && id.trim()) {
+    const exists = await prisma.user.findUnique({ where: { id }, select: { id: true } })
+    if (exists) return id
+  }
+
+  if (typeof email === 'string' && email.trim()) {
+    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } })
+    return user?.id || null
+  }
+
+  return null
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -13,9 +30,18 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Avoid FK violations (friendships_user1Id_fkey) when session token id is stale/missing.
+    const currentUserId = await resolveCurrentUserId(session)
+    if (!currentUserId) {
+      return NextResponse.json(
+        { error: 'Session không hợp lệ. Vui lòng đăng nhập lại.' },
+        { status: 401 }
+      )
+    }
+
     const { id: targetUserId } = await params
 
-    if (targetUserId === session.user.id) {
+    if (targetUserId === currentUserId) {
       return NextResponse.json(
         { error: 'Bạn không thể theo dõi chính mình' },
         { status: 400 }
@@ -34,7 +60,7 @@ export async function POST(
     // Check if already following (one-way: user1Id follows user2Id)
     const existingFriendship = await prisma.friendship.findFirst({
       where: {
-        user1Id: session.user.id,
+        user1Id: currentUserId,
         user2Id: targetUserId,
       },
     })
@@ -47,8 +73,8 @@ export async function POST(
     const existingRequest = await prisma.friendRequest.findFirst({
       where: {
         OR: [
-          { senderId: session.user.id, receiverId: targetUserId },
-          { senderId: targetUserId, receiverId: session.user.id },
+          { senderId: currentUserId, receiverId: targetUserId },
+          { senderId: targetUserId, receiverId: currentUserId },
         ],
       },
     })
@@ -69,7 +95,7 @@ export async function POST(
         // So: session.user.id (acceptor) follows targetUserId (requester)
         await prisma.friendship.create({
           data: {
-            user1Id: session.user.id, // The acceptor follows
+            user1Id: currentUserId, // The acceptor follows
             user2Id: targetUserId, // The requester is being followed
           },
         })
@@ -83,7 +109,7 @@ export async function POST(
     // Create friendship directly (no approval needed for follow)
     await prisma.friendship.create({
       data: {
-        user1Id: session.user.id,
+        user1Id: currentUserId,
         user2Id: targetUserId,
       },
     })
@@ -108,12 +134,20 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const currentUserId = await resolveCurrentUserId(session)
+    if (!currentUserId) {
+      return NextResponse.json(
+        { error: 'Session không hợp lệ. Vui lòng đăng nhập lại.' },
+        { status: 401 }
+      )
+    }
+
     const { id: targetUserId } = await params
 
     // Find and delete friendship (one-way: user1Id follows user2Id)
     const friendship = await prisma.friendship.findFirst({
       where: {
-        user1Id: session.user.id,
+        user1Id: currentUserId,
         user2Id: targetUserId,
       },
     })
@@ -146,12 +180,20 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const currentUserId = await resolveCurrentUserId(session)
+    if (!currentUserId) {
+      return NextResponse.json(
+        { error: 'Session không hợp lệ. Vui lòng đăng nhập lại.' },
+        { status: 401 }
+      )
+    }
+
     const { id: targetUserId } = await params
 
     // Check if current user is following target user (one-way: user1Id follows user2Id)
     const friendship = await prisma.friendship.findFirst({
       where: {
-        user1Id: session.user.id,
+        user1Id: currentUserId,
         user2Id: targetUserId,
       },
     })

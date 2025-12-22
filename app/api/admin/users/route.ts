@@ -146,7 +146,7 @@ const createUserSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   role: z.enum(['STUDENT', 'TEACHER', 'PARENT', 'ADMIN']),
-  status: z.enum(['ACTIVE', 'SUSPENDED', 'PENDING']).optional(),
+  status: z.enum(['ACTIVE', 'SUSPENDED']).optional(),
 })
 
 export async function POST(request: Request) {

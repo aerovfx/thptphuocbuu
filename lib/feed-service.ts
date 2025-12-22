@@ -96,7 +96,7 @@ export async function getRankedFeed(
     })
 
     candidates = posts
-      .filter((post: any) => post.content?.trim() || post.imageUrl || post.videoUrl)
+      .filter((post: any) => post.content?.trim() || post.imageUrl || post.videoUrl || post.linkUrl)
       .map((post: any) => ({
         id: post.id,
         content: post.content || '',
@@ -105,6 +105,7 @@ export async function getRankedFeed(
         type: post.type,
         imageUrl: post.imageUrl,
         videoUrl: post.videoUrl,
+        linkUrl: post.linkUrl,
         likes: post._count?.likes || 0,
         comments: post._count?.comments || 0,
         reposts: post._count?.reposts || 0,
@@ -361,7 +362,7 @@ export async function getRankedFeed(
     }
 
     candidates = Array.from(uniquePosts.values())
-      .filter((post: any) => post.content?.trim() || post.imageUrl || post.videoUrl)
+      .filter((post: any) => post.content?.trim() || post.imageUrl || post.videoUrl || post.linkUrl)
       .map((post: any) => ({
         id: post.id,
         content: post.content || '',
@@ -370,6 +371,7 @@ export async function getRankedFeed(
         type: post.type,
         imageUrl: post.imageUrl,
         videoUrl: post.videoUrl,
+        linkUrl: post.linkUrl,
         likes: post._count?.likes || 0,
         comments: post._count?.comments || 0,
         reposts: post._count?.reposts || 0,
@@ -385,7 +387,7 @@ export async function getRankedFeed(
   }
 
   // Stage 2: Fine-grained Ranking (chỉ cho tab 'top')
-  let rankedPosts = candidates
+  let rankedPosts: PostWithMetrics[] = candidates
   if (tab === 'top' && userId) {
     // Build user context
     const following = await prisma.friendship.findMany({
@@ -470,12 +472,12 @@ export async function getRankedFeed(
         diversityLambda = diversityVariant === 'treatment' ? 0.8 : 0.7
       }
 
-      // Rank candidates
-      rankedPosts = rankCandidates(candidates, userContext, query)
+      // Rank candidates (ScoredPost[])
+      const scoredPosts = rankCandidates(candidates, userContext, query)
 
       // Diversification with A/B tested lambda
-      rankedPosts = diversifyFeed(rankedPosts, diversityLambda, limit)
-      rankedPosts = ensureDiversity(rankedPosts)
+      const diversified = ensureDiversity(diversifyFeed(scoredPosts, diversityLambda, limit))
+      rankedPosts = diversified
       
       // Track engagement metrics for A/B testing
       // This will be called when user interacts with posts

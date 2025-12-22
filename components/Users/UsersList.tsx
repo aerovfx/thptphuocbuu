@@ -15,12 +15,26 @@ interface User {
   lastName: string
   role: string
   avatar: string | null
+  status?: string
+  lastLogin?: Date | string | null
   createdAt: Date | string
 }
 
 interface UsersListProps {
   users: User[]
   currentUserRole: string
+}
+
+// Matches the shape returned by `components/Users/EditUserModal.tsx` onSuccess (may be partial vs list view user)
+type EditUserModalUser = {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  role: string
+  phone?: string | null
+  bio?: string | null
+  dateOfBirth?: string | null
 }
 
 const roleLabels: Record<string, string> = {
@@ -35,6 +49,46 @@ const roleColors: Record<string, string> = {
   TEACHER: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
   STUDENT: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
   PARENT: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
+  BGH: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
+  TAI_CHINH: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
+}
+
+const statusLabels: Record<string, string> = {
+  ACTIVE: 'Hoạt động',
+  UNACTIVE: 'Không hoạt động',
+}
+
+const statusColors: Record<string, string> = {
+  ACTIVE: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+  UNACTIVE: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400',
+}
+
+const formatLastLogin = (lastLogin: Date | string | null | undefined): string => {
+  if (!lastLogin) {
+    return 'Chưa đăng nhập'
+  }
+  const date = typeof lastLogin === 'string' ? new Date(lastLogin) : lastLogin
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) {
+    return 'Vừa xong'
+  } else if (diffMins < 60) {
+    return `${diffMins} phút trước`
+  } else if (diffHours < 24) {
+    return `${diffHours} giờ trước`
+  } else if (diffDays < 7) {
+    return `${diffDays} ngày trước`
+  } else {
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+  }
 }
 
 export default function UsersList({ users: initialUsers, currentUserRole }: UsersListProps) {
@@ -110,22 +164,15 @@ export default function UsersList({ users: initialUsers, currentUserRole }: User
     }
   }, [isEditing, isViewing, isDeleting])
 
-  const handleEditSuccess = useCallback((updatedUser: User) => {
+  const handleEditSuccess = useCallback((updatedUser: EditUserModalUser) => {
     try {
       // Update the user in the list, preserving avatar if updatedUser.avatar is null/undefined
       setUsers((prevUsers) =>
         prevUsers.map((u) => {
           if (u.id === updatedUser.id) {
-            // Preserve avatar from existing user if updatedUser.avatar is null or undefined
-            // Only update avatar if updatedUser has a non-null avatar value
-            const updatedUserAvatar = (updatedUser as any).avatar
-            const preservedAvatar = updatedUserAvatar !== null && updatedUserAvatar !== undefined
-              ? updatedUserAvatar
-              : u.avatar
             return { 
               ...u, 
               ...updatedUser, 
-              avatar: preservedAvatar,
               createdAt: u.createdAt, // Preserve original createdAt format
             }
           }
@@ -232,6 +279,34 @@ export default function UsersList({ users: initialUsers, currentUserRole }: User
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-blue-600 dark:text-blue-400 font-poppins mb-2">
+            Quản lý người dùng
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 font-poppins">
+            Tổng cộng: {users.length} người dùng
+          </p>
+        </div>
+        {currentUserRole === 'ADMIN' && (
+          <Link
+            href="/dashboard/users/new"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 font-poppins font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Thêm người dùng mới"
+            onClick={(e) => {
+              if (isDeleting || isEditing || isViewing) {
+                e.preventDefault()
+                alert('Vui lòng đợi các thao tác khác hoàn tất trước khi thêm người dùng mới.')
+              }
+            }}
+          >
+            <UserPlus size={20} />
+            <span>Tạo người dùng</span>
+          </Link>
+        )}
+      </div>
+
       {/* Search and Filter Bar */}
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="flex-1 w-full sm:max-w-md">
@@ -266,24 +341,6 @@ export default function UsersList({ users: initialUsers, currentUserRole }: User
             </select>
           </div>
 
-          {/* Add User Button */}
-          {currentUserRole === 'ADMIN' && (
-            <Link
-              href="/dashboard/users/new"
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 font-poppins font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Thêm người dùng mới"
-              onClick={(e) => {
-                // Prevent navigation if any operation is in progress
-                if (isDeleting || isEditing || isViewing) {
-                  e.preventDefault()
-                  alert('Vui lòng đợi các thao tác khác hoàn tất trước khi thêm người dùng mới.')
-                }
-              }}
-            >
-              <UserPlus size={20} />
-              <span>Thêm người dùng</span>
-            </Link>
-          )}
         </div>
       </div>
 
@@ -302,19 +359,19 @@ export default function UsersList({ users: initialUsers, currentUserRole }: User
               <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-poppins">
-                    Người dùng
+                    NGƯỜI DÙNG
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-poppins">
-                    Email
+                    VAI TRÒ
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-poppins">
-                    Vai trò
+                    TRẠNG THÁI
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-poppins">
-                    Ngày tham gia
+                    ĐĂNG NHẬP CUỐI
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider font-poppins">
-                    Thao tác
+                    THAO TÁC
                   </th>
                 </tr>
               </thead>
@@ -342,23 +399,30 @@ export default function UsersList({ users: initialUsers, currentUserRole }: User
                           <div className="text-sm font-medium text-gray-900 dark:text-white font-poppins">
                             {user.firstName} {user.lastName}
                           </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 font-poppins">{user.email}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500 dark:text-gray-400 font-poppins">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full font-poppins ${
+                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full font-poppins ${
                           roleColors[user.role] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                         }`}
                       >
                         {roleLabels[user.role] || user.role}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full font-poppins ${
+                          statusColors[user.status || 'ACTIVE'] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        {statusLabels[user.status || 'ACTIVE'] || user.status || 'Hoạt động'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-poppins">
-                      {new Date(user.createdAt).toLocaleDateString('vi-VN')}
+                      {formatLastLogin(user.lastLogin)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2" onClick={(e) => e.stopPropagation()}>

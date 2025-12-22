@@ -1,11 +1,12 @@
 import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import SharedLayout from '@/components/Layout/SharedLayout'
 import DocumentsTabs from '@/components/DMS/DocumentsTabs'
 
 async function getDocuments(userId: string, role: string) {
-  if (role === 'ADMIN' || role === 'TEACHER') {
+  if (role === 'ADMIN' || role === 'BGH' || role === 'TEACHER') {
     return await prisma.document.findMany({
       include: {
         uploadedBy: {
@@ -52,8 +53,8 @@ async function getIncomingDocuments(userId: string, role: string) {
   const where: any = {}
 
   // Role-based filtering
-  if (role === 'ADMIN') {
-    // ADMIN can see all incoming documents
+  if (role === 'ADMIN' || role === 'BGH') {
+    // ADMIN and BGH can see all incoming documents
     // where remains empty to show all
   } else if (role === 'STUDENT' || role === 'PARENT') {
     where.assignments = {
@@ -121,8 +122,8 @@ async function getOutgoingDocuments(userId: string, role: string) {
   const where: any = {}
 
   // Role-based filtering
-  if (role === 'ADMIN') {
-    // ADMIN can see all outgoing documents
+  if (role === 'ADMIN' || role === 'BGH') {
+    // ADMIN and BGH can see all outgoing documents
     // where remains empty to show all
   } else if (role === 'STUDENT' || role === 'PARENT') {
     where.approvals = {
@@ -159,7 +160,14 @@ async function getOutgoingDocuments(userId: string, role: string) {
 
 export default async function DocumentsPage() {
   const session = await getServerSession(authOptions)
-  if (!session) return null
+  if (!session) {
+    redirect('/login')
+  }
+
+  // STUDENT không được truy cập trang documents, redirect về dashboard
+  if (session.user.role === 'STUDENT') {
+    redirect('/dashboard')
+  }
 
   // Fetch user to get firstName and lastName
   const user = await prisma.user.findUnique({
@@ -200,6 +208,12 @@ export default async function DocumentsPage() {
           receivedDate: doc.receivedDate.toISOString(),
           deadline: doc.deadline?.toISOString() || null,
           createdAt: doc.createdAt.toISOString(),
+          createdBy: doc.createdBy ? {
+            id: doc.createdBy.id,
+            firstName: doc.createdBy.firstName,
+            lastName: doc.createdBy.lastName,
+            avatar: doc.createdBy.avatar,
+          } : undefined,
           assignments: doc.assignments.map(assignment => ({
             ...assignment,
             deadline: assignment.deadline?.toISOString() || null,

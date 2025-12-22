@@ -7,7 +7,7 @@ import { z } from 'zod'
 // Helper function to check admin permission
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'BGH' && session.user.role !== 'SUPER_ADMIN')) {
     throw new Error('Unauthorized: Admin access required')
   }
   return session
@@ -53,9 +53,12 @@ export async function GET(request: Request) {
       where.enabled = enabled === 'true'
     }
 
+    // Fetch modules using Prisma query
     const modules = await prisma.module.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: {
+        createdAt: 'desc',
+      },
     })
 
     return NextResponse.json({ data: modules })

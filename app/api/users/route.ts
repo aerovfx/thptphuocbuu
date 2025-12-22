@@ -109,6 +109,12 @@ export async function GET(request: Request) {
 
     // Build where clause
     const where: any = {}
+    const isAdmin =
+      session.user.role === 'ADMIN' ||
+      session.user.role === 'SUPER_ADMIN'
+
+    // Simplified states: only ACTIVE users are visible to non-admins
+    if (!isAdmin) where.status = 'ACTIVE'
 
     if (search) {
       where.OR = [
@@ -127,6 +133,7 @@ export async function GET(request: Request) {
         email: true,
         role: true,
         avatar: true,
+        ...(isAdmin ? { status: true } : {}),
       },
       orderBy: { createdAt: 'desc' },
       take: 20,

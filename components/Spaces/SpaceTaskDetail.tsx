@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import {
   FileText,
   Clock,
@@ -64,6 +64,7 @@ interface SpaceTask {
 interface SpaceTaskDetailProps {
   task: SpaceTask
   currentUser: any
+  spaceId?: string
 }
 
 const statusLabels: Record<string, { label: string; color: string; icon: any }> = {
@@ -80,12 +81,34 @@ const priorityLabels: Record<string, { label: string; color: string }> = {
   LOW: { label: 'Thấp', color: 'bg-gray-500/20 text-gray-400 border-gray-500/50' },
 }
 
-export default function SpaceTaskDetail({ task: initialTask, currentUser }: SpaceTaskDetailProps) {
+export default function SpaceTaskDetail({ task: initialTask, currentUser, spaceId: propSpaceId }: SpaceTaskDetailProps) {
   const router = useRouter()
+  const params = useParams()
   const [task, setTask] = useState<SpaceTask>(initialTask)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
+
+  // Get spaceId from various sources with fallback
+  const spaceId: string = (() => {
+    if (task.space?.id) return task.space.id
+    if (propSpaceId) return propSpaceId
+    if (params?.id && typeof params.id === 'string') return params.id
+    // Fallback - this should not happen in normal usage
+    return ''
+  })()
+
+  // Show error if spaceId is not available
+  if (!spaceId) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center space-x-2 text-red-400">
+          <AlertCircle size={20} />
+          <span className="font-poppins">Không thể xác định Space ID. Vui lòng tải lại trang.</span>
+        </div>
+      </div>
+    )
+  }
 
   // Parse data safely
   const parseJSON = (jsonString: string | null): any[] => {
@@ -162,7 +185,7 @@ export default function SpaceTaskDetail({ task: initialTask, currentUser }: Spac
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/spaces/${task.space.id}/tasks/${task.id}`)
+      const response = await fetch(`/api/spaces/${spaceId}/tasks/${task.id}`)
       if (!response.ok) {
         throw new Error('Không thể tải dữ liệu công việc')
       }
@@ -182,7 +205,7 @@ export default function SpaceTaskDetail({ task: initialTask, currentUser }: Spac
 
     try {
       setLoading(true)
-      const response = await fetch(`/api/spaces/${task.space.id}/tasks/${task.id}`, {
+      const response = await fetch(`/api/spaces/${spaceId}/tasks/${task.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -216,12 +239,12 @@ export default function SpaceTaskDetail({ task: initialTask, currentUser }: Spac
 
     setLoading(true)
     try {
-      const response = await fetch(`/api/spaces/${task.space.id}/tasks/${task.id}`, {
+      const response = await fetch(`/api/spaces/${spaceId}/tasks/${task.id}`, {
         method: 'DELETE',
       })
 
       if (response.ok) {
-        router.push(`/dashboard/spaces/${task.space.id}/tasks`)
+        router.push(`/dashboard/spaces/${spaceId}/tasks`)
       } else {
         const data = await response.json()
         setError(data.error || 'Đã xảy ra lỗi khi xóa công việc')
@@ -497,7 +520,7 @@ export default function SpaceTaskDetail({ task: initialTask, currentUser }: Spac
       {showDetailModal && (
         <TaskDetailModal
           task={task}
-          spaceId={task.space.id}
+          spaceId={spaceId}
           canManage={canManage}
           onClose={() => setShowDetailModal(false)}
           onUpdate={() => {

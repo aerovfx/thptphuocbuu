@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { randomBytes } from 'crypto'
+import { sendVerificationEmail } from '@/lib/email'
 
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  dateOfBirth: z.string().optional().transform((val) => val ? new Date(val) : undefined),
   role: z.enum(['STUDENT', 'TEACHER', 'PARENT', 'ADMIN']),
 })
 
@@ -43,18 +46,38 @@ export async function POST(request: Request) {
 
     const hashedPassword = await bcrypt.hash(normalizedPassword, 10)
 
+    // Generate email verification token
+    const verificationToken = randomBytes(32).toString('hex')
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
     const user = await prisma.user.create({
       data: {
         email: normalizedEmail, // Use normalized email
         password: hashedPassword,
         firstName: validatedData.firstName, // Already trimmed in preprocessing
         lastName: validatedData.lastName, // Already trimmed in preprocessing
+        dateOfBirth: validatedData.dateOfBirth,
         role: validatedData.role,
+        // Store verification token (we'll use resetPasswordToken field temporarily)
+        // TODO: Add dedicated emailVerificationToken field to schema
+        resetPasswordToken: verificationToken,
+        resetPasswordExpires: verificationTokenExpires,
       },
     })
 
+    // Send verification email
+    try {
+      await sendVerificationEmail(user.email, verificationToken)
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError)
+      // Continue anyway - email will be logged in development
+    }
+
     return NextResponse.json(
-      { message: 'Đăng ký thành công', userId: user.id },
+      { 
+        message: 'Đăng ký thành công. Vui lòng kiểm tra email để xác nhận tài khoản.',
+        userId: user.id 
+      },
       { status: 201 }
     )
   } catch (error) {

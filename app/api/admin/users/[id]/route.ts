@@ -8,8 +8,17 @@ import bcrypt from 'bcryptjs'
 // Helper function to check admin permission
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'BGH')) {
     throw new Error('Unauthorized: Admin access required')
+  }
+  return session
+}
+
+// Helper function to check admin permission (BGH không được xóa user)
+async function requireAdminForDelete() {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user.role !== 'ADMIN') {
+    throw new Error('Unauthorized: Only ADMIN can delete users')
   }
   return session
 }
@@ -115,7 +124,7 @@ const updateUserSchema = z.object({
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
   role: z.enum(['STUDENT', 'TEACHER', 'PARENT', 'ADMIN']).optional(),
-  status: z.enum(['ACTIVE', 'SUSPENDED', 'DELETED', 'PENDING']).optional(),
+  status: z.enum(['ACTIVE', 'SUSPENDED']).optional(),
   bio: z.string().optional(),
   phone: z.string().optional(),
   dateOfBirth: z.string().optional(),
@@ -241,18 +250,31 @@ export async function PUT(
   }
 }
 
-// DELETE /api/admin/users/[id] - Delete user (soft delete by setting status to DELETED)
+// DELETE /api/admin/users/[id] - Delete user (soft delete by setting status to SUSPENDED)
+// BGH không được xóa user
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await requireAdmin()
+    const session = await requireAdminForDelete()
     const { id } = await params
 
     const user = await prisma.user.findUnique({
       where: { id },
-      select: { id: true, email: true },
+      select: {
+        id: true,
+        email: true,
+        status: true,
+        metadata: true,
+        firstName: true,
+        lastName: true,
+        avatar: true,
+        coverPhoto: true,
+        bio: true,
+        phone: true,
+        dateOfBirth: true,
+      },
     })
 
     if (!user) {
@@ -262,11 +284,64 @@ export async function DELETE(
       )
     }
 
-    // Soft delete by setting status to DELETED
-    await prisma.user.update({
-      where: { id },
-      data: { status: 'DELETED' },
-    })
+    // Prevent deleting yourself
+    if (id === session.user.id) {
+      return NextResponse.json(
+        { error: 'Bạn không thể xóa chính mình' },
+        { status: 400 }
+      )
+    }
+
+    // Check if user is already suspended (soft deleted)
+    if (user.status === 'SUSPENDED') {
+      return NextResponse.json({ message: 'Người dùng đã bị tạm dừng trước đó' }, { status: 200 })
+    }
+
+    const deletedEmail = `deleted+${id}@thptphuocbuu.local`
+    let nextMetadata: any = {}
+    try {
+      nextMetadata = user.metadata ? JSON.parse(user.metadata) : {}
+    } catch {
+      nextMetadata = {}
+    }
+    nextMetadata.deletedAt = new Date().toISOString()
+    nextMetadata.deletedBy = session.user.id
+    nextMetadata.previousEmail = user.email
+    nextMetadata.previousFirstName = user.firstName
+    nextMetadata.previousLastName = user.lastName
+    nextMetadata.previousAvatar = user.avatar
+    nextMetadata.previousCoverPhoto = user.coverPhoto
+    nextMetadata.previousBio = user.bio
+    nextMetadata.previousPhone = user.phone
+    nextMetadata.previousDateOfBirth = user.dateOfBirth ? user.dateOfBirth.toISOString() : null
+
+    await prisma.$transaction([
+      prisma.session.deleteMany({ where: { userId: id } }),
+      prisma.account.deleteMany({ where: { userId: id } }),
+      prisma.userRoleAssignment.deleteMany({ where: { userId: id } }),
+      prisma.userModuleAccess.deleteMany({ where: { userId: id } }),
+      prisma.user.update({
+        where: { id },
+        data: {
+          status: 'SUSPENDED',
+          email: deletedEmail,
+          password: null,
+          emailVerified: null,
+          resetPasswordToken: null,
+          resetPasswordExpires: null,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+          firstName: 'Đã',
+          lastName: 'xóa',
+          avatar: null,
+          coverPhoto: null,
+          bio: null,
+          phone: null,
+          dateOfBirth: null,
+          metadata: JSON.stringify(nextMetadata),
+        },
+      }),
+    ])
 
     // Create audit log
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined

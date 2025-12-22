@@ -12,9 +12,34 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const q = searchParams.get('q') || searchParams.get('email') || searchParams.get('id')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const isAdmin =
+      session.user.role === 'ADMIN' ||
+      session.user.role === 'SUPER_ADMIN' ||
+      session.user.role === 'BGH'
 
+    // If no query, return list of users (for admin)
     if (!q) {
-      return NextResponse.json({ error: 'Query parameter is required' }, { status: 400 })
+      if (!isAdmin) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+
+      const users = await prisma.user.findMany({
+        where: {},
+        take: Math.min(limit, 100),
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          avatar: true,
+          role: true,
+          status: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      return NextResponse.json({ users })
     }
 
     // Try to find by ID first, then by email
@@ -26,6 +51,7 @@ export async function GET(request: Request) {
         lastName: true,
         email: true,
         avatar: true,
+        status: true,
       },
     })
 
@@ -38,12 +64,24 @@ export async function GET(request: Request) {
           lastName: true,
           email: true,
           avatar: true,
+          status: true,
         },
       })
     }
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Simplified states: hide any non-ACTIVE users from non-admin search results
+    if ((user as any).status !== 'ACTIVE' && !isAdmin) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Hide status field for non-admins
+    if (!isAdmin) {
+      const { status, ...rest } = user as any
+      return NextResponse.json(rest)
     }
 
     return NextResponse.json(user)

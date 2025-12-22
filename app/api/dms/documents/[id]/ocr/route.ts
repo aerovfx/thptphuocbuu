@@ -6,9 +6,10 @@ import { prisma } from '@/lib/prisma'
 // POST - Trigger OCR processing for a document
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -21,8 +22,6 @@ export async function POST(
         { status: 403 }
       )
     }
-
-    const { id } = params
 
     const document = await prisma.incomingDocument.findUnique({
       where: { id },
@@ -58,22 +57,21 @@ export async function POST(
 // GET - Get OCR results for a document
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
-
     const document = await prisma.incomingDocument.findUnique({
       where: { id },
       include: {
         versions: {
-          include: {
-            ocrExtracts: true,
+          select: {
+            ocrText: true,
           },
           orderBy: { versionNumber: 'desc' },
           take: 1,
@@ -86,12 +84,11 @@ export async function GET(
     }
 
     const latestVersion = document.versions[0]
-    const ocrResult = latestVersion?.ocrExtracts?.[0]
 
     return NextResponse.json({
-      ocrText: document.ocrText || ocrResult?.text || null,
-      ocrConfidence: document.ocrConfidence || ocrResult?.confidence || null,
-      hasOCR: !!document.ocrText || !!ocrResult,
+      ocrText: document.ocrText || latestVersion?.ocrText || null,
+      ocrConfidence: document.ocrConfidence || null,
+      hasOCR: !!document.ocrText || !!latestVersion?.ocrText,
     })
   } catch (error: any) {
     console.error('Error fetching OCR results:', error)

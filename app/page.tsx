@@ -1,7 +1,8 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getCurrentSession } from '@/lib/auth-helpers'
 import dynamic from 'next/dynamic'
+import CountdownLanding from '@/components/Landing/CountdownLanding'
+import LaunchOverlay from '@/components/Landing/LaunchOverlay'
 
 // Lazy load HomePage to reduce initial bundle size
 const HomePage = dynamic(() => import('@/components/Home/HomePage'), {
@@ -44,6 +45,7 @@ async function getPublicPosts() {
       type: true,
       imageUrl: true,
       videoUrl: true,
+      linkUrl: true,
       author: {
         select: {
           id: true,
@@ -75,35 +77,31 @@ async function getPublicPosts() {
 
 export default async function Home() {
   // Safely get session with error handling for JWT decryption errors
-  let session = null
-  try {
-    session = await getServerSession(authOptions)
-  } catch (error: any) {
-    // Handle JWT decryption errors (e.g., when NEXTAUTH_SECRET changes)
-    // This can happen when:
-    // 1. NEXTAUTH_SECRET was changed
-    // 2. Old session cookies exist from previous deployment
-    // 3. Cookie is corrupted
-    if (
-      error?.message?.includes('decryption') || 
-      error?.code === 'JWT_SESSION_ERROR' ||
-      error?.message?.includes('JWT') ||
-      error?.name === 'JWTDecodeError'
-    ) {
-      // Silently handle JWT errors - user will need to login again
-      // Don't log as error to avoid noise in production
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[Auth] Session decryption failed, treating as no session')
-      }
-      session = null
-    } else {
-      // Log other errors but don't crash the page
-      console.error('[Auth] Unexpected error getting session:', error)
-      session = null
-    }
+  // getCurrentSession() handles JWT errors gracefully
+  const session = await getCurrentSession()
+
+  // Pre-launch landing page (countdown). After launch time, fall through to normal homepage.
+  // Configure via NEXT_PUBLIC_LAUNCH_AT (ISO string). Default: 2025-12-20 (VN timezone).
+  const launchAtRaw = process.env.NEXT_PUBLIC_LAUNCH_AT || '2025-12-20T00:00:00+07:00'
+  const launchAt = new Date(launchAtRaw)
+  const now = new Date()
+  const isValidLaunchDate = !isNaN(launchAt.getTime())
+
+  // If logged in and landing is active, clicking should go to dashboard, not login.
+  const landingHref = session ? '/dashboard' : '/login'
+
+  if (isValidLaunchDate && now < launchAt) {
+    // Before launch: show countdown with rocket. User can click rocket to open login.
+    return <CountdownLanding launchAtIso={launchAtRaw} href={landingHref} />
   }
   
   const posts = await getPublicPosts()
 
-  return <HomePage initialPosts={posts} session={session} />
+  return (
+    <>
+      {/* After launch: show normal homepage, but run one-time rocket launch overlay for each user who hasn't seen it yet */}
+      {isValidLaunchDate && <LaunchOverlay launchAtIso={launchAtRaw} href={landingHref} />}
+      <HomePage initialPosts={posts} session={session} />
+    </>
+  )
 }

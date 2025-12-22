@@ -65,7 +65,7 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
   ]
 
   const validateFile = (file: File): string | null => {
-    const maxSize = 10 * 1024 * 1024 // 10MB
+    const maxSize = 50 * 1024 * 1024 // 50MB
     const allowedTypes = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
 
@@ -74,7 +74,7 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
     }
 
     if (file.size > maxSize) {
-      return 'Kích thước file tối đa 10MB'
+      return 'Kích thước file tối đa 50MB'
     }
 
     return null
@@ -127,8 +127,10 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
       setTitle(nameWithoutExt)
     }
 
-    // Extract content from file
-    await extractContentFromFile(selectedFile)
+    // Extract content from file (skip for large files to avoid timeouts/request size limits)
+    if (selectedFile.size <= 10 * 1024 * 1024) {
+      await extractContentFromFile(selectedFile)
+    }
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,7 +180,6 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
 
     try {
       const formData = new FormData()
-      formData.append('file', file)
       formData.append('title', title)
       if (sender) formData.append('sender', sender)
       if (type) formData.append('type', type)
@@ -186,6 +187,48 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
       if (deadline) formData.append('deadline', new Date(deadline).toISOString())
       if (notes) formData.append('notes', notes)
       if (tags.length > 0) formData.append('tags', JSON.stringify(tags))
+
+      // Cloud Run has request size limits; for large files we upload directly to GCS using a signed URL
+      // and only send metadata + public URL to the backend.
+      const DIRECT_UPLOAD_THRESHOLD = 10 * 1024 * 1024 // 10MB
+      if (file.size > DIRECT_UPLOAD_THRESHOLD) {
+        // 1) Get signed upload URL
+        const signedRes = await fetch('/api/uploads/signed-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            folder: 'dms/incoming',
+            fileName: file.name,
+            contentType: file.type || 'application/octet-stream',
+            size: file.size,
+          }),
+        })
+        const signedData = await signedRes.json()
+        if (!signedRes.ok) {
+          throw new Error(signedData.error || 'Không thể tạo upload URL')
+        }
+
+        // 2) Upload directly to GCS
+        const putRes = await fetch(signedData.uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+          },
+          body: file,
+        })
+        if (!putRes.ok) {
+          throw new Error('Tải file lên lưu trữ thất bại. Vui lòng thử lại.')
+        }
+
+        // 3) Send metadata to backend to create document record
+        formData.append('fileUrl', signedData.publicUrl)
+        formData.append('fileName', file.name)
+        formData.append('fileSize', String(file.size))
+        formData.append('mimeType', file.type || 'application/octet-stream')
+      } else {
+        // Small files: upload via backend
+        formData.append('file', file)
+      }
 
       const response = await fetch('/api/dms/incoming', {
         method: 'POST',
@@ -275,7 +318,7 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
                       <p className="pl-1 font-poppins">hoặc kéo thả vào đây</p>
                     </div>
                     <p className="text-xs text-gray-500 font-poppins">
-                      PDF, DOC, DOCX, JPG, PNG (tối đa 10MB)
+                      PDF, DOC, DOCX, JPG, PNG (tối đa 50MB)
                     </p>
                   </>
                 )}

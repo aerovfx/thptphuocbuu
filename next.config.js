@@ -82,6 +82,12 @@ const nextConfig = {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin'
           },
+          // Minimal CSP: only restrict iframe sources (safe for YouTube embeds)
+          // NOTE: leaving other directives unspecified to avoid breaking existing scripts/styles.
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com;"
+          },
         ],
       },
       {

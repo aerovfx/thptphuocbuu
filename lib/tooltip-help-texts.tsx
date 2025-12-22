@@ -79,7 +79,7 @@ export const helpTexts = {
     content: (
       <div className="space-y-1 text-xs">
         <p><strong>Định dạng hỗ trợ:</strong> PDF, DOC, DOCX, JPG, PNG</p>
-        <p><strong>Kích thước tối đa:</strong> 10MB</p>
+        <p><strong>Kích thước tối đa:</strong> 50MB</p>
         <p className="mt-2 text-gray-400">
           Hệ thống sẽ tự động OCR và phân loại văn bản sau khi upload.
         </p>

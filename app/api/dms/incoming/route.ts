@@ -3,11 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { autoSyncDocument } from '@/lib/document-sync'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { uploadFileFromFormData } from '@/lib/storage'
 import { z } from 'zod'
-import { validateDocument } from '@/lib/file-validation'
+import { validateDocument, validateImage, MAX_DOCUMENT_SIZE, MAX_IMAGE_SIZE, ALLOWED_IMAGE_TYPES, ALLOWED_DOCUMENT_TYPES } from '@/lib/file-validation'
 
 const incomingDocumentSchema = z.object({
   title: z.string().min(1, 'Tiêu đề là bắt buộc'),
@@ -17,7 +15,49 @@ const incomingDocumentSchema = z.object({
   deadline: z.string().datetime().optional().nullable(),
   notes: z.string().optional(),
   tags: z.string().optional(), // JSON array string
+  // Optional: allow direct-to-GCS uploads by passing a public URL instead of a file
+  fileUrl: z.string().url().optional(),
+  fileName: z.string().min(1).optional(),
+  fileSize: z.preprocess((v) => (v == null ? undefined : Number(v)), z.number().int().positive().optional()),
+  mimeType: z.string().min(1).optional(),
 })
+
+async function resolveCurrentUserId(session: any): Promise<string | null> {
+  const id = session?.user?.id
+  const email = session?.user?.email
+
+  if (typeof id === 'string' && id.trim()) {
+    const exists = await prisma.user.findUnique({ where: { id }, select: { id: true } })
+    if (exists) return id
+  }
+
+  if (typeof email === 'string' && email.trim()) {
+    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } })
+    return user?.id || null
+  }
+
+  return null
+}
+
+function validateIncomingFileMetadata(params: { mimeType: string; fileSize: number }) {
+  const { mimeType, fileSize } = params
+
+  const isImage = ALLOWED_IMAGE_TYPES.includes(mimeType)
+  if (isImage) {
+    if (fileSize > MAX_IMAGE_SIZE) {
+      return { valid: false, error: `Hình ảnh quá lớn. Dung lượng tối đa là ${MAX_IMAGE_SIZE / (1024 * 1024)}MB` }
+    }
+    return { valid: true as const }
+  }
+
+  if (!ALLOWED_DOCUMENT_TYPES.includes(mimeType)) {
+    return { valid: false, error: 'Loại file không được hỗ trợ. Chỉ chấp nhận văn bản (PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV) hoặc ảnh (JPEG, PNG, GIF, WebP)' }
+  }
+  if (fileSize > MAX_DOCUMENT_SIZE) {
+    return { valid: false, error: `Văn bản quá lớn. Dung lượng tối đa là ${MAX_DOCUMENT_SIZE / (1024 * 1024)}MB` }
+  }
+  return { valid: true as const }
+}
 
 export async function POST(request: Request) {
   try {
@@ -35,7 +75,8 @@ export async function POST(request: Request) {
     }
 
     const formData = await request.formData()
-    const file = formData.get('file') as File
+    const file = formData.get('file') as File | null
+
     const title = formData.get('title') as string
     const sender = formData.get('sender') as string | null
     const type = formData.get('type') as string | null
@@ -44,14 +85,15 @@ export async function POST(request: Request) {
     const notes = formData.get('notes') as string | null
     const tags = formData.get('tags') as string | null
 
-    if (!file) {
-      return NextResponse.json({ error: 'File không được để trống' }, { status: 400 })
-    }
+    // Direct-to-GCS metadata (when client uploads large file directly and only sends URL here)
+    const fileUrl = (formData.get('fileUrl') as string | null) || null
+    const fileName = (formData.get('fileName') as string | null) || null
+    const fileSizeRaw = formData.get('fileSize')
+    const fileSize = fileSizeRaw != null ? Number(fileSizeRaw) : null
+    const mimeType = (formData.get('mimeType') as string | null) || null
 
-    // Validate file
-    const validation = validateDocument(file)
-    if (!validation.valid) {
-      return NextResponse.json({ error: validation.error }, { status: 400 })
+    if (!file && !fileUrl) {
+      return NextResponse.json({ error: 'File không được để trống' }, { status: 400 })
     }
 
     // Convert empty strings to undefined for optional fields
@@ -65,6 +107,10 @@ export async function POST(request: Request) {
       deadline: deadline && deadline.trim() ? deadline.trim() : undefined,
       notes: notes && notes.trim() ? notes.trim() : undefined,
       tags: tags && tags.trim() ? tags.trim() : undefined,
+      fileUrl: fileUrl || undefined,
+      fileName: fileName || undefined,
+      fileSize: fileSize ?? undefined,
+      mimeType: mimeType || undefined,
     }
 
     // Validate input
@@ -82,24 +128,81 @@ export async function POST(request: Request) {
       throw validationError
     }
 
-    // Create uploads directory
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'dms', 'incoming')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
+    // Parse tags JSON
+    let tagsJson: string | null = null
+    if (tags && tags.trim()) {
+      try {
+        const tagsArray = JSON.parse(tags)
+        if (Array.isArray(tagsArray)) {
+          tagsJson = tags
+        }
+      } catch {
+        // Invalid JSON, ignore
+      }
     }
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const originalName = file.name
-    const fileExtension = originalName.split('.').pop()
-    const fileName = `${timestamp}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-    const filePath = join(uploadsDir, fileName)
-    const fileUrl = `/uploads/dms/incoming/${fileName}`
+    // Resolve user id safely to avoid FK violations if token id is stale after DB reset/migration
+    const currentUserId = await resolveCurrentUserId(session)
+    if (!currentUserId) {
+      return NextResponse.json(
+        { error: 'Session không hợp lệ. Vui lòng đăng nhập lại.' },
+        { status: 401 }
+      )
+    }
 
-    // Save file
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    // Upload to Google Cloud Storage:
+    // - small files: upload via server (FormData)
+    // - large files: already uploaded directly to GCS, only public URL is provided
+    let storedUrl: string
+    let storedSize: number
+    let storedMimeType: string
+    let storedFileName: string
+
+    if (file) {
+      // Validate file (allow both documents and images)
+      const isImage = ALLOWED_IMAGE_TYPES.includes(file.type)
+      const validation = isImage ? validateImage(file) : validateDocument(file)
+      if (!validation.valid) {
+        return NextResponse.json({ error: validation.error }, { status: 400 })
+      }
+
+      const result = await uploadFileFromFormData(file, 'dms/incoming', {
+        public: true,
+        cacheControl: 'public, max-age=31536000',
+      })
+      storedUrl = result.publicUrl
+      storedSize = result.size
+      storedMimeType = result.mimeType
+      storedFileName = file.name
+    } else {
+      // Direct upload path
+      if (!fileUrl || !fileName || !mimeType || !fileSize) {
+        return NextResponse.json(
+          { error: 'Thiếu thông tin file (fileUrl/fileName/mimeType/fileSize)' },
+          { status: 400 }
+        )
+      }
+
+      // Ensure URL is to our GCS bucket to avoid arbitrary URL injection
+      const bucketName = process.env.GCS_BUCKET_NAME || 'thptphuocbuu360'
+      const allowedPrefix = `https://storage.googleapis.com/${bucketName}/`
+      if (!fileUrl.startsWith(allowedPrefix)) {
+        return NextResponse.json(
+          { error: 'File URL không hợp lệ' },
+          { status: 400 }
+        )
+      }
+
+      const metaValidation = validateIncomingFileMetadata({ mimeType, fileSize })
+      if (!metaValidation.valid) {
+        return NextResponse.json({ error: metaValidation.error }, { status: 400 })
+      }
+
+      storedUrl = fileUrl
+      storedSize = fileSize
+      storedMimeType = mimeType
+      storedFileName = fileName
+    }
 
     // Create document in database
     const document = await prisma.incomingDocument.create({
@@ -109,13 +212,13 @@ export async function POST(request: Request) {
         type: (validatedData.type as any) || 'OTHER',
         priority: validatedData.priority,
         deadline: validatedData.deadline ? new Date(validatedData.deadline) : null,
-        fileName: originalName,
-        fileUrl,
-        fileSize: buffer.length,
-        mimeType: file.type,
-        originalFileUrl: fileUrl, // Will be updated after OCR if needed
+        fileName: storedFileName,
+        fileUrl: storedUrl,
+        fileSize: storedSize,
+        mimeType: storedMimeType,
+        originalFileUrl: storedUrl, // Will be updated after OCR if needed
         status: 'PENDING',
-        createdById: session.user.id,
+        createdById: currentUserId,
         tags: tagsJson || null,
       },
     })

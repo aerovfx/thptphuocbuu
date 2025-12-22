@@ -59,8 +59,9 @@ export async function PUT(
     // Check if user exists
     const user = await prisma.user.findUnique({
       where: { id },
-      select: { id: true, email: true },
-      include: {
+      select: {
+        id: true,
+        email: true,
         userRoles: {
           select: {
             roleId: true,

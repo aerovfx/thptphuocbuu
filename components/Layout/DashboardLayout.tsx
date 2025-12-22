@@ -16,6 +16,7 @@ import {
   Crown,
   Shield,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import Logo from '../Common/Logo'
 import Avatar from '../Common/Avatar'
 import { useState } from 'react'
@@ -23,16 +24,18 @@ import { useState } from 'react'
 type NavigationItem = {
   name: string
   href: string
-  icon: React.ComponentType<{ size?: number }>
+  icon: LucideIcon
   adminOnly?: boolean
+  teacherOnly?: boolean
+  studentHidden?: boolean // Ẩn với học sinh
 }
 
 const navigation: NavigationItem[] = [
   { name: 'Trang chủ', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Lớp học', href: '/dashboard/classes', icon: BookOpen },
+  { name: 'Lớp học', href: '/dashboard/classes', icon: BookOpen, adminOnly: true }, // Tạm ẩn, chỉ hiển thị với quản trị admin
   { name: 'Mạng xã hội', href: '/dashboard/social', icon: MessageSquare },
-  { name: 'Văn bản', href: '/dashboard/documents', icon: FileText },
-  { name: 'Người dùng', href: '/dashboard/users', icon: Users },
+  { name: 'Văn bản', href: '/dashboard/documents', icon: FileText, studentHidden: true },
+  { name: 'Người dùng', href: '/dashboard/users', icon: Users, studentHidden: true },
   { name: 'Premium', href: '/dashboard/premium', icon: Crown },
   { name: 'Cài đặt', href: '/dashboard/settings', icon: Settings },
   { name: 'Admin Panel', href: '/dashboard/admin', icon: Shield, adminOnly: true },
@@ -81,8 +84,17 @@ export default function DashboardLayout({
           <nav className="flex-1 p-4 space-y-2">
             {navigation
               .filter((item) => {
-                // Only show admin-only items to ADMIN users
-                if (item.adminOnly && session?.user?.role !== 'ADMIN') {
+                const userRole = session?.user?.role
+                // Only show admin-only items to ADMIN, SUPER_ADMIN, and BGH users
+                if (item.adminOnly && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && userRole !== 'BGH') {
+                  return false
+                }
+                // Hide items marked as studentHidden for STUDENT role
+                if (item.studentHidden && userRole === 'STUDENT') {
+                  return false
+                }
+                // Hide teacher-only items for non-teacher roles
+                if (item.teacherOnly && userRole !== 'TEACHER' && userRole !== 'ADMIN') {
                   return false
                 }
                 return true

@@ -9,6 +9,7 @@ export interface DashboardModule {
   roles: UserRole[]
   order: number
   category?: 'overview' | 'management' | 'reports' | 'settings'
+  underDevelopment?: boolean // Đánh dấu module đang trong giai đoạn phát triển
 }
 
 // Định nghĩa các module theo role
@@ -27,12 +28,13 @@ export const dashboardModules: DashboardModule[] = [
   {
     id: 'classes',
     title: 'Lớp học',
-    description: 'Quản lý lớp học',
+    description: 'Quản lý lớp học (Đang phát triển)',
     icon: 'BookOpen',
     href: '/dashboard/classes',
-    roles: ['ADMIN', 'TEACHER', 'STUDENT', 'SUPER_ADMIN', 'BGH', 'TRUONG_TONG', 'QUAN_NHIEM'],
+    roles: ['ADMIN', 'SUPER_ADMIN', 'BGH'], // Module đang trong giai đoạn phát triển, chỉ hiển thị với quản trị admin
     order: 2,
     category: 'management',
+    underDevelopment: true, // Đánh dấu module đang trong giai đoạn phát triển
   },
   {
     id: 'social',
@@ -50,7 +52,7 @@ export const dashboardModules: DashboardModule[] = [
     description: 'Quản lý văn bản',
     icon: 'FileText',
     href: '/dashboard/documents',
-    roles: ['ADMIN', 'TEACHER', 'STUDENT', 'SUPER_ADMIN', 'BGH', 'BAN_TT', 'TRUONG_TONG', 'QUAN_NHIEM', 'TRUONG_HANH_CHINH', 'TAI_CHINH', 'Y_TE'],
+    roles: ['ADMIN', 'TEACHER', 'SUPER_ADMIN', 'BGH', 'BAN_TT', 'TRUONG_TONG', 'QUAN_NHIEM', 'TRUONG_HANH_CHINH', 'TAI_CHINH', 'Y_TE'],
     order: 4,
     category: 'management',
   },
@@ -62,7 +64,7 @@ export const dashboardModules: DashboardModule[] = [
     description: 'Quản lý không gian làm việc',
     icon: 'Building2',
     href: '/dashboard/spaces',
-    roles: ['ADMIN', 'SUPER_ADMIN', 'BGH', 'TRUONG_TONG', 'QUAN_NHIEM'],
+    roles: ['ADMIN', 'TEACHER', 'SUPER_ADMIN', 'BGH', 'TRUONG_TONG', 'QUAN_NHIEM'],
     order: 5,
     category: 'management',
   },
@@ -72,7 +74,7 @@ export const dashboardModules: DashboardModule[] = [
     description: 'Quản lý tổ chuyên môn',
     icon: 'Briefcase',
     href: '/dashboard/departments',
-    roles: ['ADMIN', 'SUPER_ADMIN', 'BGH', 'TRUONG_TONG'],
+    roles: ['ADMIN', 'TEACHER', 'SUPER_ADMIN', 'BGH', 'TRUONG_TONG'],
     order: 6,
     category: 'management',
   },

@@ -72,9 +72,9 @@ export function classifyDocumentByKeywords(
     }
 
     // Context-based scoring
-    if (context === 'inbound' && docType.group === 'inbound') {
+    if (context === 'incoming' && docType.group === 'inbound') {
       score += 3
-    } else if (context === 'outbound' && docType.group === 'outbound') {
+    } else if (context === 'outgoing' && docType.group === 'outbound') {
       score += 3
     } else if (context === 'internal' && docType.group === 'internal') {
       score += 3

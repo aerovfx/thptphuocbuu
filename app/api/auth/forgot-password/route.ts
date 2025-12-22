@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { randomBytes } from 'crypto'
 import { logger } from '@/lib/logger'
+import { sendPasswordResetEmail } from '@/lib/email'
 
 export async function POST(request: Request) {
   try {
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     if (user) {
       // Generate reset token
       const resetToken = randomBytes(32).toString('hex')
-      const resetTokenExpires = new Date(Date.now() + 3600000) // 1 hour from now
+      const resetTokenExpires = new Date(Date.now() + 900000) // 15 minutes from now
 
       // Save reset token to database
       try {
@@ -70,7 +71,15 @@ export async function POST(request: Request) {
         throw updateError
       }
 
-      // In development, log the reset link
+      // Send password reset email
+      try {
+        await sendPasswordResetEmail(user.email, resetToken)
+      } catch (emailError) {
+        logger.error('Failed to send password reset email:', emailError)
+        // Continue anyway - email will be logged in development
+      }
+
+      // In development, also log the reset link to console
       if (process.env.NODE_ENV === 'development') {
         const resetUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/reset-password/${resetToken}`
         logger.log('\n🔐 PASSWORD RESET LINK:')
@@ -81,9 +90,6 @@ export async function POST(request: Request) {
         logger.log('='.repeat(60))
         logger.log('')
       }
-
-      // TODO: In production, send email with reset link
-      // await sendPasswordResetEmail(user.email, resetToken)
     }
 
     // Always return success message (security best practice)

@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { uploadFileFromFormData } from '@/lib/storage'
 
 export async function POST(request: Request) {
   try {
@@ -44,10 +42,10 @@ export async function POST(request: Request) {
           { status: 400 }
         )
       }
-      // Max 10MB for document
-      if (file.size > 10 * 1024 * 1024) {
+      // Max 50MB for document
+      if (file.size > 50 * 1024 * 1024) {
         return NextResponse.json(
-          { error: 'Kích thước file không được vượt quá 10MB' },
+          { error: 'Kích thước file không được vượt quá 50MB' },
           { status: 400 }
         )
       }
@@ -58,30 +56,17 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create uploads directory
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'brands', type)
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now()
-    const originalName = file.name
-    const fileExtension = originalName.split('.').pop()
-    const fileName = `${timestamp}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-    const filePath = join(uploadsDir, fileName)
-    const fileUrl = `/uploads/brands/${type}/${fileName}`
-
-    // Save file
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    // Upload to Google Cloud Storage
+    const result = await uploadFileFromFormData(file, `brands/${type}`, {
+      public: true,
+      cacheControl: 'public, max-age=31536000',
+    })
 
     return NextResponse.json({
-      url: fileUrl,
-      fileName: originalName,
-      fileSize: file.size,
-      mimeType: file.type,
+      url: result.publicUrl,
+      fileName: file.name,
+      fileSize: result.size,
+      mimeType: result.mimeType,
     })
   } catch (error) {
     console.error('Error uploading file:', error)

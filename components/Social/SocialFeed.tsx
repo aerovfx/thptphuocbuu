@@ -10,35 +10,13 @@ import Avatar from '../Common/Avatar'
 import EditPostModal from './EditPostModal'
 import PostDetailModal from './PostDetailModal'
 import ShareMenu from './ShareMenu'
-
-interface Post {
-  id: string
-  content: string
-  createdAt: Date
-  imageUrl?: string | null
-  videoUrl?: string | null
-  type?: string
-  locationName?: string | null
-  latitude?: number | null
-  longitude?: number | null
-  scheduledAt?: Date | null
-  isRemix?: boolean
-  remixedAt?: Date | string
-  author: {
-    id: string
-    firstName: string
-    lastName: string
-    avatar?: string | null
-  }
-  _count?: {
-    likes?: number
-    comments?: number
-    reposts?: number
-  }
-}
+import LinkEmbed from './LinkEmbed'
+import AutoEmbedContent from './AutoEmbedContent'
+import ImageLightbox from '../Common/ImageLightbox'
+import type { SocialPost } from './social-types'
 
 interface SocialFeedProps {
-  initialPosts: Post[]
+  initialPosts: SocialPost[]
   currentUserId: string | null
   isGuest?: boolean
   onInteractionRequired?: (action: string) => boolean
@@ -58,11 +36,14 @@ export default function SocialFeed({
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
   const [followingUsers, setFollowingUsers] = useState<Set<string>>(new Set())
   const [loadingFollow, setLoadingFollow] = useState<Set<string>>(new Set())
-  const [editingPost, setEditingPost] = useState<Post | null>(null)
+  const [editingPost, setEditingPost] = useState<SocialPost | null>(null)
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null)
-  const [viewingPost, setViewingPost] = useState<Post | null>(null)
+  const [viewingPost, setViewingPost] = useState<SocialPost | null>(null)
   const [sharingPostId, setSharingPostId] = useState<string | null>(null)
   const shareButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+  const [lightboxImages, setLightboxImages] = useState<string[]>([])
+  const [lightboxIndex, setLightboxIndex] = useState(0)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   // Load bookmarked posts, liked posts, and follow status on mount
   useEffect(() => {
@@ -115,7 +96,9 @@ export default function SocialFeed({
       })
 
       // Load follow status for all unique authors
-      const uniqueAuthorIds = [...new Set(initialPosts.map((post) => post.author.id))]
+      const uniqueAuthorIds = Array.from(
+        new Set(initialPosts.map((post) => post.author.id))
+      )
       Promise.all(
         uniqueAuthorIds.map((authorId) =>
           fetch(`/api/users/${authorId}/follow`)
@@ -259,12 +242,18 @@ export default function SocialFeed({
     console.log('Post menu:', postId)
   }
 
-  const handleEdit = (post: Post) => {
+  const handleEdit = (post: SocialPost) => {
     setEditingPost(post)
   }
 
   const handleDelete = async (postId: string) => {
+    // Double confirmation for deleting own post
     if (!confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
+      return
+    }
+    
+    // Second confirmation
+    if (!confirm('Xác nhận lần cuối: Bạn có thực sự muốn xóa bài viết này? Hành động này không thể hoàn tác.')) {
       return
     }
 
@@ -501,8 +490,9 @@ export default function SocialFeed({
             ? {
                 ...post,
                 _count: {
-                  ...post._count,
-                  reposts: (post._count.reposts || 0) + (isRemixed ? 1 : -1),
+                  likes: post._count?.likes ?? 0,
+                  comments: post._count?.comments ?? 0,
+                  reposts: (post._count?.reposts ?? 0) + (isRemixed ? 1 : -1),
                 },
               }
             : post
@@ -541,6 +531,15 @@ export default function SocialFeed({
                   >
                     {post.author.firstName} {post.author.lastName}
                   </h3>
+                  {post.author?.brandBadge?.brand?.verificationStatus === 'APPROVED' && (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 font-poppins"
+                      title={`Thương hiệu xác minh: ${post.author.brandBadge.brand.name}`}
+                    >
+                      <span className="text-xs">✓</span>
+                      <span className="truncate max-w-[140px]">{post.author.brandBadge.brand.name}</span>
+                    </span>
+                  )}
                   <span className="text-bluelock-dark/60 dark:text-gray-500 text-sm font-poppins">
                     @{post.author.firstName.toLowerCase()}
                     {post.author.lastName.toLowerCase().replace(/\s+/g, '')}
@@ -613,19 +612,71 @@ export default function SocialFeed({
                 </div>
               </div>
 
-              {post.content && (
-                <p 
-                  className="text-bluelock-dark dark:text-white mb-3 whitespace-pre-wrap break-words font-poppins leading-relaxed cursor-pointer hover:underline"
+              {(post.content || (!post.imageUrl && !post.videoUrl && post.linkUrl)) && (
+                <div
+                  className="text-bluelock-dark dark:text-white mb-3 font-poppins leading-relaxed cursor-pointer"
                   onClick={() => setViewingPost(post)}
                 >
-                  {post.content}
-                </p>
+                  <AutoEmbedContent
+                    text={post.content}
+                    fallbackUrl={!post.content ? post.linkUrl : null}
+                    className="text-bluelock-dark dark:text-white"
+                    maxEmbeds={3}
+                    onInteraction={() => onInteractionRequired?.('view')}
+                  />
+                </div>
               )}
 
-              {/* Media Display */}
-              {post.imageUrl && (
+              {/* Multiple Images Display */}
+              {post.images && post.images.length > 0 && (
+                <div className="mb-3">
+                  <div className={`grid gap-2 ${
+                    post.images.length === 1 ? 'grid-cols-1' :
+                    post.images.length === 2 ? 'grid-cols-2' :
+                    post.images.length === 3 ? 'grid-cols-3' :
+                    post.images.length === 4 ? 'grid-cols-2' :
+                    'grid-cols-3'
+                  }`}>
+                    {post.images.slice(0, 9).map((image, index) => (
+                      <div
+                        key={index}
+                        className={`relative rounded-2xl overflow-hidden border border-bluelock-blue/30 dark:border-gray-800 cursor-pointer ${
+                          post.images.length === 1 ? 'max-h-96' : 'aspect-square'
+                        }`}
+                        onClick={() => {
+                          setLightboxImages(post.images)
+                          setLightboxIndex(index)
+                          setLightboxOpen(true)
+                        }}
+                      >
+                        <img
+                          src={image}
+                          alt={`Image ${index + 1}`}
+                          className={`w-full h-full hover:opacity-90 transition-opacity ${
+                            post.images.length === 1 ? 'object-contain bg-bluelock-light-2 dark:bg-gray-900' : 'object-cover'
+                          }`}
+                        />
+                        {index === 8 && post.images.length > 9 && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                            <span className="text-white text-3xl font-bold font-poppins">
+                              +{post.images.length - 9}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Single Image Display (backward compatibility) */}
+              {post.imageUrl && (!post.images || post.images.length === 0) && (
                 <div className="mb-3 rounded-2xl overflow-hidden border border-bluelock-blue/30 dark:border-gray-800 cursor-pointer"
-                  onClick={() => setViewingPost(post)}
+                  onClick={() => {
+                    setLightboxImages([post.imageUrl!])
+                    setLightboxIndex(0)
+                    setLightboxOpen(true)
+                  }}
                 >
                   <img
                     src={post.imageUrl}
@@ -635,6 +686,7 @@ export default function SocialFeed({
                 </div>
               )}
 
+              {/* Video Display */}
               {post.videoUrl && (
                 <div className="mb-3 rounded-2xl overflow-hidden border border-bluelock-blue/30 dark:border-gray-800 cursor-pointer"
                   onClick={() => setViewingPost(post)}
@@ -649,6 +701,8 @@ export default function SocialFeed({
                   </video>
                 </div>
               )}
+
+              {/* Link embeds are handled inside AutoEmbedContent (from post.content or fallback linkUrl) */}
 
               {/* Location Display */}
               {post.locationName && (
@@ -814,6 +868,14 @@ export default function SocialFeed({
           onInteractionRequired={onInteractionRequired}
         />
       )}
+
+      {/* Image Lightbox */}
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   )
 }

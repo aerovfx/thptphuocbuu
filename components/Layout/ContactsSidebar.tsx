@@ -37,11 +37,13 @@ export default function ContactsSidebar() {
   }, [])
 
   const handleContactClick = (userId: string) => {
-    router.push(`/users/${userId}`)
+    // Click vào avatar sẽ mở chat với user đó
+    router.push(`/messages/${userId}`)
   }
 
   const handleMessageClick = (userId: string) => {
-    router.push(`/messages?user=${userId}`)
+    // Icon message cũng mở chat
+    router.push(`/messages/${userId}`)
   }
 
   if (loading) {

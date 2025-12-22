@@ -1,6 +1,5 @@
-import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth'
+import { getCurrentSession } from '@/lib/auth-helpers'
 
 export default async function Layout({
   children,
@@ -8,28 +7,11 @@ export default async function Layout({
   children: React.ReactNode
 }) {
   // Safely get session with error handling for JWT decryption errors
-  let session = null
-  try {
-    session = await getServerSession(authOptions)
-  } catch (error: any) {
-    // Handle JWT decryption errors - redirect to login
-    if (
-      error?.message?.includes('decryption') || 
-      error?.code === 'JWT_SESSION_ERROR' ||
-      error?.message?.includes('JWT') ||
-      error?.name === 'JWTDecodeError'
-    ) {
-      // Session is invalid, redirect to login
-      redirect('/login?error=SessionExpired')
-    } else {
-      // Log other errors but still redirect to login
-      console.error('[Auth] Error getting session in dashboard layout:', error)
-      redirect('/login?error=AuthError')
-    }
-  }
+  // getCurrentSession() handles JWT errors gracefully and suppresses console errors
+  const session = await getCurrentSession()
 
   if (!session) {
-    redirect('/login')
+    redirect('/login?error=SessionExpired')
   }
 
   // Layout is now handled by SharedLayout in each page

@@ -831,7 +831,7 @@ export default function SpaceOverview({
                       </p>
                       <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400 font-poppins">
                         <Users className="w-3 h-3" />
-                        <span>{member.user.email}</span>
+                        <span>{member.user.role}</span>
                       </div>
                     </div>
                   </div>

@@ -67,14 +67,22 @@ export default function BrandDashboard({ brandId, currentUser }: BrandDashboardP
   const router = useRouter()
   const [brand, setBrand] = useState<Brand | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'badges'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'badges' | 'analytics'>('overview')
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'ADMIN' | 'MEMBER'>('MEMBER')
+  const [analytics, setAnalytics] = useState<any>(null)
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
 
   useEffect(() => {
     fetchBrand()
   }, [brandId])
+
+  useEffect(() => {
+    if (activeTab !== 'analytics') return
+    fetchAnalytics()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, brandId])
 
   const fetchBrand = async () => {
     try {
@@ -86,6 +94,21 @@ export default function BrandDashboard({ brandId, currentUser }: BrandDashboardP
       console.error('Error fetching brand:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchAnalytics = async () => {
+    setLoadingAnalytics(true)
+    try {
+      const response = await fetch(`/api/brand/${brandId}/analytics`)
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to fetch analytics')
+      setAnalytics(data)
+    } catch (e) {
+      console.error('Error fetching brand analytics:', e)
+      setAnalytics(null)
+    } finally {
+      setLoadingAnalytics(false)
     }
   }
 
@@ -215,6 +238,9 @@ export default function BrandDashboard({ brandId, currentUser }: BrandDashboardP
 
   const currentUserMembership = brand.members.find((m) => m.userId === currentUser?.user?.id)
   const canManage = currentUserMembership?.role === 'OWNER' || currentUserMembership?.role === 'ADMIN'
+  const linkedCount = brand.members.filter((m) => m.role !== 'OWNER').length
+  const maxLinkedAccounts = 5
+  const canInviteMore = canManage && linkedCount < maxLinkedAccounts
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -289,6 +315,16 @@ export default function BrandDashboard({ brandId, currentUser }: BrandDashboardP
         >
           Badge ({brand.badges.length})
         </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`px-4 py-2 font-poppins font-semibold transition-colors ${
+            activeTab === 'analytics'
+              ? 'text-bluelock-green dark:text-blue-500 border-b-2 border-bluelock-green dark:border-blue-500'
+              : 'text-bluelock-dark/60 dark:text-gray-400 hover:text-bluelock-dark dark:hover:text-white'
+          }`}
+        >
+          Analytics
+        </button>
       </div>
 
       {/* Tab Content */}
@@ -338,10 +374,12 @@ export default function BrandDashboard({ brandId, currentUser }: BrandDashboardP
             {canManage && (
               <button
                 onClick={() => setShowInviteModal(true)}
-                className="mb-4 px-4 py-2 bg-bluelock-green hover:bg-bluelock-green-bright dark:bg-blue-500 dark:hover:bg-blue-600 text-black dark:text-white rounded-lg font-poppins font-semibold transition-colors flex items-center space-x-2"
+                disabled={!canInviteMore}
+                className="mb-4 px-4 py-2 bg-bluelock-green hover:bg-bluelock-green-bright dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-60 disabled:cursor-not-allowed text-black dark:text-white rounded-lg font-poppins font-semibold transition-colors flex items-center space-x-2"
+                title={!canInviteMore ? `Đã đạt giới hạn tài khoản liên kết (${maxLinkedAccounts})` : undefined}
               >
                 <Plus size={18} />
-                <span>Mời thành viên</span>
+                <span>Mời thành viên ({linkedCount}/{maxLinkedAccounts})</span>
               </button>
             )}
             <div className="space-y-2">
@@ -428,6 +466,117 @@ export default function BrandDashboard({ brandId, currentUser }: BrandDashboardP
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Award size={20} className="text-bluelock-green" />
+                <span className="font-poppins font-semibold text-bluelock-dark dark:text-white">
+                  Analytics cơ bản
+                </span>
+              </div>
+              <button
+                onClick={fetchAnalytics}
+                className="px-4 py-2 bg-bluelock-light dark:bg-gray-800 hover:bg-bluelock-light-3 dark:hover:bg-gray-700 rounded-lg transition-colors font-poppins"
+              >
+                Làm mới
+              </button>
+            </div>
+
+            {loadingAnalytics ? (
+              <div className="p-6 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-bluelock-green mx-auto"></div>
+              </div>
+            ) : !analytics ? (
+              <div className="text-center text-bluelock-dark/60 dark:text-gray-400 font-poppins">
+                Không có dữ liệu analytics
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-bluelock-light dark:bg-gray-800 rounded-lg p-4">
+                    <div className="text-sm text-bluelock-dark/60 dark:text-gray-400 font-poppins">
+                      Bài đăng
+                    </div>
+                    <div className="text-2xl font-bold text-bluelock-dark dark:text-white font-poppins">
+                      {analytics.totals?.posts ?? 0}
+                    </div>
+                    <div className="text-xs text-bluelock-dark/60 dark:text-gray-500 font-poppins mt-1">
+                      30 ngày: {analytics.last30Days?.posts ?? 0}
+                    </div>
+                  </div>
+                  <div className="bg-bluelock-light dark:bg-gray-800 rounded-lg p-4">
+                    <div className="text-sm text-bluelock-dark/60 dark:text-gray-400 font-poppins">
+                      Lượt thích
+                    </div>
+                    <div className="text-2xl font-bold text-bluelock-dark dark:text-white font-poppins">
+                      {analytics.totals?.likes ?? 0}
+                    </div>
+                    <div className="text-xs text-bluelock-dark/60 dark:text-gray-500 font-poppins mt-1">
+                      30 ngày: {analytics.last30Days?.likes ?? 0}
+                    </div>
+                  </div>
+                  <div className="bg-bluelock-light dark:bg-gray-800 rounded-lg p-4">
+                    <div className="text-sm text-bluelock-dark/60 dark:text-gray-400 font-poppins">
+                      Bình luận
+                    </div>
+                    <div className="text-2xl font-bold text-bluelock-dark dark:text-white font-poppins">
+                      {analytics.totals?.comments ?? 0}
+                    </div>
+                    <div className="text-xs text-bluelock-dark/60 dark:text-gray-500 font-poppins mt-1">
+                      30 ngày: {analytics.last30Days?.comments ?? 0}
+                    </div>
+                  </div>
+                  <div className="bg-bluelock-light dark:bg-gray-800 rounded-lg p-4">
+                    <div className="text-sm text-bluelock-dark/60 dark:text-gray-400 font-poppins">
+                      Followers
+                    </div>
+                    <div className="text-2xl font-bold text-bluelock-dark dark:text-white font-poppins">
+                      {analytics.totals?.followers ?? 0}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-bluelock-dark dark:text-white font-poppins">
+                    Theo tài khoản
+                  </div>
+                  {(analytics.perMember || []).map((m: any) => {
+                    const user = brand.members.find((bm) => bm.userId === m.userId)?.user
+                    return (
+                      <div
+                        key={m.userId}
+                        className="flex items-center justify-between p-4 bg-bluelock-light dark:bg-gray-800 rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <Avatar
+                            src={user?.avatar || null}
+                            name={`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User'}
+                            size="md"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-semibold text-bluelock-dark dark:text-white font-poppins truncate">
+                              {user ? `${user.firstName} ${user.lastName}` : m.userId}
+                            </div>
+                            <div className="text-sm text-bluelock-dark/60 dark:text-gray-400 font-poppins truncate">
+                              {user?.email || ''}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-4 text-sm text-bluelock-dark/70 dark:text-gray-300 font-poppins">
+                          <span>Bài: {m.posts}</span>
+                          <span>Like: {m.likes}</span>
+                          <span>Cmt: {m.comments}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

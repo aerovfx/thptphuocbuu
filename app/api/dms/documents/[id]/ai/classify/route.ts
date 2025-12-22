@@ -6,9 +6,10 @@ import { prisma } from '@/lib/prisma'
 // POST - AI classification and auto-routing
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -22,14 +23,12 @@ export async function POST(
       )
     }
 
-    const { id } = params
-
     const document = await prisma.incomingDocument.findUnique({
       where: { id },
       include: {
         versions: {
-          include: {
-            ocrExtracts: true,
+          select: {
+            ocrText: true,
           },
           orderBy: { versionNumber: 'desc' },
           take: 1,
@@ -41,7 +40,7 @@ export async function POST(
       return NextResponse.json({ error: 'Văn bản không tồn tại' }, { status: 404 })
     }
 
-    const text = document.ocrText || document.versions[0]?.ocrExtracts[0]?.text || document.title
+    const text = document.ocrText || document.versions[0]?.ocrText || document.title
 
     // TODO: Implement actual AI classification
     // In production, this would:

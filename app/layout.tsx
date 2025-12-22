@@ -56,11 +56,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // Vercel Analytics/Speed Insights rely on Vercel-provided /_vercel/* routes.
+  // On non-Vercel platforms (e.g. Cloud Run) they 404 and spam console errors.
+  const isVercel = !!process.env.VERCEL
+
   return (
     <html lang="vi" suppressHydrationWarning>
       <body className={`${poppins.variable} ${inter.variable} font-sans`}>
         <Providers>{children}</Providers>
-        {process.env.NODE_ENV === 'production' && (
+        {process.env.NODE_ENV === 'production' && isVercel && (
           <>
             <Analytics />
             <SpeedInsights />

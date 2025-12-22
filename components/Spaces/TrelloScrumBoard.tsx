@@ -23,7 +23,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import Avatar from '../Common/Avatar'
-import { Plus, CheckCircle2, Circle, Clock, Edit2, Trash2, X, Check, List } from 'lucide-react'
+import { Plus, CheckCircle2, Circle, Clock, Edit2, Trash2, X, Check, List, Eye, MessageSquare, Image as ImageIcon, Paperclip } from 'lucide-react'
 
 interface ChecklistItem {
   id: string
@@ -132,85 +132,100 @@ function SortableCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`p-4 rounded-lg border ${getStatusColor(card.status)} mb-3 cursor-pointer hover:shadow-md transition-shadow relative group`}
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-2 p-3 cursor-pointer hover:shadow-md transition-all duration-200 relative group"
       {...attributes}
       {...listeners}
     >
-      {canManage && (
-        <div className="absolute top-2 right-2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onEdit(card)
-            }}
-            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
-          >
-            <Edit2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete(card.id)
-            }}
-            className="p-1 hover:bg-red-200 dark:hover:bg-red-900 rounded"
-          >
-            <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-          </button>
+      {/* Card Image Placeholder (if needed) */}
+      {false && (
+        <div className="mb-2 rounded bg-gray-100 dark:bg-gray-700 h-32 flex items-center justify-center">
+          <ImageIcon className="w-8 h-8 text-gray-400" />
         </div>
       )}
 
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center space-x-2">
-          {getStatusIcon(card.status)}
-          <span className="text-xl font-bold text-gray-900 dark:text-white font-poppins">
-            {card.progress}%
-          </span>
-        </div>
-        <span className="text-xs text-gray-500 dark:text-gray-400 font-poppins">
-          {formatDistanceToNow(new Date(card.createdAt), { addSuffix: true, locale: vi })}
-        </span>
-      </div>
-
+      {/* Card Title/Milestone */}
       {card.milestone && (
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 font-poppins mb-2">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white font-poppins mb-2 line-clamp-2">
           {card.milestone}
+        </h3>
+      )}
+
+      {/* Card Description */}
+      {card.description && (
+        <p className="text-xs text-gray-600 dark:text-gray-400 font-poppins mb-2 line-clamp-3">
+          {card.description}
         </p>
       )}
 
+      {/* Progress Badge */}
+      <div className="flex items-center space-x-2 mb-2">
+        <div className={`px-2 py-0.5 rounded text-xs font-semibold font-poppins ${
+          card.progress === 100 
+            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+            : card.progress > 0
+            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-400'
+        }`}>
+          {card.progress}%
+        </div>
+        {getStatusIcon(card.status)}
+      </div>
+
+      {/* Checklist Progress */}
       {card.checklist.length > 0 && (
-        <div className="mb-2">
-          <div className="flex items-center space-x-2 mb-1">
-            <List className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-            <span className="text-xs text-gray-600 dark:text-gray-400 font-poppins">
-              {completedChecklistItems}/{totalChecklistItems}
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-            <div
-              className="bg-blue-600 h-1.5 rounded-full transition-all"
-              style={{ width: `${(completedChecklistItems / totalChecklistItems) * 100}%` }}
-            />
-          </div>
+        <div className="mb-2 flex items-center space-x-1">
+          <List className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+          <span className="text-xs text-gray-600 dark:text-gray-400 font-poppins">
+            {completedChecklistItems}/{totalChecklistItems}
+          </span>
         </div>
       )}
 
-      <div className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400 font-poppins">
-        {card.createdBy ? (
-          <>
-            <Avatar
-              src={card.createdBy.avatar}
-              name={`${card.createdBy.firstName} ${card.createdBy.lastName}`}
-              size="xs"
-            />
-            <span>
-              {card.createdBy.firstName} {card.createdBy.lastName}
-            </span>
-          </>
-        ) : (
-          <span>Unknown User</span>
-        )}
-        <span>•</span>
-        <span>{formatDate(card.createdAt)}</span>
+      {/* Card Footer with Actions */}
+      <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+        <div className="flex items-center space-x-2">
+          {/* Comments Count */}
+          <div className="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span className="text-xs font-poppins">0</span>
+          </div>
+          {/* Views Count */}
+          <div className="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+            <Eye className="w-3.5 h-3.5" />
+            <span className="text-xs font-poppins">0</span>
+          </div>
+        </div>
+        <div className="flex items-center space-x-1">
+          {canManage && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit(card)
+                }}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Chỉnh sửa"
+              >
+                <Edit2 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete(card.id)
+                }}
+                className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Xóa"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
+              </button>
+            </>
+          )}
+          <Avatar
+            src={card.createdBy.avatar}
+            name={`${card.createdBy.firstName} ${card.createdBy.lastName}`}
+            size="xs"
+          />
+        </div>
       </div>
     </div>
   )
@@ -523,12 +538,16 @@ export default function TrelloScrumBoard({
     return (
       <div
         id={id}
-        className={`${color} rounded-lg p-4 border min-h-[200px]`}
+        className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 min-h-[400px] w-[280px] flex-shrink-0"
       >
-        <div className="flex items-center space-x-2 mb-4">
-          {icon}
-          <h4 className="font-semibold text-gray-900 dark:text-white font-poppins">{title}</h4>
-          <span className={`px-2 py-1 rounded text-xs font-poppins ${color.includes('green') ? 'bg-green-200 dark:bg-green-800 text-green-700 dark:text-green-300' : color.includes('blue') ? 'bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-2">
+            {icon}
+            <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 font-poppins uppercase tracking-wide">
+              {title}
+            </h4>
+          </div>
+          <span className="px-2 py-0.5 rounded-full text-xs font-semibold font-poppins bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
             {cards.length}
           </span>
         </div>
@@ -775,8 +794,8 @@ export default function TrelloScrumBoard({
         </div>
       )}
 
-      {/* Scrum Board */}
-      <div>
+      {/* Scrum Board - Trello Style */}
+      <div className="flex space-x-3 overflow-x-auto pb-4" style={{ scrollbarWidth: 'thin' }}>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white font-poppins mb-4">
           Lịch sử cập nhật
         </h3>

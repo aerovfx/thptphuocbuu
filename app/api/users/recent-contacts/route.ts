@@ -11,11 +11,15 @@ export async function GET() {
     }
 
     const userId = session.user.id
+    const isAdmin =
+      session.user.role === 'ADMIN' ||
+      session.user.role === 'SUPER_ADMIN'
 
     // Get all users except the current logged-in user
     const contacts = await prisma.user.findMany({
       where: {
         id: { not: userId }, // Exclude current user
+        ...(isAdmin ? {} : { status: 'ACTIVE' }),
       },
       select: {
         id: true,

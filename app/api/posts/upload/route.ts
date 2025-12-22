@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
 import { validateImage, validateVideo, ALLOWED_IMAGE_TYPES } from '@/lib/file-validation'
+import { uploadFileFromFormData } from '@/lib/storage'
+import { hasPremiumOrAdminAccess } from '@/lib/premium-check'
+
+export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   try {
@@ -20,43 +21,54 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File không được để trống' }, { status: 400 })
     }
 
+    // Check if user has premium or admin access
+    const isPremium = hasPremiumOrAdminAccess(session.user)
+
     // Validate file type and size
     const isImage = ALLOWED_IMAGE_TYPES.includes(file.type)
-    const validation = isImage ? validateImage(file) : validateVideo(file)
+    const validation = isImage ? validateImage(file) : validateVideo(file, isPremium)
     
     if (!validation.valid) {
       return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
-    // Note: Video duration validation (0-5s) should be done client-side
-    // Server-side validation only checks file size and type
+    // Upload to Google Cloud Storage
+    // Videos are no longer trimmed - we allow unlimited duration based on file size limits
+    let result:
+      | { url: string; publicUrl: string; path: string; size: number; mimeType: string }
+      | (ReturnType<typeof uploadFileFromFormData> extends Promise<infer R> ? R : never)
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'posts')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
+    if (!isImage) {
+      // For videos, upload directly without trimming
+      result = await uploadFileFromFormData(file, 'posts', {
+        public: true,
+        cacheControl: 'public, max-age=31536000',
+      })
+
+      return NextResponse.json(
+        {
+          url: result.publicUrl,
+          type: 'video',
+          size: result.size,
+          mimeType: result.mimeType,
+          isPremium,
+        },
+        { status: 200 }
+      )
     }
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const originalName = file.name
-    const fileExtension = originalName.split('.').pop()
-    const fileName = `${timestamp}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-    const filePath = join(uploadsDir, fileName)
-
-    // Save file
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
-
-    const fileUrl = `/uploads/posts/${fileName}`
+    // Images: upload as-is
+    result = await uploadFileFromFormData(file, 'posts', {
+      public: true,
+      cacheControl: 'public, max-age=31536000',
+    })
 
     return NextResponse.json(
       {
-        url: fileUrl,
+        url: result.publicUrl, // Use public URL from GCS
         type: isImage ? 'image' : 'video',
-        size: file.size,
-        mimeType: file.type,
+        size: result.size,
+        mimeType: result.mimeType,
       },
       { status: 200 }
     )

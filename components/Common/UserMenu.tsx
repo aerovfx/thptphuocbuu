@@ -3,7 +3,7 @@
 import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { LogOut, UserPlus } from 'lucide-react'
+import { LogOut, UserPlus, Settings } from 'lucide-react'
 
 interface UserMenuProps {
   user: {
@@ -17,6 +17,11 @@ interface UserMenuProps {
 export default function UserMenu({ user, onClose }: UserMenuProps) {
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  const handleGoSettings = () => {
+    router.push('/dashboard/settings')
+    if (onClose) onClose()
+  }
 
   const handleAddAccount = () => {
     // Mở tab mới để đăng nhập tài khoản khác
@@ -56,6 +61,13 @@ export default function UserMenu({ user, onClose }: UserMenuProps) {
 
   return (
     <div className="p-2">
+      <button
+        onClick={handleGoSettings}
+        className="w-full px-4 py-3 text-left hover:bg-bluelock-light-3 dark:hover:bg-gray-800 rounded-xl transition-colors font-poppins text-bluelock-dark dark:text-white flex items-center space-x-3"
+      >
+        <Settings size={20} className="text-bluelock-dark/60 dark:text-gray-400" />
+        <span>Cài đặt tài khoản</span>
+      </button>
       <button
         onClick={handleAddAccount}
         className="w-full px-4 py-3 text-left hover:bg-bluelock-light-3 dark:hover:bg-gray-800 rounded-xl transition-colors font-poppins text-bluelock-dark dark:text-white flex items-center space-x-3"

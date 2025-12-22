@@ -43,6 +43,8 @@ const plans = [
     description: 'Gói cơ bản cho cá nhân',
     features: [
       'Tạo thương hiệu xác minh',
+      'Tải video lên đến 100MB',
+      'Tải tối đa 10 ảnh/bài viết',
       'Tối đa 5 tài khoản liên kết',
       'Badge xác minh',
       'Ưu tiên hiển thị',
@@ -62,6 +64,8 @@ const plans = [
     description: 'Gói chuyên nghiệp cho doanh nghiệp vừa',
     features: [
       'Tất cả tính năng Standard',
+      'Tải video lên đến 100MB',
+      'Tải tối đa 10 ảnh/bài viết',
       'Tối đa 20 tài khoản liên kết',
       'Analytics nâng cao',
       'Quản lý team',
@@ -81,6 +85,8 @@ const plans = [
     description: 'Gói doanh nghiệp với tính năng không giới hạn',
     features: [
       'Tất cả tính năng Pro',
+      'Tải video lên đến 100MB',
+      'Tải tối đa 10 ảnh/bài viết',
       'Không giới hạn tài khoản',
       'Dedicated support',
       'Custom integrations',
@@ -233,7 +239,7 @@ export default function PremiumPlans({ currentUser, premiumStatus }: PremiumPlan
         {premiumStatus.isPremium && premiumStatus.subscription && (
           <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 inline-block">
             <p className="text-sm text-bluelock-dark dark:text-gray-300 font-poppins">
-              <span className="font-bold text-green-600 dark:text-green-400">Premium {premiumStatus.subscription.plan}</span> - 
+              <span className="font-bold text-green-600 dark:text-green-400">Premium {premiumStatus.subscription.plan}</span> -
               Hết hạn: {new Date(premiumStatus.subscription.endDate).toLocaleDateString('vi-VN')}
               {premiumStatus.subscription.activatedBy === 'TASKS' && (
                 <span className="ml-2 text-xs text-gray-500">(Tự động kích hoạt)</span>
@@ -326,11 +332,10 @@ export default function PremiumPlans({ currentUser, premiumStatus }: PremiumPlan
           return (
             <div
               key={plan.id}
-              className={`relative bg-bluelock-light-2 dark:bg-gray-900 rounded-lg p-6 border-2 transition-all ${
-                plan.popular
-                  ? 'border-bluelock-green dark:border-blue-500 shadow-lg scale-105'
-                  : 'border-bluelock-blue/30 dark:border-gray-800'
-              }`}
+              className={`relative bg-bluelock-light-2 dark:bg-gray-900 rounded-lg p-6 border-2 transition-all ${plan.popular
+                ? 'border-bluelock-green dark:border-blue-500 shadow-lg scale-105'
+                : 'border-bluelock-blue/30 dark:border-gray-800'
+                }`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
@@ -393,15 +398,14 @@ export default function PremiumPlans({ currentUser, premiumStatus }: PremiumPlan
               <button
                 onClick={() => handleSubscribe(plan.id)}
                 disabled={premiumStatus.isPremium || isProcessing || (!!plan.priceType && premiumData !== null && premiumData.points < parseInt(plan.price))}
-                className={`w-full py-3 rounded-lg font-poppins font-semibold transition-colors flex items-center justify-center space-x-2 ${
-                  premiumStatus.isPremium
-                    ? 'bg-gray-600 cursor-not-allowed text-white'
-                    : plan.priceType && premiumData !== null && premiumData.points < parseInt(plan.price)
+                className={`w-full py-3 rounded-lg font-poppins font-semibold transition-colors flex items-center justify-center space-x-2 ${premiumStatus.isPremium
+                  ? 'bg-gray-600 cursor-not-allowed text-white'
+                  : plan.priceType && premiumData !== null && premiumData.points < parseInt(plan.price)
                     ? 'bg-gray-400 cursor-not-allowed text-white'
                     : plan.popular
-                    ? 'bg-bluelock-green hover:bg-bluelock-green-bright dark:bg-blue-500 dark:hover:bg-blue-600 text-black dark:text-white'
-                    : 'bg-bluelock-light-2 dark:bg-gray-800 hover:bg-bluelock-light-3 dark:hover:bg-gray-700 text-bluelock-dark dark:text-white border border-bluelock-blue/30 dark:border-gray-700'
-                }`}
+                      ? 'bg-bluelock-green hover:bg-bluelock-green-bright dark:bg-blue-500 dark:hover:bg-blue-600 text-black dark:text-white'
+                      : 'bg-bluelock-light-2 dark:bg-gray-800 hover:bg-bluelock-light-3 dark:hover:bg-gray-700 text-bluelock-dark dark:text-white border border-bluelock-blue/30 dark:border-gray-700'
+                  }`}
               >
                 {isProcessing ? (
                   <>
@@ -493,6 +497,34 @@ export default function PremiumPlans({ currentUser, premiumStatus }: PremiumPlan
                 </td>
                 <td className="py-3 px-4 text-center font-poppins text-bluelock-dark/60 dark:text-gray-400">
                   Dedicated
+                </td>
+              </tr>
+              <tr className="border-b border-bluelock-blue/30 dark:border-gray-800">
+                <td className="py-3 px-4 font-poppins text-bluelock-dark dark:text-white">
+                  Giới hạn tải video
+                </td>
+                <td className="py-3 px-4 text-center font-poppins text-bluelock-dark/60 dark:text-gray-400">
+                  100MB
+                </td>
+                <td className="py-3 px-4 text-center font-poppins text-bluelock-dark/60 dark:text-gray-400">
+                  100MB
+                </td>
+                <td className="py-3 px-4 text-center font-poppins text-bluelock-dark/60 dark:text-gray-400">
+                  100MB
+                </td>
+              </tr>
+              <tr className="border-b border-bluelock-blue/30 dark:border-gray-800">
+                <td className="py-3 px-4 font-poppins text-bluelock-dark dark:text-white">
+                  Giới hạn tải ảnh
+                </td>
+                <td className="py-3 px-4 text-center font-poppins text-bluelock-dark/60 dark:text-gray-400">
+                  10 ảnh/bài viết
+                </td>
+                <td className="py-3 px-4 text-center font-poppins text-bluelock-dark/60 dark:text-gray-400">
+                  10 ảnh/bài viết
+                </td>
+                <td className="py-3 px-4 text-center font-poppins text-bluelock-dark/60 dark:text-gray-400">
+                  10 ảnh/bài viết
                 </td>
               </tr>
             </tbody>

@@ -8,8 +8,8 @@ async function getOutgoingDocuments(userId: string, role: string) {
   const where: any = {}
 
   // Role-based filtering
-  if (role === 'ADMIN') {
-    // ADMIN can see all outgoing documents
+  if (role === 'ADMIN' || role === 'BGH') {
+    // ADMIN and BGH can see all outgoing documents
     // where remains empty to show all
   } else if (role === 'STUDENT' || role === 'PARENT') {
     where.approvals = {

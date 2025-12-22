@@ -7,7 +7,13 @@ export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      // This endpoint is used by client UI to decide whether to show upgrade prompts.
+      // Avoid noisy 401s in the browser console; return a safe default instead.
+      return NextResponse.json({
+        isPremium: false,
+        hasBrand: false,
+        brand: null,
+      })
     }
 
     // Try to get user with ownedBrand, but handle case where Brand table might not exist
@@ -56,7 +62,12 @@ export async function GET(request: Request) {
     }
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      // Avoid 404 noise; treat missing user as non-premium for UI purposes.
+      return NextResponse.json({
+        isPremium: false,
+        hasBrand: false,
+        brand: null,
+      })
     }
 
     return NextResponse.json({

@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -32,8 +32,6 @@ enum UserRole {
 enum UserStatus {
   ACTIVE
   SUSPENDED
-  DELETED
-  PENDING
 }
 
 enum PostType {
@@ -100,6 +98,26 @@ enum BrandBadgeType {
   BLUE // Premium Individual
 }
 
+// Content Moderation Enums
+enum ModerationSeverity {
+  FORBIDDEN // 🔴 Cấm tuyệt đối
+  RESTRICTED // 🟠 Hạn chế mạnh 
+  CONDITIONAL // 🟡 Có điều kiện
+  ALLOWED // 🟢 Cho phép
+}
+
+enum ContentCategory {
+  PROFANITY // Tục tĩu - chửi thề
+  OFFENSIVE // Xúc phạm cá nhân
+  DISCRIMINATION // Kỳ thị - phân biệt
+  SEXUAL // Tình dục - khiêu dâm
+  VIOLENCE // Bạo lực - tự hại
+  DRUGS // Ma túy - chất cấm
+  POLITICAL // Chính trị - cực đoan
+  MISINFORMATION // Tin giả
+  SENSATIONAL // Giật gân - câu view
+}
+
 model User {
   id                   String    @id @default(cuid())
   email                String    @unique
@@ -115,8 +133,13 @@ model User {
   emailVerified        DateTime?
   resetPasswordToken   String?
   resetPasswordExpires DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+
+  // Account lockout
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime? // Tài khoản bị khóa đến thời điểm này
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // OAuth accounts
   accounts Account[]
@@ -186,6 +209,7 @@ model User {
   createdRoles    Role[]               @relation("RoleCreator")
   assignedByRoles UserRoleAssignment[] @relation("AssignedByUser")
   adminAuditLogs  AdminAuditLog[]      @relation("AdminAuditLogs")
+  moduleAccesses  UserModuleAccess[]   @relation("UserModuleAccesses")
 
   // Organizational Structure Relations
   spaceMembers      SpaceMember[]
@@ -196,6 +220,11 @@ model User {
   assignedTasks     SpaceTask[]        @relation("AssignedTasks")
   spaceTaskComments SpaceTaskComment[] @relation("SpaceTaskComments")
   spaceActivityLogs SpaceActivityLog[] @relation("SpaceActivityLogs")
+
+  // Content Moderation Relations
+  contentFilters    ContentFilter[] @relation("ContentFilterCreator")
+  moderationLogs    ModerationLog[] @relation("ModerationLogs")
+  moderationReviews ModerationLog[] @relation("ModerationReviews")
 
   @@map("users")
 }
@@ -332,7 +361,8 @@ model Post {
   id           String    @id @default(cuid())
   content      String
   type         PostType  @default(TEXT)
-  imageUrl     String?
+  imageUrl     String? // Deprecated - kept for backward compatibility
+  images       String[] // Array of image URLs (up to 10 images)
   videoUrl     String?
   linkUrl      String?
   locationName String? // Tên địa điểm (ví dụ: "Hà Nội, Việt Nam")
@@ -1194,8 +1224,9 @@ model Role {
   createdBy   User     @relation("RoleCreator", fields: [createdById], references: [id])
 
   // Relations
-  rolePermissions RolePermission[]
-  userAssignments UserRoleAssignment[]
+  rolePermissions   RolePermission[]
+  userAssignments   UserRoleAssignment[]
+  modulePermissions ModulePermission[]
 
   @@map("roles")
 }
@@ -1209,7 +1240,8 @@ model Permission {
   createdAt   DateTime @default(now())
 
   // Relations
-  rolePermissions RolePermission[]
+  rolePermissions   RolePermission[]
+  modulePermissions ModulePermission[]
 
   @@unique([resource, action])
   @@index([resource])
@@ -1261,9 +1293,52 @@ model Module {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Relations
+  modulePermissions ModulePermission[]
+  userAccesses      UserModuleAccess[]
+
   @@index([key])
   @@index([enabled])
   @@map("modules")
+}
+
+// ModulePermission - Kết nối Module với Permission và Role
+model ModulePermission {
+  id           String     @id @default(cuid())
+  moduleId     String
+  module       Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  roleId       String?
+  role         Role?      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([moduleId, permissionId, roleId])
+  @@index([moduleId])
+  @@index([permissionId])
+  @@index([roleId])
+  @@map("module_permissions")
+}
+
+// UserModuleAccess - Quản lý quyền truy cập module của từng user
+model UserModuleAccess {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation("UserModuleAccesses", fields: [userId], references: [id], onDelete: Cascade)
+  moduleId  String
+  module    Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  grantedBy String? // Admin user ID who granted access (null if auto-granted by premium)
+  grantedAt DateTime  @default(now())
+  reason    String? // "PREMIUM_STANDARD", "PREMIUM_PRO", "PREMIUM_ENTERPRISE", "MANUAL", "ROLE_BASED"
+  expiresAt DateTime? // Optional expiration date
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, moduleId])
+  @@index([userId])
+  @@index([moduleId])
+  @@index([reason])
+  @@map("user_module_accesses")
 }
 
 // Admin Audit Log (extended from existing AuditLog)
@@ -1933,4 +2008,75 @@ model SpaceActivityLog {
   @@index([periodStart])
   @@index([createdAt])
   @@map("space_activity_logs")
+}
+
+// ============================================
+// Content Moderation Models
+// ============================================
+
+// Content filter keywords
+model ContentFilter {
+  id          String             @id @default(cuid())
+  keyword     String // Từ khóa cần lọc
+  category    ContentCategory
+  severity    ModerationSeverity
+  description String? // Mô tả lý do cấm
+  replacement String? // Từ gợi ý thay thế
+
+  // Pattern matching
+  isRegex       Boolean @default(false) // Có phải regex pattern
+  caseSensitive Boolean @default(false) // Phân biệt hoa thường
+  wholeWord     Boolean @default(true) // Chỉ match từ nguyên vẹn
+
+  // Context
+  allowedContexts String? // JSON array: ngữ cảnh cho phép
+
+  // Metadata
+  createdById String
+  createdBy   User     @relation("ContentFilterCreator", fields: [createdById], references: [id])
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([keyword, severity])
+  @@index([category, active])
+  @@map("content_filters")
+}
+
+// Moderation logs
+model ModerationLog {
+  id String @id @default(cuid())
+
+  // Content info
+  contentType  String // POST, COMMENT, DOCUMENT
+  contentId    String // ID của nội dung
+  originalText String // Nội dung gốc
+
+  // Violation info
+  violationType   ContentCategory
+  severity        ModerationSeverity
+  matchedKeywords String // JSON array: từ khóa vi phạm
+
+  // Action taken
+  action        String // BLOCKED, WARNING, ALLOWED
+  moderatedText String? // Nội dung sau khi lọc (nếu có)
+
+  // User info  
+  userId   String
+  user     User     @relation("ModerationLogs", fields: [userId], references: [id])
+  userRole UserRole
+
+  // Admin review
+  reviewed     Boolean   @default(false)
+  reviewedById String?
+  reviewedBy   User?     @relation("ModerationReviews", fields: [reviewedById], references: [id])
+  reviewNote   String?
+  reviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([severity, reviewed])
+  @@index([contentType, contentId])
+  @@map("moderation_logs")
 }

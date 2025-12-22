@@ -11,7 +11,7 @@
  * - Diversification (MMR algorithm)
  */
 
-interface PostWithMetrics {
+export interface PostWithMetrics {
   id: string
   content: string
   createdAt: Date
@@ -19,6 +19,7 @@ interface PostWithMetrics {
   type: string
   imageUrl?: string | null
   videoUrl?: string | null
+  linkUrl?: string | null
   likes: number
   comments: number
   reposts: number
@@ -31,7 +32,7 @@ interface PostWithMetrics {
   }
 }
 
-interface UserContext {
+export interface UserContext {
   id: string
   followingIds?: string[]
   interests?: string[]

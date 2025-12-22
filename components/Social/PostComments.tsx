@@ -66,6 +66,11 @@ export default function PostComments({ postId }: PostCommentsProps) {
       if (response.ok) {
         setNewComment('')
         fetchComments()
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        if (errorData?.code === 'CONTENT_BLOCKED') {
+          alert(errorData?.error || 'Bình luận có chứa từ ngữ không phù hợp')
+        }
       }
     } catch (error) {
       console.error('Error posting comment:', error)

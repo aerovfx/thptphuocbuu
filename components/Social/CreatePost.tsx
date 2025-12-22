@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Image, Smile, MapPin, Calendar, X, Video } from 'lucide-react'
 import Avatar from '../Common/Avatar'
-import { validateImage, validateVideo, validateVideoDuration, ALLOWED_IMAGE_TYPES } from '@/lib/file-validation'
+import { validateImage, validateVideo, ALLOWED_IMAGE_TYPES, MAX_VIDEO_SIZE_NORMAL, MAX_VIDEO_SIZE_PREMIUM, MAX_IMAGES_COUNT } from '@/lib/file-validation'
+import { extractFirstUrl } from '@/lib/media-embed'
+import { hasPremiumOrAdminAccess } from '@/lib/premium-check'
+import ImageLightbox from '../Common/ImageLightbox'
 
 // Dynamic import emoji picker để tránh SSR issues
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), {
@@ -19,6 +22,11 @@ interface MediaPreview {
   file?: File
 }
 
+interface ImagePreview {
+  url: string
+  file: File
+}
+
 export default function CreatePost() {
   const { data: session } = useSession()
   const router = useRouter()
@@ -26,6 +34,9 @@ export default function CreatePost() {
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [mediaPreview, setMediaPreview] = useState<MediaPreview | null>(null)
+  const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([])
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [location, setLocation] = useState<{
@@ -36,6 +47,11 @@ export default function CreatePost() {
   const [gettingLocation, setGettingLocation] = useState(false)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [scheduledDateTime, setScheduledDateTime] = useState<string>('')
+  const [moderationError, setModerationError] = useState<{
+    message: string
+    violations: any[]
+    suggestions: any[]
+  } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const emojiPickerRef = useRef<HTMLDivElement>(null)
@@ -60,15 +76,38 @@ export default function CreatePost() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!content.trim() && !mediaPreview) return
+    if (!content.trim() && !mediaPreview && imagePreviews.length === 0) return
 
     setLoading(true)
     try {
       let imageUrl = null
       let videoUrl = null
+      let imageUrls: string[] = []
 
-      // Upload media if exists
-      if (mediaPreview?.file) {
+      // Upload multiple images if exists
+      if (imagePreviews.length > 0) {
+        setUploading(true)
+        for (const preview of imagePreviews) {
+          const formData = new FormData()
+          formData.append('file', preview.file)
+
+          const uploadResponse = await fetch('/api/posts/upload', {
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json()
+            throw new Error(errorData.error || 'Lỗi khi tải lên ảnh')
+          }
+
+          const uploadData = await uploadResponse.json()
+          imageUrls.push(uploadData.url)
+        }
+        setUploading(false)
+      }
+      // Upload single video if exists
+      else if (mediaPreview?.file) {
         setUploading(true)
         const formData = new FormData()
         formData.append('file', mediaPreview.file)
@@ -96,8 +135,21 @@ export default function CreatePost() {
       const postData: any = {
         content: content.trim() || '',
       }
-      
-      // Only include imageUrl/videoUrl if they exist
+
+      // If user pasted a link (e.g. YouTube) in content and didn't attach media,
+      // send it as linkUrl so the UI can embed it.
+      if (!imageUrl && !videoUrl && imageUrls.length === 0) {
+        const firstUrl = extractFirstUrl(postData.content)
+        if (firstUrl) {
+          postData.linkUrl = firstUrl
+        }
+      }
+
+      // Include images array if exists
+      if (imageUrls.length > 0) {
+        postData.images = imageUrls
+      }
+      // Only include imageUrl/videoUrl if they exist (backward compatibility)
       if (imageUrl) {
         postData.imageUrl = imageUrl
       }
@@ -126,17 +178,27 @@ export default function CreatePost() {
       if (response.ok) {
         setContent('')
         setMediaPreview(null)
+        setImagePreviews([])
         setLocation(null)
         setScheduledDateTime('')
-        
+
         // Dispatch custom event to notify SocialFeed
         window.dispatchEvent(new CustomEvent('postCreated'))
-        
+
         // Also refresh router to update server-side data
         router.refresh()
       } else {
-        const errorData = await response.json()
-        const errorMessage = errorData.details 
+        const errorData = await response.json().catch(() => ({}))
+        if (errorData?.code === 'CONTENT_BLOCKED') {
+          // Set moderation error with violations and suggestions
+          setModerationError({
+            message: errorData?.error || 'Nội dung có chứa từ ngữ không phù hợp',
+            violations: errorData?.violations || [],
+            suggestions: errorData?.suggestions || [],
+          })
+          return // Don't throw, just show the error UI
+        }
+        const errorMessage = errorData.details
           ? `${errorData.error}: ${JSON.stringify(errorData.details)}`
           : errorData.error || 'Lỗi khi đăng bài'
         throw new Error(errorMessage)
@@ -151,51 +213,92 @@ export default function CreatePost() {
   }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = e.target.files
+    if (!files || files.length === 0) return
 
-    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type)
-    
-    // Validate file type and size
-    const validation = isImage ? validateImage(file) : validateVideo(file)
-    if (!validation.valid) {
-      alert(validation.error)
+    const fileArray = Array.from(files)
+    const firstFile = fileArray[0]
+    const isImage = ALLOWED_IMAGE_TYPES.includes(firstFile.type)
+
+    // Check if user has premium or admin access
+    const isPremium = hasPremiumOrAdminAccess(session?.user)
+
+    // If video, only allow one video
+    if (!isImage) {
+      if (fileArray.length > 1) {
+        alert('Chỉ có thể đăng 1 video mỗi bài')
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+        return
+      }
+
+      const validation = validateVideo(firstFile, isPremium)
+      if (!validation.valid) {
+        alert(validation.error)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+        return
+      }
+
+      const maxSize = isPremium ? MAX_VIDEO_SIZE_PREMIUM : MAX_VIDEO_SIZE_NORMAL
+      const maxSizeMB = maxSize / (1024 * 1024)
+      const fileSizeMB = (firstFile.size / (1024 * 1024)).toFixed(2)
+      console.log(`Video đã chọn: ${fileSizeMB}MB / ${maxSizeMB}MB ${isPremium ? '(Premium)' : '(người dùng thường)'}`)
+
+      // Create video preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setMediaPreview({
+          url: reader.result as string,
+          type: 'video',
+          file: firstFile,
+        })
+        setImagePreviews([]) // Clear images if video is selected
+      }
+      reader.readAsDataURL(firstFile)
+      return
+    }
+
+    // Handle multiple images
+    const currentImagesCount = imagePreviews.length
+    const totalImages = currentImagesCount + fileArray.length
+
+    if (totalImages > MAX_IMAGES_COUNT) {
+      alert(`Chỉ có thể đăng tối đa ${MAX_IMAGES_COUNT} ảnh. Bạn đang cố gắng thêm ${fileArray.length} ảnh vào ${currentImagesCount} ảnh hiện có.`)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
       return
     }
 
-    // For videos, validate duration (0-5s)
-    if (!isImage) {
-      try {
-        const durationValidation = await validateVideoDuration(file)
-        if (!durationValidation.valid) {
-          alert(durationValidation.error)
-          if (fileInputRef.current) {
-            fileInputRef.current.value = ''
-          }
-          return
-        }
-      } catch (error) {
-        alert('Không thể đọc thông tin video. Vui lòng thử lại với video khác.')
+    // Validate and create previews for all images
+    const newPreviews: ImagePreview[] = []
+    for (const file of fileArray) {
+      const validation = validateImage(file)
+      if (!validation.valid) {
+        alert(`${file.name}: ${validation.error}`)
         if (fileInputRef.current) {
           fileInputRef.current.value = ''
         }
         return
       }
+
+      const url = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(file)
+      })
+
+      newPreviews.push({ url, file })
     }
 
-    // Create preview
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setMediaPreview({
-        url: reader.result as string,
-        type: isImage ? 'image' : 'video',
-        file,
-      })
+    setImagePreviews([...imagePreviews, ...newPreviews])
+    setMediaPreview(null) // Clear video if images are selected
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
-    reader.readAsDataURL(file)
   }
 
   const handleMediaClick = () => {
@@ -207,6 +310,15 @@ export default function CreatePost() {
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
+  }
+
+  const handleRemoveImage = (index: number) => {
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index))
+  }
+
+  const handleImageClick = (index: number) => {
+    setLightboxIndex(index)
+    setLightboxOpen(true)
   }
 
   const handleEmojiClick = (e: React.MouseEvent) => {
@@ -396,7 +508,7 @@ export default function CreatePost() {
   }, [])
 
   const userName = session?.user?.name || 'User'
-  const canSubmit = (content.trim() || mediaPreview) && !loading && !uploading
+  const canSubmit = (content.trim() || mediaPreview || imagePreviews.length > 0) && !loading && !uploading
   const isScheduled = !!scheduledDateTime
 
   return (
@@ -476,30 +588,66 @@ export default function CreatePost() {
               </div>
             )}
 
-            {/* Media Preview */}
+            {/* Multiple Images Preview */}
+            {imagePreviews.length > 0 && (
+              <div className="mt-3">
+                <div className={`grid gap-2 ${
+                  imagePreviews.length === 1 ? 'grid-cols-1' :
+                  imagePreviews.length === 2 ? 'grid-cols-2' :
+                  imagePreviews.length === 3 ? 'grid-cols-3' :
+                  imagePreviews.length === 4 ? 'grid-cols-2' :
+                  'grid-cols-3'
+                }`}>
+                  {imagePreviews.map((preview, index) => (
+                    <div
+                      key={index}
+                      className={`relative rounded-2xl overflow-hidden border border-bluelock-blue/30 dark:border-gray-800 ${
+                        imagePreviews.length === 1 ? 'max-h-96' : 'aspect-square'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(index)}
+                        className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                        title="Xóa ảnh"
+                      >
+                        <X size={16} />
+                      </button>
+                      <img
+                        src={preview.url}
+                        alt={`Preview ${index + 1}`}
+                        onClick={() => handleImageClick(index)}
+                        className={`w-full h-full cursor-pointer hover:opacity-90 transition-opacity ${
+                          imagePreviews.length === 1 ? 'object-contain bg-bluelock-light-2 dark:bg-gray-900' : 'object-cover'
+                        }`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                {imagePreviews.length < MAX_IMAGES_COUNT && (
+                  <p className="text-xs text-bluelock-dark/60 dark:text-gray-400 mt-2 font-poppins">
+                    {imagePreviews.length}/{MAX_IMAGES_COUNT} ảnh. Bạn có thể thêm {MAX_IMAGES_COUNT - imagePreviews.length} ảnh nữa.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Single Video Preview */}
             {mediaPreview && (
               <div className="relative mt-3 rounded-2xl overflow-hidden border border-bluelock-blue/30 dark:border-gray-800">
                 <button
                   type="button"
                   onClick={handleRemoveMedia}
                   className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
-                  title="Xóa media"
+                  title="Xóa video"
                 >
                   <X size={18} />
                 </button>
-                {mediaPreview.type === 'image' ? (
-                  <img
-                    src={mediaPreview.url}
-                    alt="Preview"
-                    className="w-full max-h-96 object-contain bg-bluelock-light-2 dark:bg-gray-900"
-                  />
-                ) : (
-                  <video
-                    src={mediaPreview.url}
-                    controls
-                    className="w-full max-h-96 object-contain bg-bluelock-light-2 dark:bg-gray-900"
-                  />
-                )}
+                <video
+                  src={mediaPreview.url}
+                  controls
+                  className="w-full max-h-96 object-contain bg-bluelock-light-2 dark:bg-gray-900"
+                />
               </div>
             )}
 
@@ -510,6 +658,7 @@ export default function CreatePost() {
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,video/mp4,video/webm,video/ogg,video/quicktime"
                   onChange={handleFileSelect}
+                  multiple
                   className="hidden"
                 />
                 <button
@@ -645,6 +794,14 @@ export default function CreatePost() {
           </div>
         </div>
       )}
+
+      {/* Image Lightbox */}
+      <ImageLightbox
+        images={imagePreviews.map(p => p.url)}
+        initialIndex={lightboxIndex}
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   )
 }

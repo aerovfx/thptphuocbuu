@@ -12,7 +12,9 @@ import {
   MessageCircle,
   ChevronRight,
   ChevronDown,
+  Edit,
 } from 'lucide-react'
+import EditLessonModal from './EditLessonModal'
 // import Avatar from '@/components/Common/Avatar'
 
 interface Chapter {
@@ -75,6 +77,7 @@ export default function CourseContentView({
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set())
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
+  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null)
 
   // Initialize state on client side only to avoid hydration mismatch
   useEffect(() => {
@@ -148,6 +151,14 @@ export default function CourseContentView({
     const allLessons = (chapters || []).flatMap((ch) => ch.lessons || [])
     const currentIndex = allLessons.findIndex((l) => l.id === currentLesson.id)
     return currentIndex > 0 ? allLessons[currentIndex - 1] : null
+  }
+
+  const isTeacher = currentUser.user.role === 'TEACHER' || currentUser.user.role === 'ADMIN'
+  const isClassTeacher = isTeacher && (classDetail.teacher.id === currentUser.user.id || currentUser.user.role === 'ADMIN')
+
+  const handleEditSuccess = () => {
+    // Reload page to get updated data
+    window.location.reload()
   }
 
   // Show loading state until mounted to avoid hydration mismatch
@@ -277,14 +288,27 @@ export default function CourseContentView({
             <>
               {/* Lesson Header */}
               <div className="mb-6">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2 font-poppins">
-                  {currentLesson.title}
-                </h2>
-                {currentLesson.description && (
-                  <p className="text-lg text-gray-600 font-poppins">
-                    {currentLesson.description}
-                  </p>
-                )}
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <h2 className="text-3xl font-bold text-gray-900 mb-2 font-poppins">
+                      {currentLesson.title}
+                    </h2>
+                    {currentLesson.description && (
+                      <p className="text-lg text-gray-600 font-poppins">
+                        {currentLesson.description}
+                      </p>
+                    )}
+                  </div>
+                  {isClassTeacher && (
+                    <button
+                      onClick={() => setEditingLesson(currentLesson)}
+                      className="ml-4 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Chỉnh sửa bài học"
+                    >
+                      <Edit size={20} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Lesson Content */}
@@ -356,6 +380,15 @@ export default function CourseContentView({
           )}
         </div>
       </main>
+
+      {/* Edit Lesson Modal */}
+      {editingLesson && (
+        <EditLessonModal
+          lesson={editingLesson}
+          onClose={() => setEditingLesson(null)}
+          onSuccess={handleEditSuccess}
+        />
+      )}
 
       {/* Right Sidebar - User Interactions */}
       <aside className="w-16 bg-gray-50 border-l border-gray-200 flex flex-col items-center py-4 space-y-4">

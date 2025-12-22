@@ -62,7 +62,7 @@ export async function GET(request: Request) {
 
     // Get audit logs and total count
     const [logs, total] = await Promise.all([
-      prisma.adminAuditLog.findMany({
+      (prisma as any).adminAuditLog.findMany({
         where,
         include: {
           actor: {
@@ -78,11 +78,11 @@ export async function GET(request: Request) {
         skip,
         take: pageSize,
       }),
-      prisma.adminAuditLog.count({ where }),
+      (prisma as any).adminAuditLog.count({ where }),
     ])
 
     // Parse details JSON for each log
-    const logsWithParsedDetails = logs.map((log) => ({
+    const logsWithParsedDetails = logs.map((log: any) => ({
       ...log,
       details: log.details ? JSON.parse(log.details) : null,
     }))

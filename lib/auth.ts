@@ -4,6 +4,15 @@ import GoogleProvider from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 import { logger } from './logger'
+import { sendAccountLockoutEmail } from './email'
+
+const isGoogleOAuthConfigured =
+  !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET
+
+// Throttle DB reads inside auth callbacks to avoid slowing down every request.
+// NextAuth calls `jwt()` frequently (e.g. session checks). A full DB roundtrip each time
+// will make the whole app feel sluggish under load.
+const USER_REFRESH_MIN_INTERVAL_SECONDS = 10 * 60 // 10 minutes
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -34,9 +43,6 @@ export const authOptions: NextAuthOptions = {
           const normalizedPassword = credentials.password.trim()
           console.log(`[Auth] Normalized email: ${normalizedEmail}`)
           logger.debug(`[Auth] Normalized email: ${normalizedEmail}`)
-
-          // Force reconnect to ensure fresh connection
-          await prisma.$connect()
 
           // Find user with normalized email
           console.log(`[Auth] Searching for user: ${normalizedEmail}`)
@@ -92,6 +98,12 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
+          // Block login for SUSPENDED users
+          if (user.status && user.status !== 'ACTIVE') {
+            logger.warn(`[Auth] Login blocked for suspended user: ${normalizedEmail} (status=${user.status})`)
+            return null
+          }
+
           console.log(`[Auth] User found: ${user.firstName} ${user.lastName}, Role: ${user.role}`)
           logger.debug(`[Auth] User found: ${user.firstName} ${user.lastName}, Role: ${user.role}`)
 
@@ -100,6 +112,29 @@ export const authOptions: NextAuthOptions = {
             console.error(`[Auth] User has no password: ${normalizedEmail}`)
             logger.error(`[Auth] User has no password: ${normalizedEmail}`)
             return null
+          }
+
+          // Check account lockout
+          const now = new Date()
+          if (user.lockedUntil && user.lockedUntil > now) {
+            const minutesRemaining = Math.ceil((user.lockedUntil.getTime() - now.getTime()) / 60000)
+            console.error(`[Auth] Account locked until: ${user.lockedUntil}, ${minutesRemaining} minutes remaining`)
+            logger.error(`[Auth] Account locked until: ${user.lockedUntil}, ${minutesRemaining} minutes remaining`)
+            // Return null to trigger CredentialsSignin error
+            // Error message will be handled in login page
+            return null
+          }
+
+          // If lockout expired, reset failed attempts
+          if (user.lockedUntil && user.lockedUntil <= now) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                failedLoginAttempts: 0,
+                lockedUntil: null,
+              },
+            })
+            logger.debug(`[Auth] Account lockout expired, resetting failed attempts for: ${normalizedEmail}`)
           }
 
           console.log(`[Auth] Comparing password...`)
@@ -115,8 +150,53 @@ export const authOptions: NextAuthOptions = {
           if (!isPasswordValid) {
             console.error(`[Auth] Invalid password for: ${normalizedEmail}`)
             logger.error(`[Auth] Invalid password for: ${normalizedEmail}`)
+            
+            // Increment failed login attempts
+            const newFailedAttempts = (user.failedLoginAttempts || 0) + 1
+            const MAX_FAILED_ATTEMPTS = 5
+            const LOCKOUT_DURATION_MINUTES = 15
+            
+            if (newFailedAttempts >= MAX_FAILED_ATTEMPTS) {
+              // Lock account for 15 minutes
+              const lockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MINUTES * 60 * 1000)
+              await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                  failedLoginAttempts: newFailedAttempts,
+                  lockedUntil: lockedUntil,
+                },
+              })
+              logger.error(`[Auth] Account locked due to ${newFailedAttempts} failed attempts: ${normalizedEmail}`)
+              // Send email notification about account lockout
+              try {
+                await sendAccountLockoutEmail(normalizedEmail, lockedUntil)
+              } catch (emailError) {
+                logger.error(`[Auth] Failed to send lockout email: ${emailError}`)
+              }
+            } else {
+              await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                  failedLoginAttempts: newFailedAttempts,
+                },
+              })
+              logger.warn(`[Auth] Failed login attempt ${newFailedAttempts}/${MAX_FAILED_ATTEMPTS} for: ${normalizedEmail}`)
+            }
+            
             // Return null to trigger CredentialsSignin error
             return null
+          }
+
+          // Login successful - reset failed attempts
+          if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                failedLoginAttempts: 0,
+                lockedUntil: null,
+              },
+            })
+            logger.debug(`[Auth] Reset failed login attempts for successful login: ${normalizedEmail}`)
           }
 
           console.log(`[Auth] Login successful: ${normalizedEmail}`)
@@ -142,17 +222,29 @@ export const authOptions: NextAuthOptions = {
         }
       }
     }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      authorization: {
-        params: {
-          prompt: 'consent',
-          access_type: 'offline',
-          response_type: 'code'
-        }
-      }
-    })
+    ...(isGoogleOAuthConfigured
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            authorization: {
+              params: {
+                prompt: 'consent',
+                access_type: 'offline',
+                response_type: 'code',
+              },
+            },
+          }),
+        ]
+      : (() => {
+          // Avoid noisy logs in tests; in prod this helps diagnose missing env.
+          if (process.env.NODE_ENV !== 'test') {
+            logger.warn(
+              '[Auth] Google OAuth is disabled (missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET).'
+            )
+          }
+          return []
+        })()),
   ],
   session: {
     strategy: 'jwt',
@@ -189,6 +281,12 @@ export const authOptions: NextAuthOptions = {
           })
 
           if (existingUser) {
+            // Block OAuth sign-in for SUSPENDED users
+            if (existingUser.status && existingUser.status !== 'ACTIVE') {
+              logger.warn(`[Auth] OAuth sign-in blocked for suspended user: ${existingUser.email} (status=${existingUser.status})`)
+              return false
+            }
+
             // Update avatar from OAuth if user doesn't have one or if OAuth avatar is newer
             if (user.image && (!existingUser.avatar || user.image !== existingUser.avatar)) {
               await prisma.user.update({
@@ -268,81 +366,175 @@ export const authOptions: NextAuthOptions = {
       return true
     },
     async jwt({ token, user, account, trigger }) {
-      // Initial sign in
+      // Initial sign in - handle both credentials and OAuth
       if (user) {
-        token.role = user.role
+        token.role = user.role || 'STUDENT'
         token.id = user.id
         token.email = user.email || undefined
         // Map avatar from user object (could be from credentials or OAuth)
         token.avatar = (user as any).avatar || (user as any).image || null
       }
 
-      // Always fetch latest avatar from database to ensure sync
-      if (token.id) {
+      // If OAuth sign in and user object doesn't have id, fetch from database
+      if (account?.provider === 'google' && !token.id && token.email) {
         try {
           const dbUser = await prisma.user.findUnique({
-            where: { id: token.id as string },
+            where: { email: token.email as string },
             select: {
+              id: true,
               role: true,
-              firstName: true,
-              lastName: true,
               avatar: true,
             },
           })
 
           if (dbUser) {
+            token.id = dbUser.id
             token.role = dbUser.role
-            token.avatar = dbUser.avatar
+            token.avatar = dbUser.avatar || token.avatar
           }
         } catch (error) {
+          logger.error('[Auth] Error fetching user in jwt callback for OAuth:', error)
+        }
+      }
+
+      // Fetch latest user data from DB *occasionally* (throttled), not on every request.
+      // Store the last refresh timestamp on the token to reduce DB load.
+      const nowSeconds = Math.floor(Date.now() / 1000)
+      const t: any = token as any
+      const lastRefreshedAt = typeof t._dbRefreshedAt === 'number' ? t._dbRefreshedAt : 0
+      const shouldRefresh =
+        trigger === 'update' ||
+        (token.id && nowSeconds - lastRefreshedAt >= USER_REFRESH_MIN_INTERVAL_SECONDS)
+
+      if (token.id && shouldRefresh) {
+        try {
+          // Use Promise.race to add timeout
+          const dbUser = await Promise.race([
+            prisma.user.findUnique({
+              where: { id: token.id as string },
+              select: {
+                role: true,
+                firstName: true,
+                lastName: true,
+                avatar: true,
+              },
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Query timeout')), 5000)
+            ),
+          ]) as any
+
+          if (dbUser) {
+            token.role = dbUser.role
+            token.avatar = dbUser.avatar
+            ;(token as any)._dbRefreshedAt = nowSeconds
+          }
+        } catch (error: any) {
           // Log error but don't throw - allow token to proceed with existing data
-          logger.error('[Auth] Error fetching user data in jwt callback:', error)
+          // Connection pool errors are common and should not block authentication
+          if (
+            error?.message?.includes('connection pool') ||
+            error?.message?.includes('timeout') ||
+            error?.message?.includes('Query timeout')
+          ) {
+            if (process.env.NODE_ENV === 'development') {
+              logger.warn('[Auth] Connection pool timeout, using cached token data')
+            }
+          } else {
+            logger.error('[Auth] Error fetching user data in jwt callback:', error)
+          }
         }
       }
 
       // Refresh user data if needed
       if (trigger === 'update') {
         try {
-          const updatedUser = await prisma.user.findUnique({
-            where: { id: token.id as string },
-            select: {
-              role: true,
-              firstName: true,
-              lastName: true,
-              avatar: true,
-            },
-          })
+          // Use timeout to prevent connection pool issues
+          const updatedUser = await Promise.race([
+            prisma.user.findUnique({
+              where: { id: token.id as string },
+              select: {
+                role: true,
+                firstName: true,
+                lastName: true,
+                avatar: true,
+              },
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Query timeout')), 5000)
+            ),
+          ]) as any
 
           if (updatedUser) {
             token.role = updatedUser.role
             token.avatar = updatedUser.avatar
+            ;(token as any)._dbRefreshedAt = nowSeconds
           }
-        } catch (error) {
-          // Log error but don't throw - allow token to proceed with existing data
-          logger.error('[Auth] Error updating user data in jwt callback:', error)
+        } catch (error: any) {
+          // Connection pool errors should not block token refresh
+          if (
+            error?.message?.includes('connection pool') ||
+            error?.message?.includes('timeout') ||
+            error?.message?.includes('Query timeout')
+          ) {
+            if (process.env.NODE_ENV === 'development') {
+              logger.warn('[Auth] Connection pool timeout during user refresh, using existing token data')
+            }
+          } else {
+            logger.error('[Auth] Error updating user data in jwt callback:', error)
+          }
         }
       }
 
       // Check token expiration
-      const now = Math.floor(Date.now() / 1000)
-      if (token.exp && typeof token.exp === 'number' && token.exp < now) {
+      if (token.exp && typeof token.exp === 'number' && token.exp < nowSeconds) {
         throw new Error('Token đã hết hạn. Vui lòng đăng nhập lại.')
       }
 
       return token
     },
     async session({ session, token }) {
-      if (session.user && token) {
-        session.user.role = token.role as string
-        session.user.id = token.id as string
-        session.user.email = token.email as string
-        // Sync avatar from database to session
-        session.user.image = (token.avatar as string) || null
+      // If token doesn't have id or role, try to fetch from database using email
+      if (!token.id && session.user?.email) {
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: session.user.email },
+            select: {
+              id: true,
+              role: true,
+              avatar: true,
+              firstName: true,
+              lastName: true,
+            },
+          })
+
+          if (user) {
+            token.id = user.id
+            token.role = user.role
+            token.avatar = user.avatar
+          }
+        } catch (error) {
+          logger.error('[Auth] Error fetching user in session callback:', error)
+        }
       }
 
-      // Validate session
-      if (!token.id || !token.role) {
+      if (session.user && token) {
+        session.user.role = (token.role as string) || 'STUDENT'
+        session.user.id = (token.id as string) || ''
+        session.user.email = (token.email as string) || session.user.email || ''
+        // Sync avatar from database to session
+        session.user.image = (token.avatar as string) || session.user.image || null
+      }
+
+      // Validate session - only throw if we still don't have essential data
+      if (!token.id && !session.user?.email) {
+        logger.error('[Auth] Session validation failed: missing id and email')
         throw new Error('Session không hợp lệ')
+      }
+
+      // Set default role if missing
+      if (!token.role) {
+        token.role = 'STUDENT'
       }
 
       return session

@@ -15,7 +15,8 @@ class WebSocketManager {
     }
     this.connections.get(userId)!.add(ws)
 
-    ws.on('close', () => {
+    // Use standard WebSocket close event to stay compatible with both browser WebSocket and Node's WebSocket
+    ws.addEventListener('close', () => {
       this.removeConnection(userId, ws)
     })
   }
@@ -35,7 +36,8 @@ class WebSocketManager {
     if (userConnections) {
       const messageStr = JSON.stringify(message)
       userConnections.forEach((ws) => {
-        if (ws.readyState === WebSocket.OPEN) {
+        // readyState === 1 means OPEN
+        if (ws.readyState === 1) {
           ws.send(messageStr)
         }
       })
@@ -46,7 +48,7 @@ class WebSocketManager {
     const messageStr = JSON.stringify(message)
     this.connections.forEach((userConnections) => {
       userConnections.forEach((ws) => {
-        if (ws.readyState === WebSocket.OPEN) {
+        if (ws.readyState === 1) {
           ws.send(messageStr)
         }
       })

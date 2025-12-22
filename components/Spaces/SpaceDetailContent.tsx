@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Users, Settings, FileText, Plus, MoreVertical, Edit, Trash2, LayoutDashboard, CheckSquare, FolderTree } from 'lucide-react'
+import { ArrowLeft, Users, Settings, FileText, Plus, MoreVertical, Edit, Trash2, LayoutDashboard, CheckSquare, FolderTree, Workflow, Sparkles } from 'lucide-react'
 import Avatar from '../Common/Avatar'
 import DepartmentList from '../Departments/DepartmentList'
 import SharedLayout from '../Layout/SharedLayout'
@@ -24,8 +24,16 @@ export default function SpaceDetailContent({ space, currentUser }: SpaceDetailCo
     'overview'
   )
   const [loading, setLoading] = useState(false)
+  const [deletingSpace, setDeletingSpace] = useState(false)
+  const [removingMember, setRemovingMember] = useState<string | null>(null)
+  const [addingMember, setAddingMember] = useState(false)
   const [members, setMembers] = useState(space.members || [])
   const [showUserSelectModal, setShowUserSelectModal] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [applyingScrum, setApplyingScrum] = useState(false)
+  
+  const hasScrumWorkflow = space.workflows?.some((w: any) => w.type === 'SCRUM' && w.isActive) || false
+  const isScrumFramework = space.framework === 'SCRUM'
 
   const canManage =
     currentUser.user.role === 'ADMIN' ||
@@ -53,6 +61,19 @@ export default function SpaceDetailContent({ space, currentUser }: SpaceDetailCo
   return (
     <SharedLayout title={space.name}>
       <div className="p-6 max-w-7xl mx-auto">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center justify-between">
+            <span className="text-red-400 font-poppins">{error}</span>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-400 hover:text-red-300"
+            >
+              <span>×</span>
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-6">
           <button
@@ -89,9 +110,64 @@ export default function SpaceDetailContent({ space, currentUser }: SpaceDetailCo
             </div>
             {canManage && (
               <div className="flex items-center space-x-2">
+                {!hasScrumWorkflow && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Bạn có muốn áp dụng mẫu Scrum cho space này? Điều này sẽ tạo workflow Scrum và các quy tắc mặc định.')) {
+                        return
+                      }
+
+                      setApplyingScrum(true)
+                      setError(null)
+                      try {
+                        const response = await fetch(`/api/spaces/${space.id}/apply-scrum`, {
+                          method: 'POST',
+                        })
+
+                        if (response.ok) {
+                          const data = await response.json()
+                          alert('Đã áp dụng mẫu Scrum thành công!')
+                          // Reload page to show Scrum features
+                          window.location.reload()
+                        } else {
+                          const errorData = await response.json()
+                          const errorMessage = errorData.error || 'Không thể áp dụng mẫu Scrum'
+                          setError(errorMessage)
+                          alert(`Lỗi: ${errorMessage}`)
+                        }
+                      } catch (error: any) {
+                        console.error('Error applying Scrum:', error)
+                        const errorMessage = error?.message || 'Có lỗi xảy ra khi áp dụng mẫu Scrum'
+                        setError(errorMessage)
+                        alert(errorMessage)
+                      } finally {
+                        setApplyingScrum(false)
+                      }
+                    }}
+                    disabled={applyingScrum}
+                    className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-poppins font-semibold flex items-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Sparkles size={18} />
+                    <span>{applyingScrum ? 'Đang áp dụng...' : 'Áp dụng Scrum'}</span>
+                  </button>
+                )}
+                {isScrumFramework && hasScrumWorkflow && (
+                  <div className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-lg font-poppins font-semibold flex items-center space-x-2">
+                    <Workflow size={16} />
+                    <span>Scrum</span>
+                  </div>
+                )}
                 <button
-                  onClick={() => router.push(`/dashboard/spaces/${space.id}/edit`)}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-poppins font-semibold flex items-center space-x-2 transition-colors"
+                  onClick={() => {
+                    try {
+                      router.push(`/dashboard/spaces/${space.id}/edit`)
+                    } catch (error) {
+                      console.error('Error navigating to edit page:', error)
+                      setError('Không thể chuyển đến trang chỉnh sửa')
+                      setTimeout(() => setError(null), 3000)
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-poppins font-semibold flex items-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Edit size={18} />
                   <span>Chỉnh sửa</span>
@@ -102,7 +178,8 @@ export default function SpaceDetailContent({ space, currentUser }: SpaceDetailCo
                       return
                     }
 
-                    setLoading(true)
+                    setDeletingSpace(true)
+                    setError(null)
                     try {
                       const response = await fetch(`/api/spaces/${space.id}`, {
                         method: 'DELETE',
@@ -112,21 +189,25 @@ export default function SpaceDetailContent({ space, currentUser }: SpaceDetailCo
                         alert('Space đã được xóa thành công!')
                         router.push('/dashboard/spaces')
                       } else {
-                        const error = await response.json()
-                        alert(`Lỗi: ${error.error || 'Không thể xóa space'}`)
+                        const errorData = await response.json()
+                        const errorMessage = errorData.error || 'Không thể xóa space'
+                        setError(errorMessage)
+                        alert(`Lỗi: ${errorMessage}`)
                       }
-                    } catch (error) {
+                    } catch (error: any) {
                       console.error('Error deleting space:', error)
-                      alert('Có lỗi xảy ra khi xóa space')
+                      const errorMessage = error?.message || 'Có lỗi xảy ra khi xóa space'
+                      setError(errorMessage)
+                      alert(errorMessage)
                     } finally {
-                      setLoading(false)
+                      setDeletingSpace(false)
                     }
                   }}
-                  disabled={loading}
+                  disabled={deletingSpace}
                   className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-poppins font-semibold flex items-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Trash2 size={18} />
-                  <span>Xóa space</span>
+                  <span>{deletingSpace ? 'Đang xóa...' : 'Xóa space'}</span>
                 </button>
               </div>
             )}
@@ -281,11 +362,15 @@ export default function SpaceDetailContent({ space, currentUser }: SpaceDetailCo
                 </h2>
                 {canManage && (
                   <button
-                    onClick={() => setShowUserSelectModal(true)}
-                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-poppins font-semibold flex items-center space-x-2 transition-colors"
+                    onClick={() => {
+                      setError(null)
+                      setShowUserSelectModal(true)
+                    }}
+                    disabled={addingMember}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-poppins font-semibold flex items-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus size={18} />
-                    <span>Thêm thành viên</span>
+                    <span>{addingMember ? 'Đang thêm...' : 'Thêm thành viên'}</span>
                   </button>
                 )}
               </div>
@@ -335,7 +420,8 @@ export default function SpaceDetailContent({ space, currentUser }: SpaceDetailCo
                                   return
                                 }
 
-                                setLoading(true)
+                                setRemovingMember(member.id)
+                                setError(null)
                                 try {
                                   const response = await fetch(
                                     `/api/spaces/${space.id}/members?userId=${member.user.id}`,
@@ -346,17 +432,21 @@ export default function SpaceDetailContent({ space, currentUser }: SpaceDetailCo
                                     setMembers(members.filter((m: any) => m.id !== member.id))
                                     alert('Đã xóa thành viên thành công!')
                                   } else {
-                                    const error = await response.json()
-                                    alert(`Lỗi: ${error.error || 'Không thể xóa thành viên'}`)
+                                    const errorData = await response.json()
+                                    const errorMessage = errorData.error || 'Không thể xóa thành viên'
+                                    setError(errorMessage)
+                                    alert(`Lỗi: ${errorMessage}`)
                                   }
-                                } catch (error) {
+                                } catch (error: any) {
                                   console.error('Error removing member:', error)
-                                  alert('Có lỗi xảy ra khi xóa thành viên')
+                                  const errorMessage = error?.message || 'Có lỗi xảy ra khi xóa thành viên'
+                                  setError(errorMessage)
+                                  alert(errorMessage)
                                 } finally {
-                                  setLoading(false)
+                                  setRemovingMember(null)
                                 }
                               }}
-                              disabled={loading}
+                              disabled={removingMember === member.id}
                               className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-2"
                               title="Xóa thành viên"
                             >
@@ -398,7 +488,7 @@ export default function SpaceDetailContent({ space, currentUser }: SpaceDetailCo
                   <span>→</span>
                 </Link>
               </div>
-              <JiraTaskBoard spaceId={space.id} canManage={canManage || false} />
+              <JiraTaskBoard spaceId={space.id} canManage={canManage || false} spaceName={space.name} />
             </div>
           )}
 
@@ -424,7 +514,8 @@ export default function SpaceDetailContent({ space, currentUser }: SpaceDetailCo
           isOpen={showUserSelectModal}
           onClose={() => setShowUserSelectModal(false)}
           onSelect={async (selectedUser) => {
-            setLoading(true)
+            setAddingMember(true)
+            setError(null)
             try {
               // Add member to space
               const response = await fetch(`/api/spaces/${space.id}/members`, {
@@ -442,16 +533,21 @@ export default function SpaceDetailContent({ space, currentUser }: SpaceDetailCo
               if (response.ok) {
                 const newMember = await response.json()
                 setMembers([...members, newMember])
+                setShowUserSelectModal(false)
                 alert('Đã thêm thành viên thành công!')
               } else {
-                const error = await response.json()
-                alert(`Lỗi: ${error.error || 'Không thể thêm thành viên'}`)
+                const errorData = await response.json()
+                const errorMessage = errorData.error || 'Không thể thêm thành viên'
+                setError(errorMessage)
+                alert(`Lỗi: ${errorMessage}`)
               }
-            } catch (error) {
+            } catch (error: any) {
               console.error('Error adding member:', error)
-              alert('Có lỗi xảy ra khi thêm thành viên')
+              const errorMessage = error?.message || 'Có lỗi xảy ra khi thêm thành viên'
+              setError(errorMessage)
+              alert(errorMessage)
             } finally {
-              setLoading(false)
+              setAddingMember(false)
             }
           }}
           excludeUserIds={members.map((m: any) => m.user.id)}

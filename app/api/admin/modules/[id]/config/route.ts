@@ -7,7 +7,7 @@ import { z } from 'zod'
 // Helper function to check admin permission
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'BGH' && session.user.role !== 'SUPER_ADMIN')) {
     throw new Error('Unauthorized: Admin access required')
   }
   return session
@@ -51,7 +51,16 @@ export async function PUT(
 ) {
   try {
     const session = await requireAdmin()
-    const { id } = await params
+    const resolvedParams = await params
+    const { id } = resolvedParams
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Module ID không hợp lệ' },
+        { status: 400 }
+      )
+    }
+    
     const body = await request.json()
 
     const validatedData = updateConfigSchema.parse(body)
@@ -83,6 +92,17 @@ export async function PUT(
     const updatedModule = await prisma.module.update({
       where: { id },
       data: { config: validatedData.config },
+      select: {
+        id: true,
+        key: true,
+        name: true,
+        description: true,
+        enabled: true,
+        version: true,
+        config: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     })
 
     // Create audit log
@@ -103,11 +123,22 @@ export async function PUT(
       userAgent
     )
 
+    // Format response to ensure all DateTime fields are serializable
     return NextResponse.json({
       message: 'Cập nhật cấu hình module thành công',
-      data: updatedModule,
+      data: {
+        id: updatedModule.id,
+        key: updatedModule.key,
+        name: updatedModule.name,
+        description: updatedModule.description,
+        enabled: updatedModule.enabled,
+        version: updatedModule.version,
+        config: updatedModule.config,
+        createdAt: updatedModule.createdAt ? updatedModule.createdAt.toISOString() : null,
+        updatedAt: updatedModule.updatedAt ? updatedModule.updatedAt.toISOString() : null,
+      },
     })
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Dữ liệu không hợp lệ', details: error.errors },
@@ -118,8 +149,16 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 403 })
     }
     console.error('Error updating module config:', error)
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+    })
     return NextResponse.json(
-      { error: 'Đã xảy ra lỗi khi cập nhật cấu hình module' },
+      { 
+        error: 'Đã xảy ra lỗi khi cập nhật cấu hình module',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     )
   }
