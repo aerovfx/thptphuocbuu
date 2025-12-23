@@ -22,8 +22,8 @@ SERVICE_NAME="thptphuocbuu360"
 REGION="asia-southeast1"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
 
-echo -e "${YELLOW}📦 Step 1: Building Docker Image...${NC}"
-docker build -t ${IMAGE_NAME}:latest .
+echo -e "${YELLOW}📦 Step 1: Building Docker Image for linux/amd64...${NC}"
+docker build --platform linux/amd64 -t ${IMAGE_NAME}:latest .
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Docker build failed!${NC}"

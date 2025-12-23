@@ -150,25 +150,13 @@ export async function getVideoDuration(file: File): Promise<number> {
 
 /**
  * Validate video duration (client-side)
+ * @deprecated This function is deprecated. Video duration is no longer limited.
+ * File size validation is now handled by validateVideo() function.
  */
-export async function validateVideoDuration(file: File): Promise<ValidationResult> {
-  try {
-    const duration = await getVideoDuration(file)
-    
-    if (duration < MIN_VIDEO_DURATION || duration > MAX_VIDEO_DURATION) {
-      return {
-        valid: false,
-        error: `Thời lượng video phải từ ${MIN_VIDEO_DURATION}s đến ${MAX_VIDEO_DURATION}s. Video hiện tại: ${duration.toFixed(2)}s`,
-      }
-    }
-    
-    return { valid: true }
-  } catch (error) {
-    return {
-      valid: false,
-      error: 'Không thể đọc thông tin video. Vui lòng thử lại với video khác.',
-    }
-  }
+export async function validateVideoDuration(_file: File): Promise<ValidationResult> {
+  // Deprecated: No longer validate duration, always return valid
+  // Keeping function for backward compatibility
+  return { valid: true }
 }
 
 /**

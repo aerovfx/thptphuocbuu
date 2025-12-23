@@ -1,5 +1,6 @@
 import { prisma } from './prisma'
 import { ModerationSeverity, ContentCategory, UserRole } from '@prisma/client'
+import { validateAndSanitizeContent, detectXssAttempt } from './xss-protection'
 
 export interface ModerationResult {
   allowed: boolean
@@ -16,6 +17,8 @@ export interface ModerationResult {
     suggested: string
   }[]
   message?: string
+  xssDetected?: boolean
+  sanitizedContent?: string
 }
 
 // Cache filters in memory for performance
@@ -84,6 +87,46 @@ export async function moderateContent(
   contentType: 'POST' | 'COMMENT' | 'DOCUMENT',
   userId: string
 ): Promise<ModerationResult> {
+  // 🛡️ FIRST LINE OF DEFENSE: XSS Protection
+  const xssValidation = validateAndSanitizeContent(content, {
+    allowHtml: false, // Never allow HTML in user posts
+    strict: true,
+  })
+
+  if (!xssValidation.isValid) {
+    // Log XSS attempt
+    await logModeration({
+      contentType,
+      contentId: 'xss-blocked',
+      originalText: content.substring(0, 1000),
+      violationType: 'XSS_ATTEMPT' as any,
+      severity: 'FORBIDDEN',
+      matchedKeywords: JSON.stringify(xssValidation.violations),
+      action: 'BLOCKED',
+      userId,
+      userRole,
+    })
+
+    return {
+      allowed: false,
+      severity: 'FORBIDDEN',
+      violations: xssValidation.violations.map((v, idx) => ({
+        keyword: v,
+        category: 'XSS_ATTEMPT' as any,
+        severity: 'FORBIDDEN',
+        position: { start: 0, end: content.length },
+      })),
+      suggestions: [{
+        original: content,
+        suggested: xssValidation.sanitized,
+      }],
+      message: xssValidation.message,
+      xssDetected: true,
+      sanitizedContent: xssValidation.sanitized,
+    }
+  }
+
+  // Continue with normal moderation
   const filters = await getActiveFilters()
   const normalizedContent = normalizeText(content)
 
@@ -93,7 +136,7 @@ export async function moderateContent(
 
   for (const filter of filters) {
     const patterns = filter.isRegex
-      ?[filter.keyword]
+      ? [filter.keyword]
       : expandEvasionPatterns(normalizeText(filter.keyword))
 
     for (const pattern of patterns) {
@@ -179,6 +222,7 @@ export async function moderateContent(
         ? `Nội dung có từ ngữ không phù hợp. Vui lòng xem xét lại.`
         : undefined
       : `Nội dung vi phạm quy định. Không thể đăng.`,
+    xssDetected: false,
   }
 }
 

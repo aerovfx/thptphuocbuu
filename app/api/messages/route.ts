@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { moderateContent } from '@/lib/content-moderation'
+import { withCsrfProtection } from '@/lib/csrf-middleware'
 
 const createMessageSchema = z.object({
   conversationId: z.string().optional(),
@@ -163,7 +164,7 @@ export async function GET(request: Request) {
 }
 
 // POST /api/messages - Send a message
-export async function POST(request: Request) {
+export const POST = withCsrfProtection(async (request: NextRequest) => {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
@@ -257,5 +258,5 @@ export async function POST(request: Request) {
     console.error('Error sending message:', error)
     return NextResponse.json({ error: 'Đã xảy ra lỗi khi gửi tin nhắn' }, { status: 500 })
   }
-}
+}) // Close withCsrfProtection wrapper
 

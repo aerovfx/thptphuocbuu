@@ -53,7 +53,7 @@ export const authOptions: NextAuthOptions = {
           if (!user) {
             console.error(`[Auth] User not found: ${normalizedEmail}`)
             logger.error(`[Auth] User not found: ${normalizedEmail}`)
-            
+
             // Debug: List all users to see what's in DB and check for exact match (dev only)
             if (process.env.NODE_ENV === 'development') {
               const allUsers = await prisma.user.findMany({
@@ -61,7 +61,7 @@ export const authOptions: NextAuthOptions = {
               })
               logger.debug(`[Auth] Debug: Found ${allUsers.length} total users in DB`)
               logger.debug(`[Auth] Debug: Searching for normalized: "${normalizedEmail}"`)
-              
+
               // Check if email exists with different case
               const matchingUser = allUsers.find(u => u.email.toLowerCase() === normalizedEmail)
               if (matchingUser) {
@@ -94,7 +94,7 @@ export const authOptions: NextAuthOptions = {
                 logger.error(`[Auth] No matching user found even with case-insensitive search`)
               }
             }
-            
+
             return null
           }
 
@@ -150,12 +150,12 @@ export const authOptions: NextAuthOptions = {
           if (!isPasswordValid) {
             console.error(`[Auth] Invalid password for: ${normalizedEmail}`)
             logger.error(`[Auth] Invalid password for: ${normalizedEmail}`)
-            
+
             // Increment failed login attempts
             const newFailedAttempts = (user.failedLoginAttempts || 0) + 1
             const MAX_FAILED_ATTEMPTS = 5
             const LOCKOUT_DURATION_MINUTES = 15
-            
+
             if (newFailedAttempts >= MAX_FAILED_ATTEMPTS) {
               // Lock account for 15 minutes
               const lockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MINUTES * 60 * 1000)
@@ -182,7 +182,7 @@ export const authOptions: NextAuthOptions = {
               })
               logger.warn(`[Auth] Failed login attempt ${newFailedAttempts}/${MAX_FAILED_ATTEMPTS} for: ${normalizedEmail}`)
             }
-            
+
             // Return null to trigger CredentialsSignin error
             return null
           }
@@ -224,27 +224,27 @@ export const authOptions: NextAuthOptions = {
     }),
     ...(isGoogleOAuthConfigured
       ? [
-          GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-            authorization: {
-              params: {
-                prompt: 'consent',
-                access_type: 'offline',
-                response_type: 'code',
-              },
+        GoogleProvider({
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+          authorization: {
+            params: {
+              prompt: 'consent',
+              access_type: 'offline',
+              response_type: 'code',
             },
-          }),
-        ]
+          },
+        }),
+      ]
       : (() => {
-          // Avoid noisy logs in tests; in prod this helps diagnose missing env.
-          if (process.env.NODE_ENV !== 'test') {
-            logger.warn(
-              '[Auth] Google OAuth is disabled (missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET).'
-            )
-          }
-          return []
-        })()),
+        // Avoid noisy logs in tests; in prod this helps diagnose missing env.
+        if (process.env.NODE_ENV !== 'test') {
+          logger.warn(
+            '[Auth] Google OAuth is disabled (missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET).'
+          )
+        }
+        return []
+      })()),
   ],
   session: {
     strategy: 'jwt',
@@ -275,6 +275,14 @@ export const authOptions: NextAuthOptions = {
       // Handle OAuth sign in
       if (account?.provider === 'google') {
         try {
+          // Email domain whitelist for OAuth registration
+          const ALLOWED_EMAIL_DOMAINS = [
+            'thptphuocbuu.edu.vn', // Organization domain
+            'gmail.com', // Allow Gmail for testing/external users (can remove in strict production)
+          ]
+
+          const emailDomain = user.email!.split('@')[1]
+
           // Check if user exists
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email! }
@@ -294,7 +302,7 @@ export const authOptions: NextAuthOptions = {
                 data: { avatar: user.image },
               })
             }
-            
+
             // Update OAuth account if needed
             await prisma.account.upsert({
               where: {
@@ -326,6 +334,14 @@ export const authOptions: NextAuthOptions = {
             })
             return true
           } else {
+            // NEW USER REGISTRATION - Check email domain whitelist
+            if (!ALLOWED_EMAIL_DOMAINS.includes(emailDomain)) {
+              logger.warn(`[Auth] OAuth registration blocked for unauthorized domain: ${emailDomain} (email: ${user.email})`)
+              return false // Block registration from unauthorized domains
+            }
+
+            logger.info(`[Auth] Creating new OAuth user from authorized domain: ${emailDomain}`)
+
             // Create new user from OAuth
             const nameParts = user.name?.split(' ') || ['User', '']
             const firstName = nameParts[0]
@@ -427,7 +443,7 @@ export const authOptions: NextAuthOptions = {
           if (dbUser) {
             token.role = dbUser.role
             token.avatar = dbUser.avatar
-            ;(token as any)._dbRefreshedAt = nowSeconds
+              ; (token as any)._dbRefreshedAt = nowSeconds
           }
         } catch (error: any) {
           // Log error but don't throw - allow token to proceed with existing data
@@ -468,7 +484,7 @@ export const authOptions: NextAuthOptions = {
           if (updatedUser) {
             token.role = updatedUser.role
             token.avatar = updatedUser.avatar
-            ;(token as any)._dbRefreshedAt = nowSeconds
+              ; (token as any)._dbRefreshedAt = nowSeconds
           }
         } catch (error: any) {
           // Connection pool errors should not block token refresh

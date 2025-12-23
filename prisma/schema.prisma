@@ -226,6 +226,14 @@ model User {
   moderationLogs    ModerationLog[] @relation("ModerationLogs")
   moderationReviews ModerationLog[] @relation("ModerationReviews")
 
+  // Online Status & Interaction Scoring
+  lastActivityAt    DateTime? // Last activity timestamp for online status
+  isOnline          Boolean   @default(false) // Cached online status
+  interactionScore  Float?    @default(0) // Cached interaction score
+  scoreUpdatedAt    DateTime? // When score was last calculated
+
+  @@index([lastActivityAt], name: "idx_user_lastActivityAt")
+  @@index([interactionScore], name: "idx_user_interactionScore")
   @@map("users")
 }
 

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -8,6 +8,7 @@ import { broadcastFeedUpdate } from '@/lib/feed-broadcast'
 import { extractFirstUrl } from '@/lib/media-embed'
 import { moderateContent } from '@/lib/content-moderation'
 import { sendEmail } from '@/lib/email'
+import { withCsrfProtection } from '@/lib/csrf-middleware'
 
 const postSchema = z.object({
   content: z.string().optional().default(''),
@@ -45,7 +46,7 @@ const postSchema = z.object({
   path: ['content'],
 })
 
-export async function POST(request: Request) {
+export const POST = withCsrfProtection(async (request: NextRequest) => {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
@@ -113,15 +114,29 @@ export async function POST(request: Request) {
 
     const validatedData = postSchema.parse(normalizedBody)
 
-    // Content moderation with database-backed service
+    // Content moderation ONLY for text content (not URLs)
+    // XSS protection should not block legitimate video/image URLs
     if (validatedData.content && validatedData.content.trim()) {
       const moderation = await moderateContent(
         validatedData.content,
-        session.user.role as any,  // Type cast for NextAuth session type
+        session.user.role as any,  // Type cast for Next Auth session type
         'POST',
         authorId
       )
 
+      // XSS detection - block malicious code in text
+      if (moderation.xssDetected) {
+        return NextResponse.json(
+          {
+            error: moderation.message || 'Nội dung chứa mã HTML/JavaScript không được phép',
+            sanitized: moderation.sanitizedContent,
+            code: 'XSS_BLOCKED',
+          },
+          { status: 400 }
+        )
+      }
+
+      // Profanity/offensive content check
       if (!moderation.allowed) {
         return NextResponse.json(
           {
@@ -134,6 +149,9 @@ export async function POST(request: Request) {
         )
       }
     }
+
+    // URLs (videoUrl, imageUrl, linkUrl) are NOT checked by XSS protection
+    // They are validated by Zod schema for format only
 
 
     // If user pasted a link in content and didn't explicitly set linkUrl/imageUrl/videoUrl/images,
@@ -295,7 +313,8 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
+}) // Close withCsrfProtection wrapper
+
 
 export async function GET(request: Request) {
   try {
