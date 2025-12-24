@@ -45,5 +45,18 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Google Sign-In URL Scheme -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Reversed client ID from Google OAuth console -->
+				<string>com.googleusercontent.apps.1069154179448-b0ffktmf1ugmufv2q7521aq1d1ikv8fi</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

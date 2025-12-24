@@ -1,6 +1,8 @@
 class ApiConstants {
-  // TODO: Update this to your production URL
-  static const String baseUrl = 'https://phuocbuu-vglgngs3yq-as.a.run.app';
+  // Production URL - Updated to custom domain
+  static const String baseUrl = 'https://thptphuocbuu.edu.vn';
+  // Old Cloud Run URL (backup):
+  // static const String baseUrl = 'https://phuocbuu-vglgngs3yq-as.a.run.app';
   // For local development:
   // static const String baseUrl = 'http://localhost:3000';
   

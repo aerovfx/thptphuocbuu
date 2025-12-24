@@ -2,12 +2,179 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user.dart';
 import '../utils/storage.dart';
 import 'api_service.dart';
 import '../utils/constants.dart';
 
 class AuthService {
+  // Google Sign-In instance
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    // iOS Client ID from Google Cloud Console
+    clientId: '1069154179448-b0ffktmf1ugmufv2q7521aq1d1ikv8fi.apps.googleusercontent.com',
+  );
+
+  // Register
+  static Future<Map<String, dynamic>> register({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String role,
+    String? dateOfBirth,
+  }) async {
+    try {
+      print('[AuthService] Attempting registration for: $email');
+
+      final Map<String, dynamic> body = {
+        'email': email,
+        'password': password,
+        'firstName': firstName,
+        'lastName': lastName,
+        'role': role,
+      };
+
+      if (dateOfBirth != null && dateOfBirth.isNotEmpty) {
+        body['dateOfBirth'] = dateOfBirth;
+      }
+
+      final response = await ApiService.post(
+        '/api/auth/register',
+        body,
+      );
+
+      print('[AuthService] Registration response status: ${response.statusCode}');
+
+      final contentType = response.headers['content-type'] ?? '';
+      if (contentType.contains('text/html')) {
+        return {
+          'success': false,
+          'error': 'Không thể kết nối đến server',
+        };
+      }
+
+      if (response.body.isEmpty) {
+        return {
+          'success': false,
+          'error': 'Server không phản hồi',
+        };
+      }
+
+      Map<String, dynamic> data = jsonDecode(response.body);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        print('[AuthService] Registration successful');
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Đăng ký thành công',
+        };
+      } else {
+        final errorMsg = data['error'] as String? ?? 'Đăng ký thất bại';
+        print('[AuthService] Registration failed: $errorMsg');
+        return {
+          'success': false,
+          'error': errorMsg,
+        };
+      }
+    } on SocketException catch (e) {
+      print('[AuthService] SocketException: $e');
+      return {
+        'success': false,
+        'error': 'Không thể kết nối đến server',
+      };
+    } catch (e) {
+      print('[AuthService] Registration error: $e');
+      return {
+        'success': false,
+        'error': 'Đã xảy ra lỗi: ${e.toString()}',
+      };
+    }
+  }
+
+  // Google Sign-In
+  static Future<Map<String, dynamic>> signInWithGoogle() async {
+    try {
+      print('[AuthService] Attempting Google Sign-In');
+
+      // Sign out first to force account selection
+      await _googleSignIn.signOut();
+
+      // Trigger the authentication flow
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        print('[AuthService] User cancelled Google Sign-In');
+        return {
+          'success': false,
+          'error': 'Đăng nhập bị hủy',
+        };
+      }
+
+      print('[AuthService] Google Sign-In successful: ${googleUser.email}');
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        print('[AuthService] No ID token from Google');
+        return {
+          'success': false,
+          'error': 'Không lấy được thông tin từ Google',
+        };
+      }
+
+      print('[AuthService] Got Google ID token, sending to server');
+
+      // Send ID token to backend
+      final response = await ApiService.post(
+        '/api/mobile/auth/google',
+        {
+          'idToken': idToken,
+          'email': googleUser.email,
+          'displayName': googleUser.displayName ?? '',
+          'photoUrl': googleUser.photoUrl ?? '',
+        },
+      );
+
+      print('[AuthService] Server response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          final token = data['token'] as String?;
+          if (token != null) {
+            await StorageService.saveToken(token);
+            final userData = data['user'] as Map<String, dynamic>?;
+            if (userData != null) {
+              await StorageService.saveUserData(userData);
+            }
+            return {
+              'success': true,
+              'user': User.fromJson(userData!),
+              'token': token,
+            };
+          }
+        }
+      }
+
+      final data = jsonDecode(response.body);
+      final errorMsg = data['error'] as String? ?? 'Đăng nhập Google thất bại';
+      return {
+        'success': false,
+        'error': errorMsg,
+      };
+    } catch (e) {
+      print('[AuthService] Google Sign-In error: $e');
+      return {
+        'success': false,
+        'error': 'Lỗi đăng nhập Google: ${e.toString()}',
+      };
+    }
+  }
+
   // Login
   static Future<Map<String, dynamic>> login(String email, String password) async {
     try {
