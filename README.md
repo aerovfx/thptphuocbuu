@@ -31,56 +31,95 @@ Dự án website trường học dựa trên kiến trúc LMS (Learning Manageme
 
 ## Công nghệ sử dụng
 
-- **Frontend**: Next.js 14 (App Router), React, TypeScript
-- **Styling**: Tailwind CSS
-- **Backend**: Next.js API Routes
-- **Database**: Prisma ORM với SQLite
-- **Authentication**: NextAuth.js
-- **UI Components**: Radix UI, Lucide Icons
+### Frontend & Mobile
+- **Web App**: Next.js 14 (App Router), React 18, TypeScript
+- **Mobile App**: Flutter, Dart
+- **Styling**: Tailwind CSS (Web), Flutter Material Design (Mobile)
+- **State Management**: React Context/Hooks (Web), Provider/Riverpod (Mobile)
 
-## Cài đặt
+### Backend & Database
+- **API Runtime**: Next.js API Routes (Serverless ready)
+- **Database**: PostgreSQL (via Prisma ORM) with Prisma Accelerate
+- **Authentication**: NextAuth.js (Web), JWT & Google OAuth (Mobile)
+- **Real-time**: WebSocket / Pusher
+- **AI Integration**: OpenAI API (GPT-4) cho xử lý văn bản và tự động hóa
 
-1. **Cài đặt dependencies**:
+### Infrastructure
+- **Cloud Platform**: Google Cloud Platform (GCP)
+- **Storage**: GCP Cloud Storage
+- **Deployment**: Google Cloud Run (Containerized)
+- **CI/CD**: Cloud Build / GitHub Actions
+
+## Cài đặt nhanh
+
+### 1. Web App (Next.js)
 ```bash
 npm install
-```
-
-2. **Thiết lập database**:
-```bash
-# Tạo file .env từ .env.example
-cp .env.example .env
-
-# Generate Prisma client
+cp .env.example .env.local
 npm run db:generate
-
-# Tạo database và tables
-npm run db:push
-```
-
-3. **Chạy ứng dụng**:
-```bash
 npm run dev
 ```
 
-4. **Truy cập**: Mở trình duyệt tại `http://localhost:3000`
+### 2. Mobile App (Flutter)
+```bash
+cd mobile_app
+flutter pub get
+flutter run
+```
+
+## Kiến trúc hệ thống
+
+Dự án được thiết kế theo kiến trúc hướng dịch vụ (Service-Oriented Architecture - SOA) hiện đại, đảm bảo tính mở rộng và bảo mật.
+
+```mermaid
+graph TD
+    subgraph Client_Layer [Client Layer]
+        Web["Web App (Next.js)"]
+        Mobile["Mobile App (Flutter)"]
+        Admin["Admin Panel (Next.js)"]
+    end
+
+    subgraph API_Gateway [API Gateway & Auth]
+        Gateway["API Gateway / NextAuth"]
+    end
+
+    subgraph Service_Layer [Business Logic Layer]
+        LMS["LMS Module"]
+        Social["Social Module"]
+        DMS["DMS Module"]
+        Space["Space & Collab Module"]
+        AI["AI Service"]
+    end
+
+    subgraph Data_Layer [Data & Storage Layer]
+        DB[("PostgreSQL")]
+        GCS["GCP Cloud Storage"]
+    end
+
+    %% Connections
+    Web & Mobile & Admin --> Gateway
+    Gateway --> LMS & Social & DMS & Space
+    LMS & Social & DMS & Space --> DB
+    DMS & Space --> AI
+    DMS & Social --> GCS
+```
 
 ## Cấu trúc dự án
 
 ```
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes
-│   ├── dashboard/         # Trang dashboard
-│   ├── login/            # Trang đăng nhập
-│   └── register/         # Trang đăng ký
-├── components/            # React components
-│   ├── Layout/           # Layout components
-│   └── Social/           # Social media components
-├── lib/                   # Utilities
-│   ├── prisma.ts         # Prisma client
-│   └── auth.ts           # Auth configuration
-├── prisma/               # Database schema
-│   └── schema.prisma     # Prisma schema
-└── types/                # TypeScript types
+├── app/                    # Next.js App Router (Frontend + API Routes)
+│   ├── api/               # API endpoints
+│   ├── dashboard/         # Trang dashboard chính
+│   ├── (auth)/            # Login, Register, Forgot Password
+│   └── ...                # Các module chức năng khác
+├── mobile_app/            # Flutter Mobile Application
+│   ├── lib/               # Mã nguồn Dart
+│   └── assets/            # Tài nguyên hình ảnh, font
+├── components/            # Thư viện React components chung
+├── lib/                   # Utilities, Prisma client, Auth config
+├── prisma/               # Database schema & migrations
+├── public/               # Static assets (Web)
+└── scripts/              # Scripts vận hành và deployment
 ```
 
 ## Database Schema

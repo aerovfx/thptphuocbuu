@@ -56,26 +56,26 @@ export default function SharedLayout({
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null)
-  
+
   // Ensure client-side only rendering to avoid hydration mismatch
   // Use two separate effects to ensure proper timing
   useEffect(() => {
     // First, set mounted after initial render
     setMounted(true)
   }, [])
-  
+
   useEffect(() => {
     // Then, set clientPathname only after mounted is true
     if (mounted) {
       setClientPathname(pathname)
     }
   }, [mounted, pathname])
-  
+
   // Only use session after mount and when status is not loading to avoid hydration mismatch
   // On server, status is typically 'loading', so we treat as no session
   const currentUser = mounted && status !== 'loading' ? session : null
   const isAuthenticated = mounted && status === 'authenticated'
-  
+
   // Use clientPathname instead of pathname to avoid hydration mismatch
   // Only use clientPathname after component has fully mounted AND clientPathname is set
   // This ensures server and client initial render are identical
@@ -161,22 +161,22 @@ export default function SharedLayout({
     requireAuth?: boolean
     studentHidden?: boolean
   }> = [
-    { name: 'Trang chủ', href: '/', icon: Home },
-    { name: 'Giới thiệu', href: '/about', icon: Building2 },
-    { name: 'Tin tức', href: '/news', icon: FileText },
-    { name: 'Hoạt động', href: '/activities', icon: Calendar },
-    { name: 'Tuyển sinh', href: '/admissions', icon: GraduationCap },
-    { name: 'Thư viện ảnh', href: '/gallery', icon: Image },
-    { name: 'Lịch sự kiện', href: '/calendar', icon: Calendar },
-    { name: 'Liên hệ', href: '/contact', icon: Mail },
-    { name: 'Khám phá', href: '/explore', icon: Hash },
-    { name: 'Thông báo', href: '/notifications', icon: Bell, requireAuth: true },
-    { name: 'Tin nhắn', href: '/messages', icon: Mail, requireAuth: true },
-    { name: 'Dấu trang', href: '/bookmarks', icon: Bookmark, requireAuth: true },
-    { name: 'Văn bản', href: '/dashboard/documents', icon: FileText, requireAuth: true, studentHidden: true },
-    { name: 'Premium', href: '/dashboard/premium', icon: Crown, requireAuth: true },
-    { name: 'Hồ sơ', href: '/dashboard/profile', icon: User, requireAuth: true },
-  ]
+      { name: 'Trang chủ', href: '/', icon: Home },
+      { name: 'Giới thiệu', href: '/about', icon: Building2 },
+      { name: 'Tin tức', href: '/news', icon: FileText },
+      { name: 'Hoạt động', href: '/activities', icon: Calendar },
+      { name: 'Tuyển sinh', href: '/admissions', icon: GraduationCap },
+      { name: 'Thư viện ảnh', href: '/gallery', icon: Image },
+      { name: 'Lịch sự kiện', href: '/calendar', icon: Calendar },
+      { name: 'Liên hệ', href: '/contact', icon: Mail },
+      { name: 'Khám phá', href: '/explore', icon: Hash },
+      { name: 'Thông báo', href: '/notifications', icon: Bell, requireAuth: true },
+      { name: 'Tin nhắn', href: '/messages', icon: Mail, requireAuth: true },
+      { name: 'Dấu trang', href: '/bookmarks', icon: Bookmark, requireAuth: true },
+      { name: 'Văn bản', href: '/dashboard/documents', icon: FileText, requireAuth: true, studentHidden: true },
+      { name: 'Premium', href: '/dashboard/premium', icon: Crown, requireAuth: true },
+      { name: 'Hồ sơ', href: '/dashboard/profile', icon: User, requireAuth: true },
+    ]
 
   const dashboardNavigation: Array<{
     name: string
@@ -186,17 +186,18 @@ export default function SharedLayout({
     adminOnly?: boolean
     studentHidden?: boolean
   }> = [
-    { name: 'Trang chủ', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Lớp học', href: '/dashboard/classes', icon: BookOpen, adminOnly: true }, // Module đang trong giai đoạn phát triển
-    { name: 'Mạng xã hội', href: '/dashboard/social', icon: MessageSquare },
-    { name: 'Văn bản', href: '/dashboard/documents', icon: FileText, studentHidden: true },
-    { name: 'Spaces', href: '/dashboard/spaces', icon: Building2, requireAuth: true, studentHidden: true },
-    { name: 'Tổ chuyên môn', href: '/dashboard/departments', icon: Briefcase, requireAuth: true, studentHidden: true },
-    { name: 'Người dùng', href: '/dashboard/users', icon: Users, studentHidden: true },
-    { name: 'Premium', href: '/dashboard/premium', icon: Crown, requireAuth: true },
-    { name: 'Cài đặt', href: '/dashboard/settings', icon: Settings },
-    { name: 'Admin Panel', href: '/dashboard/admin', icon: Shield, adminOnly: true },
-  ]
+      { name: 'Trang chủ', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Lớp học', href: '/dashboard/classes', icon: BookOpen, adminOnly: true }, // Module đang trong giai đoạn phát triển
+      { name: 'Mạng xã hội', href: '/dashboard/social', icon: MessageSquare },
+      { name: 'Văn bản', href: '/dashboard/documents', icon: FileText, studentHidden: true },
+      { name: 'Spaces', href: '/dashboard/spaces', icon: Building2, requireAuth: true, studentHidden: true },
+      { name: 'Tổ chuyên môn', href: '/dashboard/departments', icon: Briefcase, requireAuth: true, studentHidden: true },
+      { name: 'Người dùng', href: '/dashboard/users', icon: Users, studentHidden: true },
+      { name: 'Premium', href: '/dashboard/premium', icon: Crown, requireAuth: true },
+      { name: 'Cài đặt', href: '/dashboard/settings', icon: Settings },
+      { name: 'Tài liệu HT', href: '/dashboard/system-docs', icon: BookOpen, adminOnly: true },
+      { name: 'Admin Panel', href: '/dashboard/admin', icon: Shield, adminOnly: true },
+    ]
 
   // Use pathname to determine navigation items
   // CRITICAL: Always use dashboardNavigation on initial render (both server and client)
@@ -223,13 +224,13 @@ export default function SharedLayout({
     if (!mounted) {
       return dashboardNavigation
     }
-    
+
     // After mount, check clientPathname to decide
     // Only switch if we're sure we're not on a dashboard route
     if (clientPathname && !clientPathname.startsWith('/dashboard')) {
       return navigation
     }
-    
+
     // Default to dashboardNavigation for all dashboard routes or when clientPathname is null
     return dashboardNavigation
   })()
@@ -365,25 +366,25 @@ export default function SharedLayout({
                 const filteredItems = !mounted
                   ? navItems // Show all items on server and initial client render
                   : navItems.filter((item) => {
-                      const isAdminOnly = (item as any).adminOnly === true
-                      if (isAdminOnly) {
-                        // Only show admin-only items to ADMIN, SUPER_ADMIN, and BGH users after mount
-                        const userRole = session?.user?.role
-                        return status === 'authenticated' && (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'BGH')
-                      }
-                      const isStudentHidden = (item as any).studentHidden === true
-                      if (isStudentHidden) {
-                        // Hide student-hidden items for STUDENT role
-                        return status === 'authenticated' && session?.user?.role !== 'STUDENT'
-                      }
-                      return true
-                    })
+                    const isAdminOnly = (item as any).adminOnly === true
+                    if (isAdminOnly) {
+                      // Only show admin-only items to ADMIN, SUPER_ADMIN, and BGH users after mount
+                      const userRole = session?.user?.role
+                      return status === 'authenticated' && (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'BGH')
+                    }
+                    const isStudentHidden = (item as any).studentHidden === true
+                    if (isStudentHidden) {
+                      // Hide student-hidden items for STUDENT role
+                      return status === 'authenticated' && session?.user?.role !== 'STUDENT'
+                    }
+                    return true
+                  })
 
                 return filteredItems.map((item) => {
                   // Calculate isActive only after mount to ensure consistency
                   // On server, always use false to match initial client render
-                  const isActive = mounted && effectivePathname 
-                    ? (effectivePathname === item.href || effectivePathname.startsWith(item.href + '/')) 
+                  const isActive = mounted && effectivePathname
+                    ? (effectivePathname === item.href || effectivePathname.startsWith(item.href + '/'))
                     : false
                   const requiresAuth = item.requireAuth === true
                   const isDisabled = mounted && status === 'unauthenticated' && requiresAuth
@@ -392,7 +393,7 @@ export default function SharedLayout({
                   // Only add dynamic classes after mount to avoid hydration mismatch
                   // CRITICAL: Must be identical on server and initial client render
                   const baseClasses = 'flex items-center space-x-4 px-4 py-3 rounded-full hover:bg-bluelock-light-2 dark:hover:bg-gray-900 transition-colors font-poppins'
-                  
+
                   // On server or before mount, use static classes only
                   if (!mounted) {
                     const staticClassName = `${baseClasses} text-bluelock-dark dark:text-white`.trim()
@@ -408,10 +409,10 @@ export default function SharedLayout({
                       </Link>
                     )
                   }
-                  
+
                   // After mount, use dynamic classes
-                  const activeClasses = isActive 
-                    ? 'font-bold text-bluelock-green dark:text-white' 
+                  const activeClasses = isActive
+                    ? 'font-bold text-bluelock-green dark:text-white'
                     : 'text-bluelock-dark dark:text-white'
                   const disabledClasses = isDisabled ? 'opacity-50 cursor-not-allowed' : ''
                   const className = `${baseClasses} ${activeClasses} ${disabledClasses}`.trim()
