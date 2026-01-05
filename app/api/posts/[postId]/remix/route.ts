@@ -1,20 +1,21 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { authenticateApiRequest } from '@/lib/auth-helpers-api'
 
 // POST /api/posts/[postId]/remix - Remix (repost) a post
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { postId } = await params
+
+    // Authenticate using unified helper (supports both JWT and session)
+    const auth = await authenticateApiRequest(request)
+    if ('error' in auth) {
+      return auth.error
+    }
+    const { userId } = auth
 
     // Check if post exists
     const post = await prisma.post.findUnique({
@@ -40,7 +41,7 @@ export async function POST(
       where: {
         postId_userId: {
           postId,
-          userId: session.user.id,
+          userId: userId,
         },
       },
     })
@@ -63,7 +64,7 @@ export async function POST(
     const repost = await prisma.repost.create({
       data: {
         postId,
-        userId: session.user.id,
+        userId: userId,
       },
       include: {
         user: {
@@ -90,25 +91,28 @@ export async function POST(
 
 // GET /api/posts/[postId]/remix - Check if current user has remixed this post
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    const { postId } = await params
+
+    // Authenticate using unified helper (supports both JWT and session)
+    const auth = await authenticateApiRequest(request)
+    if ('error' in auth) {
+      // For GET requests, return false instead of error (optional auth)
       return NextResponse.json({ remixed: false })
     }
-
-    const { postId } = await params
+    const { userId } = auth
 
     const repost = await prisma.repost.findUnique({
       where: {
         postId_userId: {
           postId,
-          userId: session.user.id,
+          userId,
         },
       },
-    })
+    }).catch(() => null)
 
     return NextResponse.json({ remixed: !!repost })
   } catch (error) {

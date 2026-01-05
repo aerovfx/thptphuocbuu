@@ -1,9 +1,8 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { moderateContent } from '@/lib/content-moderation'
+import { authenticateApiRequest } from '@/lib/auth-helpers-api'
 
 const commentSchema = z.object({
   content: z.string().min(1),
@@ -23,6 +22,7 @@ export async function GET(
             id: true,
             firstName: true,
             lastName: true,
+            avatar: true,
           },
         },
       },
@@ -40,15 +40,18 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
     const { postId } = await params
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate using unified helper (supports both JWT and session)
+    const auth = await authenticateApiRequest(request)
+    if ('error' in auth) {
+      return auth.error
     }
+    const { userId: authorId } = auth
 
     const body = await request.json()
     const validatedData = commentSchema.parse(body)
@@ -75,7 +78,7 @@ export async function POST(
       data: {
         content: validatedData.content,
         postId: postId,
-        authorId: session.user.id,
+        authorId: authorId,
       },
       include: {
         author: {
@@ -83,6 +86,7 @@ export async function POST(
             id: true,
             firstName: true,
             lastName: true,
+            avatar: true,
           },
         },
       },

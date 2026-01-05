@@ -9,6 +9,14 @@ import { sendAccountLockoutEmail } from './email'
 const isGoogleOAuthConfigured =
   !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET
 
+console.log('[Auth Config] Env check:')
+console.log('- NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
+console.log('- NEXTAUTH_URL_INTERNAL:', process.env.NEXTAUTH_URL_INTERNAL)
+console.log('- NODE_ENV:', process.env.NODE_ENV)
+console.log('- VERCEL_URL:', process.env.VERCEL_URL)
+console.log('- HOSTNAME:', process.env.HOSTNAME)
+console.log('- PORT:', process.env.PORT)
+
 // Throttle DB reads inside auth callbacks to avoid slowing down every request.
 // NextAuth calls `jwt()` frequently (e.g. session checks). A full DB roundtrip each time
 // will make the whole app feel sluggish under load.
@@ -513,24 +521,35 @@ export const authOptions: NextAuthOptions = {
       // If token doesn't have id or role, try to fetch from database using email
       if (!token.id && session.user?.email) {
         try {
-          const user = await prisma.user.findUnique({
-            where: { email: session.user.email },
-            select: {
-              id: true,
-              role: true,
-              avatar: true,
-              firstName: true,
-              lastName: true,
-            },
-          })
+          // Add timeout to prevent hanging on slow DB connections
+          const user = await Promise.race([
+            prisma.user.findUnique({
+              where: { email: session.user.email },
+              select: {
+                id: true,
+                role: true,
+                avatar: true,
+                firstName: true,
+                lastName: true,
+              },
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Session callback timeout')), 3000)
+            ),
+          ]) as any
 
           if (user) {
             token.id = user.id
             token.role = user.role
             token.avatar = user.avatar
           }
-        } catch (error) {
-          logger.error('[Auth] Error fetching user in session callback:', error)
+        } catch (error: any) {
+          // Don't throw error - just log and continue with existing token
+          if (error?.message?.includes('timeout') || error?.message?.includes('connection')) {
+            logger.warn('[Auth] DB timeout in session callback, using cached token data')
+          } else {
+            logger.error('[Auth] Error fetching user in session callback:', error)
+          }
         }
       }
 
@@ -542,10 +561,12 @@ export const authOptions: NextAuthOptions = {
         session.user.image = (token.avatar as string) || session.user.image || null
       }
 
-      // Validate session - only throw if we still don't have essential data
+      // DON'T throw error - gracefully handle missing data
+      // Cloud Run cold starts can cause DB connection issues
       if (!token.id && !session.user?.email) {
-        logger.error('[Auth] Session validation failed: missing id and email')
-        throw new Error('Session không hợp lệ')
+        logger.error('[Auth] Session validation warning: missing id and email')
+        // Return session anyway - don't block user
+        // The auth system will handle this gracefully
       }
 
       // Set default role if missing

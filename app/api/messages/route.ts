@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { moderateContent } from '@/lib/content-moderation'
 import { withCsrfProtection } from '@/lib/csrf-middleware'
+import { authenticateRequest } from '@/lib/jwt-auth'
 
 const createMessageSchema = z.object({
   conversationId: z.string().optional(),
@@ -14,10 +15,17 @@ const createMessageSchema = z.object({
 })
 
 // GET /api/messages - Get conversations list
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    const jwtUser = await authenticateRequest(request)
+    const session = !jwtUser ? await getServerSession(authOptions) : null
+
+    if (!jwtUser && !session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const currentUserId = jwtUser?.id || session?.user?.id
+    if (!currentUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -29,8 +37,8 @@ export async function GET(request: Request) {
       const conversation = await prisma.conversation.findFirst({
         where: {
           OR: [
-            { user1Id: session.user.id, user2Id: userId },
-            { user1Id: userId, user2Id: session.user.id },
+            { user1Id: currentUserId, user2Id: userId },
+            { user1Id: userId, user2Id: currentUserId },
           ],
         },
         include: {
@@ -76,7 +84,7 @@ export async function GET(request: Request) {
 
       // Get the other user
       const otherUser =
-        conversation.user1Id === session.user.id ? conversation.user2 : conversation.user1
+        conversation.user1Id === currentUserId ? conversation.user2 : conversation.user1
 
       return NextResponse.json({
         conversation: {
@@ -85,7 +93,7 @@ export async function GET(request: Request) {
           lastMessage: conversation.lastMessage,
           lastMessageAt: conversation.lastMessageAt,
           unreadCount:
-            conversation.user1Id === session.user.id
+            conversation.user1Id === currentUserId
               ? conversation.user1UnreadCount
               : conversation.user2UnreadCount,
         },
@@ -96,7 +104,7 @@ export async function GET(request: Request) {
     // Get all conversations for current user
     const conversations = await prisma.conversation.findMany({
       where: {
-        OR: [{ user1Id: session.user.id }, { user2Id: session.user.id }],
+        OR: [{ user1Id: currentUserId }, { user2Id: currentUserId }],
       },
       include: {
         user1: {
@@ -134,9 +142,9 @@ export async function GET(request: Request) {
 
     // Transform conversations to include other user info
     const transformedConversations = conversations.map((conv) => {
-      const otherUser = conv.user1Id === session.user.id ? conv.user2 : conv.user1
+      const otherUser = conv.user1Id === currentUserId ? conv.user2 : conv.user1
       const unreadCount =
-        conv.user1Id === session.user.id ? conv.user1UnreadCount : conv.user2UnreadCount
+        conv.user1Id === currentUserId ? conv.user1UnreadCount : conv.user2UnreadCount
 
       return {
         id: conv.id,
@@ -164,10 +172,17 @@ export async function GET(request: Request) {
 }
 
 // POST /api/messages - Send a message
-export const POST = withCsrfProtection(async (request: NextRequest) => {
+export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    const jwtUser = await authenticateRequest(request)
+    const session = !jwtUser ? await getServerSession(authOptions) : null
+
+    if (!jwtUser && !session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const currentUserId = jwtUser?.id || session?.user?.id
+    if (!currentUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -196,8 +211,8 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
     let conversation = await prisma.conversation.findFirst({
       where: {
         OR: [
-          { user1Id: session.user.id, user2Id: validatedData.receiverId },
-          { user1Id: validatedData.receiverId, user2Id: session.user.id },
+          { user1Id: currentUserId, user2Id: validatedData.receiverId },
+          { user1Id: validatedData.receiverId, user2Id: currentUserId },
         ],
       },
     })
@@ -206,7 +221,7 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
       // Create new conversation
       conversation = await prisma.conversation.create({
         data: {
-          user1Id: session.user.id,
+          user1Id: currentUserId,
           user2Id: validatedData.receiverId,
         },
       })
@@ -216,7 +231,7 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
     const message = await prisma.message.create({
       data: {
         conversationId: conversation.id,
-        senderId: session.user.id,
+        senderId: currentUserId,
         content: validatedData.content,
         imageUrl: validatedData.imageUrl || null,
       },
@@ -233,7 +248,7 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
     })
 
     // Update conversation's last message and unread count
-    const isUser1 = conversation.user1Id === session.user.id
+    const isUser1 = conversation.user1Id === currentUserId
     await prisma.conversation.update({
       where: { id: conversation.id },
       data: {
@@ -258,5 +273,5 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
     console.error('Error sending message:', error)
     return NextResponse.json({ error: 'Đã xảy ra lỗi khi gửi tin nhắn' }, { status: 500 })
   }
-}) // Close withCsrfProtection wrapper
+}
 

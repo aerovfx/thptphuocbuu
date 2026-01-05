@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { authenticateApiRequest } from '@/lib/auth-helpers-api'
 
 // GET - Check if user has liked the post
 export async function GET(
@@ -11,7 +12,7 @@ export async function GET(
   try {
     const { postId } = await params
     const session = await getServerSession(authOptions)
-    if (!session) {
+    if (!session || !session.user.id) {
       return NextResponse.json({ liked: false }, { status: 200 })
     }
 
@@ -22,7 +23,7 @@ export async function GET(
           userId: session.user.id,
         },
       },
-    })
+    }).catch(() => null)
 
     return NextResponse.json({ liked: !!like })
   } catch (error) {
@@ -32,22 +33,25 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
     const { postId } = await params
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate using unified helper (supports both JWT and session)
+    const auth = await authenticateApiRequest(request)
+    if ('error' in auth) {
+      return auth.error
     }
+    const { userId } = auth
 
     // Check if already liked
     const existingLike = await prisma.like.findUnique({
       where: {
         postId_userId: {
           postId: postId,
-          userId: session.user.id,
+          userId: userId,
         },
       },
     })
@@ -59,7 +63,7 @@ export async function POST(
     const like = await prisma.like.create({
       data: {
         postId: postId,
-        userId: session.user.id,
+        userId: userId,
       },
     })
 
@@ -78,15 +82,18 @@ export async function POST(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
     const { postId } = await params
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate using unified helper (supports both JWT and session)
+    const auth = await authenticateApiRequest(request)
+    if ('error' in auth) {
+      return auth.error
     }
+    const { userId } = auth
 
     // Use delete with unique constraint for safety
     try {
@@ -94,7 +101,7 @@ export async function DELETE(
         where: {
           postId_userId: {
             postId: postId,
-            userId: session.user.id,
+            userId: userId,
           },
         },
       })

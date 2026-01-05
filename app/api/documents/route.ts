@@ -1,18 +1,26 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { uploadFileFromFormData } from '@/lib/storage'
 import { validateDocument } from '@/lib/file-validation'
+import { authenticateRequest } from '@/lib/jwt-auth'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    // Try JWT authentication first (for mobile app)
+    const jwtUser = await authenticateRequest(request)
+    const session = !jwtUser ? await getServerSession(authOptions) : null
+
+    if (!jwtUser && !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (session.user.role !== 'TEACHER' && session.user.role !== 'ADMIN') {
+    const currentUser = jwtUser || session!.user
+    const userRole = currentUser.role
+    const userId = currentUser.id
+
+    if (userRole !== 'TEACHER' && userRole !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Chỉ giáo viên và quản trị viên mới có thể tải lên văn bản' },
         { status: 403 }
@@ -53,7 +61,7 @@ export async function POST(request: Request) {
         mimeType: result.mimeType,
         type: type as any,
         category: category || null,
-        uploadedById: session.user.id,
+        uploadedById: userId,
       },
     })
 
@@ -67,15 +75,22 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    // Try JWT authentication first (for mobile app)
+    const jwtUser = await authenticateRequest(request)
+    const session = !jwtUser ? await getServerSession(authOptions) : null
+
+    if (!jwtUser && !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const currentUser = jwtUser || session!.user
+    const userRole = currentUser.role
+    const userId = currentUser.id
+
     let documents
-    if (session.user.role === 'ADMIN' || session.user.role === 'BGH' || session.user.role === 'TEACHER') {
+    if (userRole === 'ADMIN' || userRole === 'BGH' || userRole === 'TEACHER') {
       documents = await prisma.document.findMany({
         include: {
           uploadedBy: {
@@ -91,7 +106,7 @@ export async function GET(request: Request) {
       documents = await prisma.document.findMany({
         where: {
           OR: [
-            { access: { some: { userId: session.user.id } } },
+            { access: { some: { userId: userId } } },
             { access: { none: {} } }, // Public documents
           ],
         },

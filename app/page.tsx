@@ -1,8 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { getCurrentSession } from '@/lib/auth-helpers'
 import dynamic from 'next/dynamic'
-import CountdownLanding from '@/components/Landing/CountdownLanding'
-import LaunchOverlay from '@/components/Landing/LaunchOverlay'
 
 // Lazy load HomePage to reduce initial bundle size
 const HomePage = dynamic(() => import('@/components/Home/HomePage'), {
@@ -70,7 +68,7 @@ async function getPublicPosts() {
     orderBy: { createdAt: 'desc' },
     take: 50,
   })
-  
+
   // Posts are already filtered in the query, no need for additional filtering
   return posts
 }
@@ -80,28 +78,7 @@ export default async function Home() {
   // getCurrentSession() handles JWT errors gracefully
   const session = await getCurrentSession()
 
-  // Pre-launch landing page (countdown). After launch time, fall through to normal homepage.
-  // Configure via NEXT_PUBLIC_LAUNCH_AT (ISO string). Default: 2025-12-20 (VN timezone).
-  const launchAtRaw = process.env.NEXT_PUBLIC_LAUNCH_AT || '2025-12-20T00:00:00+07:00'
-  const launchAt = new Date(launchAtRaw)
-  const now = new Date()
-  const isValidLaunchDate = !isNaN(launchAt.getTime())
-
-  // If logged in and landing is active, clicking should go to dashboard, not login.
-  const landingHref = session ? '/dashboard' : '/login'
-
-  if (isValidLaunchDate && now < launchAt) {
-    // Before launch: show countdown with rocket. User can click rocket to open login.
-    return <CountdownLanding launchAtIso={launchAtRaw} href={landingHref} />
-  }
-  
   const posts = await getPublicPosts()
 
-  return (
-    <>
-      {/* After launch: show normal homepage, but run one-time rocket launch overlay for each user who hasn't seen it yet */}
-      {isValidLaunchDate && <LaunchOverlay launchAtIso={launchAtRaw} href={landingHref} />}
-      <HomePage initialPosts={posts} session={session} />
-    </>
-  )
+  return <HomePage initialPosts={posts} session={session} />
 }

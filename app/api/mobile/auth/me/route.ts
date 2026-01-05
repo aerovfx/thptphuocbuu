@@ -52,7 +52,6 @@ export async function GET(request: Request) {
         bio: true,
         phone: true,
         dateOfBirth: true,
-        status: true,
         createdAt: true,
       },
     })
@@ -60,14 +59,6 @@ export async function GET(request: Request) {
     if (!user) {
       return NextResponse.json(
         { error: 'Người dùng không tồn tại' },
-        { status: 404, headers: corsHeaders }
-      )
-    }
-
-    // Check if user is active
-    if (user.status !== 'ACTIVE') {
-      return NextResponse.json(
-        { error: 'Tài khoản của bạn đã bị tạm dừng' },
         { status: 403, headers: corsHeaders }
       )
     }

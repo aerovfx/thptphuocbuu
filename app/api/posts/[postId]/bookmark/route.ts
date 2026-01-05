@@ -1,18 +1,20 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { authenticateApiRequest } from '@/lib/auth-helpers-api'
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
     const { postId } = await params
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate using unified helper (supports both JWT and session)
+    const auth = await authenticateApiRequest(request)
+    if ('error' in auth) {
+      return auth.error
     }
+    const { userId } = auth
 
     // Check if post exists
     const post = await prisma.post.findUnique({
@@ -28,7 +30,7 @@ export async function POST(
       where: {
         postId_userId: {
           postId,
-          userId: session.user.id,
+          userId: userId,
         },
       },
       include: {
@@ -56,7 +58,7 @@ export async function POST(
     const bookmark = await prisma.bookmark.create({
       data: {
         postId,
-        userId: session.user.id,
+        userId: userId,
       },
       include: {
         post: {
@@ -85,22 +87,25 @@ export async function POST(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
     const { postId } = await params
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate using unified helper (supports both JWT and session)
+    const auth = await authenticateApiRequest(request)
+    if ('error' in auth) {
+      return auth.error
     }
+    const { userId } = auth
 
     // Check if bookmark exists
     const existingBookmark = await prisma.bookmark.findUnique({
       where: {
         postId_userId: {
           postId,
-          userId: session.user.id,
+          userId: userId,
         },
       },
     })
@@ -115,7 +120,7 @@ export async function DELETE(
       where: {
         postId_userId: {
           postId,
-          userId: session.user.id,
+          userId: userId,
         },
       },
     })

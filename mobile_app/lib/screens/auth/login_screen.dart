@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../services/auth_service.dart';
-import '../../main.dart';
 import '../../widgets/theme_toggle.dart';
+import '../home/home_screen.dart';
 import './register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -44,17 +46,22 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = false;
     });
 
+    if (!mounted) return;
+    
     if (result['success'] == true) {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MyApp()),
-        );
-      }
+      // Wait a bit to ensure token is saved
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (!mounted) return;
+      // Navigate directly to HomeScreen instead of MyApp to avoid re-checking auth
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
     } else {
+      final errorMessage = result['error'] as String? ?? 'Đăng nhập thất bại';
+      // Show more detailed error in debug
+      print('Login error: $errorMessage');
       if (mounted) {
-        final errorMessage = result['error'] as String? ?? 'Đăng nhập thất bại';
-        // Show more detailed error in debug
-        print('Login error: $errorMessage');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
@@ -73,17 +80,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final result = await AuthService.signInWithGoogle();
 
-    if (mounted) {
-      setState(() {
-        _isGoogleLoading = false;
-      });
+    if (!mounted) return;
+    
+    setState(() {
+      _isGoogleLoading = false;
+    });
 
-      if (result['success'] == true) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MyApp()),
-        );
-      } else {
-        final errorMessage = result['error'] as String? ?? 'Đăng nhập Google thất bại';
+    if (result['success'] == true) {
+      // Wait a bit to ensure token is saved
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (!mounted) return;
+      // Navigate directly to HomeScreen instead of MyApp to avoid re-checking auth
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
+    } else {
+      final errorMessage = result['error'] as String? ?? 'Đăng nhập Google thất bại';
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
@@ -116,16 +130,29 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo/Title
-                  Icon(
-                    Icons.school,
+                  const Icon(
+                    Icons.rocket_launch,
                     size: 80,
-                    color: theme.colorScheme.primary,
+                    color: Colors.teal,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'PhuocBuu',
+                    'PhuocBuu Social',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.displayMedium,
+                    style: GoogleFonts.outfit(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Kết nối cộng đồng, nâng tầm bản thân',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
                   ),
                   const SizedBox(height: 48),
 
@@ -133,17 +160,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: 'Email hoặc Số điện thoại',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Vui lòng nhập email';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Email không hợp lệ';
+                        return 'Vui lòng nhập thông tin';
                       }
                       return null;
                     },
@@ -156,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       labelText: 'Mật khẩu',
-                      prefixIcon: const Icon(Icons.lock),
+                      prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility : Icons.visibility_off,
@@ -167,14 +191,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           });
                         },
                       ),
-                      border: const OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Vui lòng nhập mật khẩu';
-                      }
-                      if (value.length < 6) {
-                        return 'Mật khẩu phải có ít nhất 6 ký tự';
                       }
                       return null;
                     },
@@ -186,19 +207,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: (_isLoading || _isGoogleLoading) ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: _isLoading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
                           )
-                        : Text(
+                        : const Text(
                             'Đăng nhập',
-                            style: theme.textTheme.labelLarge,
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
                   // Divider
                   Row(
@@ -207,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          'Hoặc',
+                          'Hoặc tiếp tục với',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: Colors.grey[600],
                           ),
@@ -216,34 +240,64 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Expanded(child: Divider()),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
-                  // Google Sign-In button
+                  // Google Login Button (Prominent)
                   OutlinedButton.icon(
                     onPressed: (_isLoading || _isGoogleLoading) ? null : _handleGoogleSignIn,
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       side: BorderSide(color: Colors.grey[300]!),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: _isGoogleLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Image.network(
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        : SvgPicture.network(
                             'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
                             height: 24,
-                            width: 24,
                           ),
                     label: Text(
-                      _isGoogleLoading ? 'Đang xử lý...' : 'Đăng nhập với Google',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: Colors.grey[700],
+                      'Tiếp tục với Google',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+
+                  // Other Social Options (Apple, Phone)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {},
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            side: BorderSide(color: Colors.grey[300]!),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: const Icon(Icons.apple, color: Colors.black, size: 24),
+                          label: const Text('Apple', style: TextStyle(color: Colors.black)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {},
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            side: BorderSide(color: Colors.grey[300]!),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: const Icon(Icons.phone, color: Colors.blue, size: 20),
+                          label: const Text('Phone', style: TextStyle(color: Colors.blue)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
 
                   // Register link
                   Row(
@@ -260,7 +314,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                         child: const Text(
                           'Đăng ký ngay',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal),
                         ),
                       ),
                     ],
@@ -270,6 +324,40 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton(String url, bool isLoading, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: Container(
+        height: 60,
+        width: 80,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: isLoading
+            ? const Center(child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+            : Image.network(url),
+      ),
+    );
+  }
+
+  Widget _buildSocialButtonIcon(IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 60,
+        width: 80,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Icon(icon, color: color, size: 28),
       ),
     );
   }

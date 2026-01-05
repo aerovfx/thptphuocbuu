@@ -1,10 +1,10 @@
 # Use the official Node.js runtime as base image
-FROM node:20-alpine AS base
-RUN apk add --no-cache ffmpeg
+FROM node:20-slim AS base
+# Install ffmpeg and openssl (required for Prisma)
+RUN apt-get update && apt-get install -y ffmpeg openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy package files

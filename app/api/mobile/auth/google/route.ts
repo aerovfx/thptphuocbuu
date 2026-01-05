@@ -3,8 +3,9 @@ import { prisma } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
 import { OAuth2Client } from 'google-auth-library'
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'fallback-secret-key'
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || 'fallback-secret-key'
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
+const GOOGLE_IOS_CLIENT_ID = '1069154179448-b0ffktmf1ugmufv2q7521aq1d1ikv8fi.apps.googleusercontent.com'
 
 // CORS headers for mobile app
 const corsHeaders = {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     try {
       const ticket = await client.verifyIdToken({
         idToken: idToken,
-        audience: GOOGLE_CLIENT_ID,
+        audience: [GOOGLE_CLIENT_ID, GOOGLE_IOS_CLIENT_ID],
       })
       payload = ticket.getPayload()
 
@@ -85,23 +86,17 @@ export async function POST(request: NextRequest) {
         lastName: true,
         role: true,
         avatar: true,
-        status: true,
+        bio: true,
+        phone: true,
+        dateOfBirth: true,
         emailVerified: true,
+        createdAt: true,
       },
     })
 
     if (user) {
       // Existing user
       console.log('[Mobile Google Auth] Existing user found:', user.email)
-
-      // Block login for SUSPENDED users
-      if (user.status && user.status !== 'ACTIVE') {
-        console.warn(`[Mobile Google Auth] Login blocked for suspended user: ${user.email}`)
-        return NextResponse.json(
-          { error: 'Tài khoản đã bị tạm dừng' },
-          { status: 403, headers: corsHeaders }
-        )
-      }
 
       // Update avatar if changed
       if (photoUrl && photoUrl !== user.avatar) {
@@ -151,7 +146,6 @@ export async function POST(request: NextRequest) {
           avatar: photoUrl || payload?.picture || null,
           emailVerified: new Date(),
           role: 'STUDENT', // Default role
-          status: 'ACTIVE',
         },
         select: {
           id: true,
@@ -160,8 +154,11 @@ export async function POST(request: NextRequest) {
           lastName: true,
           role: true,
           avatar: true,
-          status: true,
+          bio: true,
+          phone: true,
+          dateOfBirth: true,
           emailVerified: true,
+          createdAt: true,
         },
       })
 
@@ -193,6 +190,10 @@ export async function POST(request: NextRequest) {
           fullName: `${user.firstName} ${user.lastName}`,
           role: user.role,
           avatar: user.avatar,
+          bio: user.bio,
+          phone: user.phone,
+          dateOfBirth: user.dateOfBirth,
+          createdAt: user.createdAt,
         },
       },
       { headers: corsHeaders }

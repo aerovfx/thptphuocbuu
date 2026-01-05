@@ -1,8 +1,9 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { redirect, notFound } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import UserProfile from '@/components/Profile/UserProfile'
+import UserNotFoundMigration from '@/components/Profile/UserNotFoundMigration'
 
 async function getUserProfile(userId: string, currentUserId?: string) {
   const user = await prisma.user.findUnique({
@@ -228,11 +229,12 @@ export default async function UserProfilePage({
   const userProfile = await getUserProfile(id, session?.user.id)
 
   if (!userProfile) {
-    // Keep admins on dashboard if they hit an invalid id; for normal users return 404.
+    // Keep admins on dashboard if they hit an invalid id; for normal users show migration page
     if (session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN') {
       redirect('/dashboard')
     }
-    notFound()
+    // Show migration info page instead of generic 404
+    return <UserNotFoundMigration userId={id} />
   }
 
   return <UserProfile user={userProfile} currentUser={session} />

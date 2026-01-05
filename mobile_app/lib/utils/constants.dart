@@ -11,7 +11,22 @@ class ApiConstants {
   static const String meEndpoint = '/api/mobile/auth/me';
   
   // Posts endpoints
-  static const String postsEndpoint = '/api/mobile/posts';
+  static const String postsEndpoint = '/api/posts';
+  
+  // Messages endpoints
+  static const String messagesEndpoint = '/api/messages';
+  
+  // Notifications endpoints
+  static const String notificationsEndpoint = '/api/notifications';
+  
+  // Documents endpoints
+  static const String documentsEndpoint = '/api/documents';
+  
+  // News endpoints
+  static const String newsEndpoint = '/api/news';
+  
+  // Bookmarks endpoints
+  static const String bookmarksEndpoint = '/api/bookmarks';
   
   // Storage keys
   static const String tokenKey = 'auth_token';

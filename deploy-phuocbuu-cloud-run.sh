@@ -133,18 +133,19 @@ SERVICE_URL="$(gcloud run services describe "${SERVICE_NAME}" \
   --format 'value(status.url)')"
 echo "Service URL: ${SERVICE_URL}"
 
-echo ""
+# Step 6: Setting runtime environment variables
 echo "📋 Step 6: Setting runtime environment variables..."
 ENV_UPDATE_ARGS=(
   run services update "${SERVICE_NAME}"
   --region "${REGION}"
   --project "${PROJECT_ID}"
   --update-env-vars "DATABASE_URL=${DATABASE_URL}"
-  --update-env-vars "NEXTAUTH_URL=${SERVICE_URL}"
+  --update-env-vars "NEXTAUTH_URL=https://thptphuocbuu.edu.vn"
   --update-env-vars "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}"
   --update-env-vars "GCS_BUCKET_NAME=${GCS_BUCKET_NAME}"
   --update-env-vars "GOOGLE_CLOUD_PROJECT_ID=${PROJECT_ID}"
   --update-env-vars "NODE_ENV=production"
+  --update-env-vars "AUTH_TRUST_HOST=true"
 )
 
 if [[ -n "${GOOGLE_CLIENT_ID:-}" && -n "${GOOGLE_CLIENT_SECRET:-}" ]]; then

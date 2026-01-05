@@ -11,6 +11,11 @@ class User {
   final DateTime? dateOfBirth;
   final DateTime? createdAt;
 
+  final int followersCount;
+  final int followingCount;
+  final int reachCount;
+  final bool isVerified;
+
   User({
     required this.id,
     required this.email,
@@ -23,6 +28,10 @@ class User {
     this.phone,
     this.dateOfBirth,
     this.createdAt,
+    this.followersCount = 0,
+    this.followingCount = 0,
+    this.reachCount = 0,
+    this.isVerified = false,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -42,6 +51,10 @@ class User {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : null,
+      followersCount: json['followersCount'] as int? ?? 0,
+      followingCount: json['followingCount'] as int? ?? 0,
+      reachCount: json['reachCount'] as int? ?? 0,
+      isVerified: json['isVerified'] as bool? ?? false,
     );
   }
 
@@ -58,6 +71,10 @@ class User {
       'phone': phone,
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'createdAt': createdAt?.toIso8601String(),
+      'followersCount': followersCount,
+      'followingCount': followingCount,
+      'reachCount': reachCount,
+      'isVerified': isVerified,
     };
   }
 }

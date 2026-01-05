@@ -6,6 +6,7 @@
 
 /**
  * Detect potentially dangerous HTML/script tags in content
+ * Allows safe YouTube iframes but blocks other dangerous tags
  */
 export function detectXssAttempt(content: string): {
     detected: boolean
@@ -17,7 +18,6 @@ export function detectXssAttempt(content: string): {
     const dangerousTags = [
         '<script',
         '</script>',
-        '<iframe',
         '<embed',
         '<object',
         '<applet',
@@ -42,6 +42,18 @@ export function detectXssAttempt(content: string): {
     ]
 
     const normalizedContent = content.toLowerCase()
+
+    // Check for iframes - allow only YouTube iframes
+    if (normalizedContent.includes('<iframe')) {
+        const isYouTubeEmbed =
+            normalizedContent.includes('youtube.com/embed') ||
+            normalizedContent.includes('youtube-nocookie.com/embed')
+
+        if (!isYouTubeEmbed) {
+            violations.push('<iframe (non-YouTube)')
+        }
+        // YouTube iframes are allowed, don't add to violations
+    }
 
     for (const tag of dangerousTags) {
         if (normalizedContent.includes(tag)) {
@@ -117,15 +129,21 @@ export function escapeHtml(content: string): string {
 
 /**
  * Detect and block common XSS payloads
+ * Allows YouTube iframes but blocks other dangerous patterns
  */
 export function detectCommonXssPayloads(content: string): boolean {
+    // Check for YouTube iframe first - if found, allow it
+    const youtubeIframePattern = /<iframe[^>]*(?:youtube\.com\/embed|youtube-nocookie\.com\/embed)[^>]*>/gi
+    const hasYouTubeIframe = youtubeIframePattern.test(content)
+
     const commonPayloads = [
         /<script[\s\S]*?>[\s\S]*?<\/script>/gi,
         /<img[^>]+src[^>]*>/gi,
         /<svg[^>]*>[\s\S]*?<\/svg>/gi,
         /javascript:\s*[^\s]*/gi,
         /on\w+\s*=\s*["'][^"']*["']/gi,
-        /<iframe[^>]*>/gi,
+        // Skip iframe check if it's a YouTube iframe
+        ...(hasYouTubeIframe ? [] : [/<iframe[^>]*>/gi]),
         /<embed[^>]*>/gi,
         /<object[^>]*>/gi,
         /eval\s*\(/gi,

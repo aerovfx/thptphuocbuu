@@ -1,7 +1,19 @@
-# 📊 Tình trạng hiện tại - Deployment & OAuth Issue
+# 📊 Tình trạng hiện tại - THPT Phước Bửu LMS
 
-**Ngày**: 2025-12-23
+**Ngày cập nhật**: 2025-12-25 21:30 UTC
 **Service**: thptphuocbuu360 (Cloud Run)
+**Domain**: thptphuocbuu.edu.vn
+
+---
+
+## 🚨 VẤN ĐỀ HIỆN TẠI
+
+| Thành phần | Trạng thái | Vấn đề |
+|------------|-----------|--------|
+| Web App - Google OAuth | ❌ LỖI | AccessDenied error |
+| Mobile App - Social Feed | ❌ LỖI | API /api/posts returns 500 |
+| Web App - Credentials Login | ✅ OK | Hoạt động bình thường |
+| Mobile App - Login | ✅ OK | Đăng nhập thành công |
 
 ---
 
@@ -23,7 +35,8 @@
 ### 3. Cloud Run Deployment - HOẠT ĐỘNG HOÀN HẢO ✅
 - ✅ Service deployed: `thptphuocbuu360`
 - ✅ Region: `asia-southeast1`
-- ✅ URL: https://thptphuocbuu360-1069154179448.asia-southeast1.run.app
+- ✅ URL: https://thptphuocbuu.edu.vn (Custom Domain)
+- ✅ Backing URL: https://thptphuocbuu360-1069154179448.asia-southeast1.run.app
 - ✅ Latest revision: `thptphuocbuu360-00052-62l`
 - ✅ Resources: 2 CPU, 2Gi RAM
 - ✅ Auto-scaling: 0-10 instances
@@ -33,7 +46,7 @@ Tất cả env vars đã được set đúng trên Cloud Run:
 
 ```bash
 ✅ DATABASE_URL          (Prisma PostgreSQL)
-✅ NEXTAUTH_URL          https://thptphuocbuu360-1069154179448.asia-southeast1.run.app
+✅ NEXTAUTH_URL          https://thptphuocbuu.edu.vn
 ✅ NEXTAUTH_SECRET       (44 characters)
 ✅ GOOGLE_CLIENT_ID      1069154179448-cghmkq9hs65g3775ogercfcj6c7sobt1.apps.googleusercontent.com
 ✅ GOOGLE_CLIENT_SECRET  (35 characters)
@@ -48,61 +61,97 @@ Test endpoint `/api/auth/providers` cho kết quả đúng:
 ```json
 {
   "google": {
-    "callbackUrl": "https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/api/auth/callback/google"
+    "callbackUrl": "https://thptphuocbuu.edu.vn/api/auth/callback/google"
   }
 }
 ```
 
 ---
 
-## ❌ Vấn đề còn lại
+## ❌ VẤN ĐỀ 1: Web Google OAuth - AccessDenied
 
-### Google OAuth Login - LỖI redirect_uri_mismatch ❌
-
-**Triệu chứng:**
+### 🔍 Hiện tượng:
 ```
-Access blocked: This app's request is invalid
-Error 400: redirect_uri_mismatch
+URL: https://thptphuocbuu.edu.vn/login?error=AccessDenied
 ```
 
-**Nguyên nhân:**
-- Cloud Run cấu hình: ✅ ĐÚNG
-- NextAuth configuration: ✅ ĐÚNG
-- Callback URL generated: ✅ ĐÚNG (`https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/api/auth/callback/google`)
-- **Google Cloud Console OAuth**: ❌ CHƯA ĐÚNG
+Khi user click "Sign in with Google" trên web, bị redirect về login với error `AccessDenied`.
 
-**Chứng cứ:**
-Test OAuth flow cho kết quả redirect về `/login?error=google`, xác nhận lỗi từ phía Google OAuth configuration.
+### 🔎 Nguyên nhân:
+
+#### 1. Google Console chưa whitelist domain ⭐ **NGUYÊN NHÂN CHÍNH**
+
+**Đã kiểm tra:**
+- ✅ `NEXTAUTH_URL` = `https://thptphuocbuu.edu.vn`
+- ✅ Callback URL đúng: `https://thptphuocbuu.edu.vn/api/auth/callback/google`
+- ❌ Google OAuth signin endpoint trả về HTTP 400
+- ⚠️ **Chưa verify Google Console đã thêm domain**
+
+#### 2. NextAuth signIn callback có thể reject
+
+**File**: `lib/auth.ts:282-390`
+
+Callback có thể return `false` (gây AccessDenied) nếu:
+- Email domain không trong whitelist (line 346-348)
+- User bị SUSPENDED (line 301-304)
+- Lỗi database
 
 ---
 
-## 🔧 Hành động cần làm
+## ❌ VẤN ĐỀ 2: Mobile App - Social Feed Không Load
 
-### Bước tiếp theo: Fix Google Cloud Console OAuth
+### 🔍 Hiện tượng:
+Mobile app đăng nhập OK nhưng feed không hiển thị posts.
 
-Đã tạo hướng dẫn chi tiết tại: **[GOOGLE_OAUTH_FIX_STEPS.md](GOOGLE_OAUTH_FIX_STEPS.md)**
+### 🔎 Nguyên nhân:
 
-**TÓM TẮT:**
+**API `/api/posts` trả về lỗi 500:**
+```bash
+curl "https://thptphuocbuu.edu.vn/api/posts"
+# {"error":"Internal server error"}
+# HTTP 500
+```
+
+**File**: `app/api/posts/route.ts:345-446`
+
+Endpoint này là PUBLIC nhưng đang crash. Có thể do:
+- Prisma query error với `brandBadges`
+- Database connection timeout
+- Data corruption
+
+---
+
+## 🔧 HÀNH ĐỘNG CẦN LÀM
+
+### Ưu tiên 1: Fix OAuth Google (Web) ⭐
+
+**Chi tiết**: Xem [CUSTOM_DOMAIN_OAUTH_SETUP.md](CUSTOM_DOMAIN_OAUTH_SETUP.md)
 
 1. Vào https://console.cloud.google.com/apis/credentials?project=in360project
-2. Tìm OAuth Client ID: `1069154179448-cghmkq9hs65g3775ogercfcj6c7sobt1` (hoặc tên "thptphuocbuu")
-3. Thêm **Authorized JavaScript origins**:
-   ```
-   https://thptphuocbuu360-1069154179448.asia-southeast1.run.app
-   ```
-4. Thêm **Authorized redirect URIs**:
-   ```
-   https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/api/auth/callback/google
-   ```
-5. Click **SAVE** và đợi 5-10 phút để Google propagate changes
-6. Test lại login
+2. Tìm OAuth Client ID: `1069154179448-cghmkq9hs65g3775ogercfcj6c7sobt1`
+3. Thêm **Authorized JavaScript origins**: `https://thptphuocbuu.edu.vn`
+4. Thêm **Authorized redirect URIs**: `https://thptphuocbuu.edu.vn/api/auth/callback/google`
+5. Click **SAVE** và đợi 5-10 phút
+6. Test: https://thptphuocbuu.edu.vn/login
 
-**Lưu ý quan trọng:**
-- ✅ Copy chính xác URL (không gõ tay)
-- ✅ KHÔNG có khoảng trắng thừa
-- ✅ KHÔNG quên click nút SAVE
-- ✅ Đợi 5-10 phút sau khi save
-- ✅ Chụp màn hình form sau khi save để confirm
+### Ưu tiên 2: Fix API Posts (Mobile Feed) ⭐
+
+**Option 1: Regenerate Prisma + Redeploy**
+```bash
+npx prisma generate
+./deploy-phuocbuu-cloud-run.sh
+```
+
+**Option 2: Check logs**
+```bash
+gcloud logging read \
+  "resource.labels.service_name=thptphuocbuu360 AND textPayload:\"Error fetching posts\"" \
+  --limit 50
+```
+
+**Option 3: Simplify query (temporary fix)**
+- Bỏ phần `brandBadges` trong query tạm thời
+- Xem code fix chi tiết ở trên
 
 ---
 
@@ -130,9 +179,9 @@ git commit -m "fix: remove video duration limit and add platform flag for Docker
 ## 📊 Service Status
 
 ### Production URLs:
-- **Homepage**: https://thptphuocbuu360-1069154179448.asia-southeast1.run.app
-- **Login**: https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/login
-- **Dashboard**: https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/dashboard
+- **Homepage**: https://thptphuocbuu.edu.vn
+- **Login**: https://thptphuocbuu.edu.vn/login
+- **Dashboard**: https://thptphuocbuu.edu.vn/dashboard
 
 ### Monitoring:
 ```bash
@@ -168,7 +217,7 @@ gcloud run revisions list --service thptphuocbuu360 --region asia-southeast1
 - **Deployment Success**: [DEPLOYMENT_SUCCESS.md](DEPLOYMENT_SUCCESS.md)
 - **Multiple Images Feature**: [MULTIPLE_IMAGES_FEATURE.md](MULTIPLE_IMAGES_FEATURE.md)
 - **OAuth Fix Original Guide**: [FIX_GOOGLE_OAUTH_REDIRECT.md](FIX_GOOGLE_OAUTH_REDIRECT.md)
-- **OAuth Fix Step-by-Step**: [GOOGLE_OAUTH_FIX_STEPS.md](GOOGLE_OAUTH_FIX_STEPS.md) ⭐ MỚI
+- **OAuth Fix Step-by-Step**: [GOOGLE_OAUTH_FIX_STEPS.md](GOOGLE_OAUTH_FIX_STEPS.md) ⭐ MỚI & CHÍNH XÁC NHẤT
 - **This Document**: [CURRENT_STATUS.md](CURRENT_STATUS.md)
 
 ---

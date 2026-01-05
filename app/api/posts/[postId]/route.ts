@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { extractFirstUrl } from '@/lib/media-embed'
+import { authenticateApiRequest } from '@/lib/auth-helpers-api'
 
 const postUpdateSchema = z.object({
   content: z.string().optional().default(''),
@@ -46,10 +45,13 @@ export async function PUT(
 ) {
   try {
     const { postId } = await params
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate using unified helper (supports both JWT and session)
+    const auth = await authenticateApiRequest(request)
+    if ('error' in auth) {
+      return auth.error
     }
+    const { userId } = auth
 
     // Check if post exists and belongs to user
     const existingPost = await prisma.post.findUnique({
@@ -60,7 +62,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
 
-    if (existingPost.authorId !== session.user.id) {
+    if (existingPost.authorId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -101,10 +103,10 @@ export async function PUT(
     const postType = validatedData.videoUrl
       ? 'VIDEO'
       : validatedData.imageUrl
-      ? 'IMAGE'
-      : linkUrl
-      ? 'LINK'
-      : 'TEXT'
+        ? 'IMAGE'
+        : linkUrl
+          ? 'LINK'
+          : 'TEXT'
 
     const updatedPost = await prisma.post.update({
       where: { id: postId },
@@ -147,11 +149,11 @@ export async function PUT(
     }
 
     console.error('Error updating post:', error)
-    const errorMessage = process.env.NODE_ENV === 'development' 
+    const errorMessage = process.env.NODE_ENV === 'development'
       ? error?.message || 'Internal server error'
       : 'Internal server error'
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
         details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
       },
@@ -167,10 +169,13 @@ export async function DELETE(
 ) {
   try {
     const { postId } = await params
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate using unified helper (supports both JWT and session)
+    const auth = await authenticateApiRequest(request)
+    if ('error' in auth) {
+      return auth.error
     }
+    const { userId } = auth
 
     // Check if post exists and belongs to user
     const existingPost = await prisma.post.findUnique({
@@ -181,7 +186,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
 
-    if (existingPost.authorId !== session.user.id) {
+    if (existingPost.authorId !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -192,11 +197,11 @@ export async function DELETE(
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (error: any) {
     console.error('Error deleting post:', error)
-    const errorMessage = process.env.NODE_ENV === 'development' 
+    const errorMessage = process.env.NODE_ENV === 'development'
       ? error?.message || 'Internal server error'
       : 'Internal server error'
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
         details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
       },
@@ -204,4 +209,3 @@ export async function DELETE(
     )
   }
 }
-

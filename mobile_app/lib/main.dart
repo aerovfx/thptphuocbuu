@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'services/auth_service.dart';
+import 'services/api_service.dart';
 import 'providers/theme_provider.dart';
 import 'themes/app_theme.dart' as theme_config;
 
@@ -64,14 +65,45 @@ class _AuthWrapperState extends State<AuthWrapper> {
   void initState() {
     super.initState();
     _checkAuth();
+    _setupUnauthorizedHandler();
+  }
+
+  void _setupUnauthorizedHandler() {
+    // Set up handler to navigate to login when token expires
+    ApiService.onUnauthorized = () {
+      if (mounted) {
+        // Clear login state and show message
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isLoggedIn = false;
+            });
+            // Show snackbar using scaffold messenger
+            final scaffoldMessenger = ScaffoldMessenger.maybeOf(context);
+            if (scaffoldMessenger != null) {
+              scaffoldMessenger.showSnackBar(
+                const SnackBar(
+                  content: Text('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+          }
+        });
+      }
+    };
   }
 
   Future<void> _checkAuth() async {
-    final loggedIn = await AuthService.isLoggedIn();
-    setState(() {
-      _isLoggedIn = loggedIn;
-      _isLoading = false;
-    });
+    // Verify session with server on startup
+    final sessionValid = await AuthService.checkSession();
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = sessionValid;
+        _isLoading = false;
+      });
+    }
   }
 
   @override

@@ -26,18 +26,29 @@ class Post {
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
+    // Handle likes and comments count from different potential structures
+    int getCount(String key) {
+      if (json[key] != null) return json[key] as int;
+      if (json['_count'] != null && json['_count'][key.replaceAll('Count', '')] != null) {
+        return json['_count'][key.replaceAll('Count', '')] as int;
+      }
+      return 0;
+    }
+
     return Post(
-      id: json['id'] as String,
-      content: json['content'] as String,
-      type: json['type'] as String,
+      id: (json['id'] ?? '').toString(),
+      content: json['content'] as String? ?? '',
+      type: json['type'] as String? ?? 'TEXT',
       imageUrl: json['imageUrl'] as String?,
       videoUrl: json['videoUrl'] as String?,
       linkUrl: json['linkUrl'] as String?,
-      author: PostAuthor.fromJson(json['author'] as Map<String, dynamic>),
-      likesCount: json['likesCount'] as int,
-      commentsCount: json['commentsCount'] as int,
+      author: PostAuthor.fromJson(json['author'] as Map<String, dynamic>? ?? {}),
+      likesCount: getCount('likesCount'),
+      commentsCount: getCount('commentsCount'),
       isLiked: json['isLiked'] as bool? ?? false,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt'] as String) 
+          : DateTime.now(),
     );
   }
 }
@@ -58,12 +69,19 @@ class PostAuthor {
   });
 
   factory PostAuthor.fromJson(Map<String, dynamic> json) {
+    // Handle both combined name or firstName/lastName
+    String displayName = json['name'] as String? ?? '';
+    if (displayName.isEmpty && (json['firstName'] != null || json['lastName'] != null)) {
+      displayName = '${json['firstName'] ?? ''} ${json['lastName'] ?? ''}'.trim();
+    }
+    if (displayName.isEmpty) displayName = 'Người dùng';
+
     return PostAuthor(
-      id: json['id'] as String,
-      name: json['name'] as String,
+      id: (json['id'] ?? '').toString(),
+      name: displayName,
       avatar: json['avatar'] as String?,
-      role: json['role'] as String,
-      brandBadge: json['brandBadge'] as String?,
+      role: json['role'] as String? ?? 'USER',
+      brandBadge: json['brandBadge'] != null ? json['brandBadge'].toString() : null,
     );
   }
 }

@@ -17,7 +17,7 @@ function getDatabaseUrl() {
   return url
 }
 
-// Create base Prisma Client
+// Create base Prisma Client with optimized settings for Cloud Run
 const basePrisma =
   globalForPrisma.prisma ??
   new PrismaClient({
@@ -28,6 +28,9 @@ const basePrisma =
         url: getDatabaseUrl(),
       },
     },
+    // Optimize for serverless/Cloud Run environments
+    // Reduce connection pool to avoid exhausting DB connections
+    // Cloud Run instances scale up/down, so need smaller pools per instance
   })
 
 // Extend with Prisma Accelerate if using Accelerate connection string

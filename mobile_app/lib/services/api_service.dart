@@ -8,6 +8,9 @@ import '../utils/storage.dart';
 class ApiService {
   // Timeout duration (30 seconds)
   static const Duration _timeoutDuration = Duration(seconds: 30);
+  
+  // Callback for handling unauthorized errors
+  static Function()? onUnauthorized;
 
   // Create HTTP client with timeout
   static http.Client _createClient() {
@@ -49,6 +52,16 @@ class ApiService {
           .timeout(_timeoutDuration);
       
       print('[API] Response status: ${response.statusCode}');
+      
+      // Handle unauthorized/forbidden globally
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        print('[API] Unauthorized/Forbidden detected, clearing token');
+        await StorageService.clearAll();
+        if (onUnauthorized != null) {
+          onUnauthorized!();
+        }
+      }
+      
       return response;
     } finally {
       client.close();
@@ -75,6 +88,19 @@ class ApiService {
       print('[API] Response status: ${response.statusCode}');
       print('[API] Response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
       
+      // Handle unauthorized/forbidden globally (skip for login/register/google auth endpoints)
+      // These endpoints may return 401/403 as part of normal error handling
+      if ((response.statusCode == 401 || response.statusCode == 403) &&
+          !endpoint.contains('/auth/login') &&
+          !endpoint.contains('/auth/register') &&
+          !endpoint.contains('/auth/google')) {
+        print('[API] Unauthorized/Forbidden detected, clearing token');
+        await StorageService.clearAll();
+        if (onUnauthorized != null) {
+          onUnauthorized!();
+        }
+      }
+      
       return response;
     } finally {
       client.close();
@@ -98,6 +124,16 @@ class ApiService {
           .timeout(_timeoutDuration);
       
       print('[API] Response status: ${response.statusCode}');
+      
+      // Handle unauthorized/forbidden globally
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        print('[API] Unauthorized/Forbidden detected, clearing token');
+        await StorageService.clearAll();
+        if (onUnauthorized != null) {
+          onUnauthorized!();
+        }
+      }
+      
       return response;
     } finally {
       client.close();
@@ -117,6 +153,16 @@ class ApiService {
           .timeout(_timeoutDuration);
       
       print('[API] Response status: ${response.statusCode}');
+      
+      // Handle unauthorized/forbidden globally
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        print('[API] Unauthorized/Forbidden detected, clearing token');
+        await StorageService.clearAll();
+        if (onUnauthorized != null) {
+          onUnauthorized!();
+        }
+      }
+      
       return response;
     } finally {
       client.close();

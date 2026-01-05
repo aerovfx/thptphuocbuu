@@ -1,4 +1,6 @@
 import { formatDistanceToNow } from 'date-fns'
+import { type ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 
 // Fallback to English if Vietnamese locale is not available
 let viLocale: any = null
@@ -6,6 +8,10 @@ try {
   viLocale = require('date-fns/locale/vi')
 } catch {
   // Fallback to English
+}
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
 }
 
 export function formatDate(date: Date | string): string {

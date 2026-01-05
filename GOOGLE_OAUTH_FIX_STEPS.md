@@ -1,18 +1,17 @@
 # 🔧 Hướng dẫn Fix Google OAuth - Error 400: redirect_uri_mismatch
 
-## ✅ Xác nhận: Cloud Run đã cấu hình ĐÚNG
+## ✅ Xác nhận: Cấu hình hiện tại
 
 Đã kiểm tra và xác nhận:
-- ✅ `NEXTAUTH_URL` = `https://thptphuocbuu360-1069154179448.asia-southeast1.run.app`
+- ✅ `NEXTAUTH_URL` = `https://thptphuocbuu.edu.vn`
 - ✅ `GOOGLE_CLIENT_ID` = `1069154179448-cghmkq9hs65g3775ogercfcj6c7sobt1.apps.googleusercontent.com`
 - ✅ `GOOGLE_CLIENT_SECRET` = Đã set (35 ký tự)
 - ✅ `NEXTAUTH_SECRET` = Đã set (44 ký tự)
-- ✅ NextAuth providers endpoint hoạt động đúng
-- ✅ Callback URL được generate: `https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/api/auth/callback/google`
+- ✅ Callback URL cần thiết: `https://thptphuocbuu.edu.vn/api/auth/callback/google`
 
 ## ❌ Vấn đề: Google Cloud Console OAuth chưa lưu đúng
 
-Test cho thấy OAuth flow bị lỗi với `error=google`, nghĩa là **Google Cloud Console chưa được cấu hình đúng**.
+Test cho thấy OAuth flow bị lỗi với `error=google` hoặc `redirect_uri_mismatch`, nghĩa là **Google Cloud Console chưa được whitelist domain `thptphuocbuu.edu.vn`**.
 
 ## 📋 Các bước sửa lỗi (làm chính xác theo thứ tự)
 
@@ -24,10 +23,10 @@ Test cho thấy OAuth flow bị lỗi với `error=google`, nghĩa là **Google 
 
 ### Bước 2: Kiểm tra và thêm Authorized JavaScript origins
 
-Trong phần **"Authorized JavaScript origins"**, đảm bảo có URL:
+Trong phần **"Authorized JavaScript origins"**, thêm URL sau:
 
 ```
-https://thptphuocbuu360-1069154179448.asia-southeast1.run.app
+https://thptphuocbuu.edu.vn
 ```
 
 **Lưu ý:**
@@ -35,13 +34,14 @@ https://thptphuocbuu360-1069154179448.asia-southeast1.run.app
 - ✅ KHÔNG có dấu `/` ở cuối
 - ✅ KHÔNG có khoảng trắng trước/sau
 - ✅ Copy chính xác URL trên (không gõ tay)
+- ✅ Nếu đã có `*.run.app`, hãy giữ nguyên hoặc xóa nếu không cần (nhưng QUAN TRỌNG là phải thêm `.edu.vn`)
 
 ### Bước 3: Kiểm tra và thêm Authorized redirect URIs
 
-Trong phần **"Authorized redirect URIs"**, đảm bảo có URL:
+Trong phần **"Authorized redirect URIs"**, thêm URL sau:
 
 ```
-https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/api/auth/callback/google
+https://thptphuocbuu.edu.vn/api/auth/callback/google
 ```
 
 **Lưu ý:**
@@ -66,7 +66,7 @@ https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/api/auth/callback/
 
 Sau 5-10 phút, thử login bằng Google tại:
 ```
-https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/login
+https://thptphuocbuu.edu.vn/login
 ```
 
 ## 🔍 Checklist xác nhận đã làm đúng
@@ -75,13 +75,13 @@ Sau khi làm xong, Google Cloud Console OAuth form phải có:
 
 ### Authorized JavaScript origins:
 ```
-✓ https://thptphuocbuu360-1069154179448.asia-southeast1.run.app
+✓ https://thptphuocbuu.edu.vn
 ✓ http://localhost:3000 (nếu còn, giữ lại cho local dev)
 ```
 
 ### Authorized redirect URIs:
 ```
-✓ https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/api/auth/callback/google
+✓ https://thptphuocbuu.edu.vn/api/auth/callback/google
 ✓ http://localhost:3000/api/auth/callback/google (nếu còn, giữ lại cho local dev)
 ```
 
@@ -116,10 +116,10 @@ Sau khi đợi 5-10 phút và đã save đúng, chạy lệnh này để test:
 
 ```bash
 # Test providers endpoint
-curl -s "https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/api/auth/providers" | python3 -m json.tool
+curl -s "https://thptphuocbuu.edu.vn/api/auth/providers" | python3 -m json.tool
 
 # Kiểm tra OAuth redirect
-curl -sL -I "https://thptphuocbuu360-1069154179448.asia-southeast1.run.app/api/auth/signin/google" | grep -i location
+curl -sL -I "https://thptphuocbuu.edu.vn/api/auth/signin/google" | grep -i location
 ```
 
 Nếu vẫn lỗi, chụp màn hình:
@@ -135,7 +135,7 @@ Nếu sau khi làm đúng tất cả các bước trên và đợi 10 phút mà 
    - Vào https://console.cloud.google.com/apis/credentials?project=in360project
    - Click "CREATE CREDENTIALS" > "OAuth client ID"
    - Application type: "Web application"
-   - Name: "thptphuocbuu360-production"
+   - Name: "thptphuocbuu360-edu-vn"
    - Thêm JavaScript origins và Redirect URIs như trên
    - Copy Client ID và Client Secret mới
    - Update Cloud Run env vars với credentials mới
@@ -148,5 +148,5 @@ Nếu sau khi làm đúng tất cả các bước trên và đợi 10 phút mà 
 
 ---
 
-**Last updated**: 2025-12-23
-**Status**: Cloud Run OK ✅ | Google Console cần fix ⚠️
+**Last updated**: 2025-12-25
+**Status**: Cloud Run OK ✅ | Google Console cần whitelist domain .edu.vn ⚠️

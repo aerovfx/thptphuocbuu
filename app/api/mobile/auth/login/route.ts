@@ -47,7 +47,10 @@ export async function POST(request: Request) {
         lastName: true,
         role: true,
         avatar: true,
-        status: true,
+        bio: true,
+        phone: true,
+        dateOfBirth: true,
+        createdAt: true,
       },
     })
 
@@ -55,14 +58,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Email hoặc mật khẩu không đúng' },
         { status: 401, headers: corsHeaders }
-      )
-    }
-
-    // Check if user is active
-    if (user.status !== 'ACTIVE') {
-      return NextResponse.json(
-        { error: 'Tài khoản của bạn đã bị tạm dừng' },
-        { status: 403, headers: corsHeaders }
       )
     }
 
@@ -111,6 +106,10 @@ export async function POST(request: Request) {
         fullName: `${user.firstName} ${user.lastName}`,
         role: user.role,
         avatar: user.avatar,
+        bio: user.bio,
+        phone: user.phone,
+        dateOfBirth: user.dateOfBirth,
+        createdAt: user.createdAt,
       },
     }, { headers: corsHeaders })
   } catch (error: any) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../providers/theme_provider.dart';
 
 class ThemeConfig {
@@ -44,12 +45,12 @@ class ThemeConfig {
       scaffoldBackgroundColor: bluelockWhite,
 
       // AppBar
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: bluelockWhite,
         foregroundColor: bluelockBlue,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: TextStyle(
+        titleTextStyle: GoogleFonts.outfit(
           color: bluelockBlue,
           fontSize: 20,
           fontWeight: FontWeight.bold,
@@ -58,11 +59,11 @@ class ThemeConfig {
 
       // Card
       cardTheme: CardThemeData(
-        color: bluelockLightGray,
+        color: bluelockWhite,
         elevation: 0,
+        shadowColor: Colors.black.withOpacity(0.08),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: bluelockBlueMedium, width: 1),
+          borderRadius: BorderRadius.circular(16),
         ),
       ),
 
@@ -71,19 +72,19 @@ class ThemeConfig {
         filled: true,
         fillColor: bluelockLightGray,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: bluelockBlueMedium),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: bluelockMediumGray),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: bluelockBlueMedium),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: bluelockMediumGray),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: bluelockGreen, width: 2),
         ),
-        labelStyle: const TextStyle(color: bluelockBlue),
-        hintStyle: const TextStyle(color: bluelockTextMuted),
+        labelStyle: GoogleFonts.inter(color: bluelockBlue),
+        hintStyle: GoogleFonts.inter(color: bluelockTextMuted),
       ),
 
       // Elevated Button
@@ -92,11 +93,12 @@ class ThemeConfig {
           backgroundColor: bluelockGreen,
           foregroundColor: Colors.black,
           elevation: 0,
+          shadowColor: bluelockGreen.withOpacity(0.3),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
-          textStyle: const TextStyle(
+          textStyle: GoogleFonts.outfit(
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -107,35 +109,40 @@ class ThemeConfig {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: bluelockBlue,
+          textStyle: GoogleFonts.inter(
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
 
       // Bottom Navigation Bar
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: bluelockWhite,
         selectedItemColor: bluelockGreen,
         unselectedItemColor: bluelockTextMuted,
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
+        selectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold),
+        unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.normal),
         type: BottomNavigationBarType.fixed,
+        elevation: 8,
       ),
 
       // Text Theme
-      textTheme: const TextTheme(
-        displayLarge: TextStyle(color: bluelockBlue, fontSize: 32, fontWeight: FontWeight.bold),
-        displayMedium: TextStyle(color: bluelockBlue, fontSize: 28, fontWeight: FontWeight.bold),
-        displaySmall: TextStyle(color: bluelockBlue, fontSize: 24, fontWeight: FontWeight.bold),
-        headlineLarge: TextStyle(color: bluelockBlue, fontSize: 22, fontWeight: FontWeight.bold),
-        headlineMedium: TextStyle(color: bluelockBlue, fontSize: 20, fontWeight: FontWeight.bold),
-        headlineSmall: TextStyle(color: bluelockBlue, fontSize: 18, fontWeight: FontWeight.bold),
-        titleLarge: TextStyle(color: bluelockBlue, fontSize: 16, fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(color: bluelockBlue, fontSize: 14, fontWeight: FontWeight.w600),
-        titleSmall: TextStyle(color: bluelockBlue, fontSize: 12, fontWeight: FontWeight.w600),
-        bodyLarge: TextStyle(color: bluelockBlue, fontSize: 16),
-        bodyMedium: TextStyle(color: bluelockBlue, fontSize: 14),
-        bodySmall: TextStyle(color: bluelockTextMuted, fontSize: 12),
-        labelLarge: TextStyle(color: bluelockBlue, fontSize: 14, fontWeight: FontWeight.w500),
-        labelMedium: TextStyle(color: bluelockBlue, fontSize: 12, fontWeight: FontWeight.w500),
-        labelSmall: TextStyle(color: bluelockTextMuted, fontSize: 10),
+      textTheme: TextTheme(
+        displayLarge: GoogleFonts.outfit(color: bluelockBlue, fontSize: 32, fontWeight: FontWeight.bold),
+        displayMedium: GoogleFonts.outfit(color: bluelockBlue, fontSize: 28, fontWeight: FontWeight.bold),
+        displaySmall: GoogleFonts.outfit(color: bluelockBlue, fontSize: 24, fontWeight: FontWeight.bold),
+        headlineLarge: GoogleFonts.outfit(color: bluelockBlue, fontSize: 22, fontWeight: FontWeight.bold),
+        headlineMedium: GoogleFonts.outfit(color: bluelockBlue, fontSize: 20, fontWeight: FontWeight.bold),
+        headlineSmall: GoogleFonts.outfit(color: bluelockBlue, fontSize: 18, fontWeight: FontWeight.bold),
+        titleLarge: GoogleFonts.inter(color: bluelockBlue, fontSize: 16, fontWeight: FontWeight.w600),
+        titleMedium: GoogleFonts.inter(color: bluelockBlue, fontSize: 14, fontWeight: FontWeight.w600),
+        titleSmall: GoogleFonts.inter(color: bluelockBlue, fontSize: 12, fontWeight: FontWeight.w600),
+        bodyLarge: GoogleFonts.inter(color: bluelockBlue, fontSize: 16),
+        bodyMedium: GoogleFonts.inter(color: bluelockBlue, fontSize: 14),
+        bodySmall: GoogleFonts.inter(color: bluelockTextMuted, fontSize: 12),
+        labelLarge: GoogleFonts.inter(color: bluelockBlue, fontSize: 14, fontWeight: FontWeight.w500),
+        labelMedium: GoogleFonts.inter(color: bluelockBlue, fontSize: 12, fontWeight: FontWeight.w500),
+        labelSmall: GoogleFonts.inter(color: bluelockTextMuted, fontSize: 10),
       ),
 
       // Icon Theme

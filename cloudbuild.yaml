@@ -48,7 +48,9 @@ steps:
       - '--timeout'
       - '300'
       - '--set-env-vars'
-      - 'NODE_ENV=production'
+      - 'NODE_ENV=production,NEXTAUTH_URL=https://thptphuocbuu.edu.vn,GCP_PROJECT_ID=in360project,GCS_BUCKET_NAME=thptphuocbuu360'
+      - '--update-secrets'
+      - 'NEXTAUTH_SECRET=nextauth-secret:latest,DATABASE_URL=database-url:latest,GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest'
     timeout: '600s'
 
 images:

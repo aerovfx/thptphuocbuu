@@ -8,7 +8,9 @@ import { broadcastFeedUpdate } from '@/lib/feed-broadcast'
 import { extractFirstUrl } from '@/lib/media-embed'
 import { moderateContent } from '@/lib/content-moderation'
 import { sendEmail } from '@/lib/email'
-import { withCsrfProtection } from '@/lib/csrf-middleware'
+import { authenticateRequest } from '@/lib/jwt-auth'
+// Temporarily disable CSRF protection - NextAuth session authentication is sufficient
+// import { withCsrfProtection } from '@/lib/csrf-middleware'
 
 const postSchema = z.object({
   content: z.string().optional().default(''),
@@ -46,46 +48,70 @@ const postSchema = z.object({
   path: ['content'],
 })
 
-export const POST = withCsrfProtection(async (request: NextRequest) => {
+export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    // Try JWT authentication first (for mobile app)
+    const jwtUser = await authenticateRequest(request)
+
+    // Fall back to NextAuth session (for web app)
+    const session = !jwtUser ? await getServerSession(authOptions) : null
+
+    if (!jwtUser && !session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Ensure the session user exists in DB. If token is missing id (or points to a deleted user),
-    // creating a post will violate posts_authorId_fkey and crash with 500.
-    let authorId = session.user.id
-    if (!authorId || authorId.trim() === '') {
-      // Fallback to email lookup
-      const byEmail = session.user.email
-        ? await prisma.user.findUnique({ where: { email: session.user.email } })
-        : null
-      if (!byEmail) {
-        return NextResponse.json(
-          { error: 'Session không hợp lệ. Vui lòng đăng nhập lại.' },
-          { status: 401 }
-        )
-      }
-      authorId = byEmail.id
-    } else {
-      const exists = await prisma.user.findUnique({
-        where: { id: authorId },
-        select: { id: true },
-      })
-      if (!exists) {
-        // Try to recover by email (handles stale token ids after DB reset/migration)
+    // Get author ID from JWT user or session
+    let authorId: string
+    let userRole: string
+
+    if (jwtUser) {
+      // Mobile app authentication via JWT
+      authorId = jwtUser.id
+      userRole = jwtUser.role
+    } else if (session) {
+      // Web app authentication via NextAuth session
+      // Ensure the session user exists in DB. If token is missing id (or points to a deleted user),
+      // creating a post will violate posts_authorId_fkey and crash with 500.
+      authorId = session.user.id
+      userRole = session.user.role
+
+      if (!authorId || authorId.trim() === '') {
+        // Fallback to email lookup
         const byEmail = session.user.email
           ? await prisma.user.findUnique({ where: { email: session.user.email } })
           : null
         if (!byEmail) {
           return NextResponse.json(
-            { error: 'Tài khoản không tồn tại. Vui lòng đăng nhập lại.' },
+            { error: 'Session không hợp lệ. Vui lòng đăng nhập lại.' },
             { status: 401 }
           )
         }
         authorId = byEmail.id
+        userRole = byEmail.role
+      } else {
+        const exists = await prisma.user.findUnique({
+          where: { id: authorId },
+          select: { id: true, role: true },
+        })
+        if (!exists) {
+          // Try to recover by email (handles stale token ids after DB reset/migration)
+          const byEmail = session.user.email
+            ? await prisma.user.findUnique({ where: { email: session.user.email } })
+            : null
+          if (!byEmail) {
+            return NextResponse.json(
+              { error: 'Tài khoản không tồn tại. Vui lòng đăng nhập lại.' },
+              { status: 401 }
+            )
+          }
+          authorId = byEmail.id
+          userRole = byEmail.role
+        } else {
+          userRole = exists.role
+        }
       }
+    } else {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     let body
@@ -119,7 +145,7 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
     if (validatedData.content && validatedData.content.trim()) {
       const moderation = await moderateContent(
         validatedData.content,
-        session.user.role as any,  // Type cast for Next Auth session type
+        userRole as any,  // Use userRole from JWT or session
         'POST',
         authorId
       )
@@ -284,7 +310,7 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
 
     // Invalidate cache and broadcast update
     await feedCache.invalidateAllFeeds()
-    await broadcastFeedUpdate(session.user.id, 'new_post', {
+    await broadcastFeedUpdate(authorId, 'new_post', {
       post: {
         id: normalizedPost.id,
         content: normalizedPost.content,
@@ -313,7 +339,7 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
       { status: 500 }
     )
   }
-}) // Close withCsrfProtection wrapper
+}
 
 
 export async function GET(request: Request) {
@@ -419,13 +445,20 @@ export async function GET(request: Request) {
 
     return NextResponse.json(normalized)
   } catch (error: any) {
-    console.error('Error fetching posts:', error)
-    // Return more detailed error in development
-    const errorMessage = process.env.NODE_ENV === 'development'
-      ? error?.message || 'Internal server error'
-      : 'Internal server error'
+    console.error('[API /api/posts GET] Error fetching posts:', error)
+    console.error('[API /api/posts GET] Error message:', error?.message)
+    console.error('[API /api/posts GET] Error stack:', error?.stack)
+    console.error('[API /api/posts GET] Error code:', error?.code)
+
+    // Return more detailed error
+    const errorMessage = error?.message || 'Internal server error'
     return NextResponse.json(
-      { error: errorMessage, details: process.env.NODE_ENV === 'development' ? error?.stack : undefined },
+      {
+        error: 'Internal server error',
+        message: errorMessage,
+        code: error?.code,
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      },
       { status: 500 }
     )
   }

@@ -9,6 +9,7 @@ import Avatar from '../Common/Avatar'
 import { validateImage, validateVideo, ALLOWED_IMAGE_TYPES, MAX_VIDEO_SIZE_NORMAL, MAX_VIDEO_SIZE_PREMIUM, MAX_IMAGES_COUNT } from '@/lib/file-validation'
 import { extractFirstUrl } from '@/lib/media-embed'
 import { hasPremiumOrAdminAccess } from '@/lib/premium-check'
+import { getCsrfTokenAsync } from '@/lib/csrf'
 import ImageLightbox from '../Common/ImageLightbox'
 
 // Dynamic import emoji picker để tránh SSR issues
@@ -106,28 +107,43 @@ export default function CreatePost() {
         }
         setUploading(false)
       }
-      // Upload single video if exists
+      // Upload single video if exists - use signed URL for direct upload to GCS
       else if (mediaPreview?.file) {
         setUploading(true)
-        const formData = new FormData()
-        formData.append('file', mediaPreview.file)
 
-        const uploadResponse = await fetch('/api/posts/upload', {
+        // Step 1: Get signed URL from server
+        const signedUrlResponse = await fetch('/api/upload/signed-url', {
           method: 'POST',
-          body: formData,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: mediaPreview.file.name,
+            fileType: mediaPreview.file.type,
+            fileSize: mediaPreview.file.size,
+          }),
+        })
+
+        if (!signedUrlResponse.ok) {
+          const errorData = await signedUrlResponse.json()
+          throw new Error(errorData.error || 'Lỗi khi tạo URL tải lên')
+        }
+
+        const { signedUrl, publicUrl } = await signedUrlResponse.json()
+
+        // Step 2: Upload file directly to GCS using signed URL
+        const uploadResponse = await fetch(signedUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': mediaPreview.file.type,
+          },
+          body: mediaPreview.file,
         })
 
         if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json()
-          throw new Error(errorData.error || 'Lỗi khi tải lên media')
+          throw new Error('Lỗi khi tải video lên Google Cloud Storage')
         }
 
-        const uploadData = await uploadResponse.json()
-        if (uploadData.type === 'image') {
-          imageUrl = uploadData.url
-        } else {
-          videoUrl = uploadData.url
-        }
+        // Step 3: Use the public URL for the post
+        videoUrl = publicUrl
         setUploading(false)
       }
 
@@ -169,9 +185,18 @@ export default function CreatePost() {
         postData.scheduledAt = new Date(scheduledDateTime).toISOString()
       }
 
+      // Get CSRF token for request
+      const csrfToken = await getCsrfTokenAsync()
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (csrfToken) {
+        (headers as Record<string, string>)['X-CSRF-Token'] = csrfToken
+      }
+
       const response = await fetch('/api/posts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(postData),
       })
 
