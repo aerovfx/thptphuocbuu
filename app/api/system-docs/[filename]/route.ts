@@ -15,6 +15,7 @@ export async function GET(
     }
 
     try {
+
         // Prevent directory traversal
         if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
             return new NextResponse('Invalid filename', { status: 400 })
