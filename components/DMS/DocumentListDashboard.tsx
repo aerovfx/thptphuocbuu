@@ -19,6 +19,7 @@ import {
   Tag,
 } from "lucide-react";
 import Avatar from '@/components/Common/Avatar';
+import { useRouter } from 'next/navigation';
 
 interface Document {
   id: string;
@@ -68,6 +69,19 @@ export default function DocumentListDashboard({
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [useAPI, setUseAPI] = useState(initialDocuments.length === 0);
+  const router = useRouter();
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (activeMenuId && !(event.target as Element).closest(`[data-menu-trigger="${activeMenuId}"]`) && !(event.target as Element).closest(`[data-menu-content="${activeMenuId}"]`)) {
+        setActiveMenuId(null);
+      }
+    }
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [activeMenuId]);
 
   // Update documents when initialDocuments change
   useEffect(() => {
@@ -385,12 +399,11 @@ export default function DocumentListDashboard({
                         </div>
                         <div className="w-full bg-gray-800 rounded-full h-1.5">
                           <div
-                            className={`h-1.5 rounded-full transition-all ${
-                              progress === 100 ? 'bg-green-500' :
-                              progress >= 66 ? 'bg-blue-500' :
-                              progress >= 33 ? 'bg-yellow-500' :
-                              'bg-gray-600'
-                            }`}
+                            className={`h-1.5 rounded-full transition-all ${progress === 100 ? 'bg-green-500' :
+                                progress >= 66 ? 'bg-blue-500' :
+                                  progress >= 33 ? 'bg-yellow-500' :
+                                    'bg-gray-600'
+                              }`}
                             style={{ width: `${progress}%` }}
                           />
                         </div>
@@ -423,8 +436,8 @@ export default function DocumentListDashboard({
                             e.stopPropagation();
                             if (onDocumentClick) {
                               onDocumentClick(doc.id);
-                            } else if (typeof window !== 'undefined') {
-                              window.location.href = `/dashboard/dms/incoming/${doc.id}`;
+                            } else {
+                              router.push(`/dashboard/dms/incoming/${doc.id}`);
                             }
                           }}
                           title="Xem"
@@ -433,120 +446,124 @@ export default function DocumentListDashboard({
                         </button>
                         <button
                           className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          try {
-                            let fileUrl = doc.fileUrl;
-                            let fileName = doc.fileName || 'document.pdf';
-                            
-                            // If fileUrl not available, fetch from API
-                            if (!fileUrl) {
-                              const response = await fetch(`/api/dms/incoming/${doc.id}`);
-                              if (!response.ok) throw new Error('Failed to fetch document');
-                              const data = await response.json();
-                              fileUrl = data.fileUrl;
-                              fileName = data.fileName || fileName;
-                            }
-                            
-                            if (fileUrl) {
-                              const link = document.createElement('a');
-                              link.href = fileUrl;
-                              link.download = fileName;
-                              link.target = '_blank';
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
-                            } else {
-                              alert('Không tìm thấy file để tải xuống');
-                            }
-                          } catch (error) {
-                            console.error('Error downloading document:', error);
-                            alert('Không thể tải xuống văn bản');
-                          }
-                        }}
-                          title="Tải xuống"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors relative group"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Toggle dropdown menu (simple implementation)
-                          const menuId = `menu-${doc.id}`;
-                          const existingMenu = document.getElementById(menuId);
-                          if (existingMenu) {
-                            existingMenu.remove();
-                            return;
-                          }
-                          
-                          const menu = document.createElement('div');
-                          menu.id = menuId;
-                          menu.className = 'absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-[200px]';
-                          menu.innerHTML = `
-                            <div class="py-1">
-                              <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="view">Xem chi tiết</button>
-                              <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="download">Tải xuống</button>
-                              <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="assign">Phân công xử lý</button>
-                              <button class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" data-action="workflow">Tạo workflow</button>
-                            </div>
-                          `;
-                          
-                          menu.querySelector('[data-action="view"]')?.addEventListener('click', () => {
-                            if (onDocumentClick) onDocumentClick(doc.id);
-                            menu.remove();
-                          });
-                          
-                          menu.querySelector('[data-action="download"]')?.addEventListener('click', async () => {
+                          onClick={async (e) => {
+                            e.stopPropagation();
                             try {
                               let fileUrl = doc.fileUrl;
                               let fileName = doc.fileName || 'document.pdf';
+
+                              // If fileUrl not available, fetch from API
                               if (!fileUrl) {
                                 const response = await fetch(`/api/dms/incoming/${doc.id}`);
+                                if (!response.ok) throw new Error('Failed to fetch document');
                                 const data = await response.json();
                                 fileUrl = data.fileUrl;
                                 fileName = data.fileName || fileName;
                               }
+
                               if (fileUrl) {
                                 const link = document.createElement('a');
                                 link.href = fileUrl;
                                 link.download = fileName;
+                                link.target = '_blank';
+                                document.body.appendChild(link);
                                 link.click();
+                                document.body.removeChild(link);
+                              } else {
+                                alert('Không tìm thấy file để tải xuống');
                               }
                             } catch (error) {
+                              console.error('Error downloading document:', error);
                               alert('Không thể tải xuống văn bản');
                             }
-                            menu.remove();
-                          });
-                          
-                          menu.querySelector('[data-action="assign"]')?.addEventListener('click', () => {
-                            window.location.href = `/dashboard/dms/incoming/${doc.id}?action=assign`;
-                            menu.remove();
-                          });
-                          
-                          menu.querySelector('[data-action="workflow"]')?.addEventListener('click', () => {
-                            window.location.href = `/dashboard/dms/incoming/${doc.id}?action=workflow`;
-                            menu.remove();
-                          });
-                          
-                          const button = e.currentTarget as HTMLElement;
-                          button.parentElement?.appendChild(menu);
-                          
-                          // Close menu when clicking outside
-                          setTimeout(() => {
-                            const closeMenu = (event: MouseEvent) => {
-                              if (!menu.contains(event.target as Node) && !button.contains(event.target as Node)) {
-                                menu.remove();
-                                document.removeEventListener('click', closeMenu);
-                              }
-                            };
-                            document.addEventListener('click', closeMenu);
-                          }, 0);
-                        }}
-                          title="Thêm tùy chọn"
+                          }}
+                          title="Tải xuống"
                         >
-                          <MoreVertical className="w-4 h-4" />
+                          <Download className="w-4 h-4" />
                         </button>
+                        <div className="relative">
+                          <button
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+                            data-menu-trigger={doc.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuId(activeMenuId === doc.id ? null : doc.id);
+                            }}
+                            title="Thêm tùy chọn"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+
+                          {activeMenuId === doc.id && (
+                            <div
+                              className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 min-w-[200px]"
+                              data-menu-content={doc.id}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="py-1">
+                                <button
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  onClick={() => {
+                                    if (onDocumentClick) onDocumentClick(doc.id);
+                                    else router.push(`/dashboard/dms/incoming/${doc.id}`);
+                                    setActiveMenuId(null);
+                                  }}
+                                >
+                                  Xem chi tiết
+                                </button>
+                                <button
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  onClick={async () => {
+                                    try {
+                                      let fileUrl = doc.fileUrl;
+                                      let fileName = doc.fileName || 'document.pdf';
+                                      if (!fileUrl) {
+                                        const response = await fetch(`/api/dms/incoming/${doc.id}`);
+                                        const data = await response.json();
+                                        fileUrl = data.fileUrl;
+                                        fileName = data.fileName || fileName;
+                                      }
+                                      if (fileUrl) {
+                                        const link = document.createElement('a');
+                                        link.href = fileUrl;
+                                        link.download = fileName;
+                                        link.target = '_blank';
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                      } else {
+                                        alert('Không tìm thấy file');
+                                      }
+                                    } catch (error) {
+                                      alert('Không thể tải xuống văn bản');
+                                    }
+                                    setActiveMenuId(null);
+                                  }}
+                                >
+                                  Tải xuống
+                                </button>
+                                <button
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  onClick={() => {
+                                    router.push(`/dashboard/dms/incoming/${doc.id}?action=assign`);
+                                    setActiveMenuId(null);
+                                  }}
+                                >
+                                  Phân công xử lý
+                                </button>
+                                <button
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  onClick={() => {
+                                    router.push(`/dashboard/dms/incoming/${doc.id}?action=workflow`);
+                                    setActiveMenuId(null);
+                                  }}
+                                >
+                                  Tạo workflow
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

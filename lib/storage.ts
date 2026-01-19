@@ -10,7 +10,7 @@ const storage = new Storage({
   }),
 })
 
-const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'thptphuocbuu360'
+const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'thptphuocbuu-dms'
 const bucket = storage.bucket(BUCKET_NAME)
 
 // Ensure bucket exists and is accessible

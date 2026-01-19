@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { getProviders, signIn } from 'next-auth/react'
-import { Chrome } from 'lucide-react'
+import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import ThemeToggle from '@/components/Common/ThemeToggle'
 import Logo from '@/components/Common/Logo'
 
@@ -24,17 +24,17 @@ export default function LoginClient() {
   // Detect whether Google provider is enabled (server-side config)
   useEffect(() => {
     let mounted = true
-    ;(async () => {
-      try {
-        const providers = await getProviders()
-        if (!mounted) return
-        setGoogleEnabled(!!providers?.google)
-      } catch {
-        if (!mounted) return
-        // If providers endpoint fails, don't block the page; just hide Google button.
-        setGoogleEnabled(false)
-      }
-    })()
+      ; (async () => {
+        try {
+          const providers = await getProviders()
+          if (!mounted) return
+          setGoogleEnabled(!!providers?.google)
+        } catch {
+          if (!mounted) return
+          // If providers endpoint fails, don't block the page; just hide Google button.
+          setGoogleEnabled(false)
+        }
+      })()
     return () => {
       mounted = false
     }
@@ -245,12 +245,12 @@ export default function LoginClient() {
               disabled={loading || oauthLoading}
               className="mt-4 w-full flex items-center justify-center space-x-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <Chrome size={20} />
+              <GoogleIcon className="w-5 h-5" />
               <span>{oauthLoading ? 'Đang xử lý...' : 'Đăng nhập với Google'}</span>
             </button>
           ) : googleEnabled === null ? (
             <div className="mt-4 w-full flex items-center justify-center space-x-2 bg-gray-100 dark:bg-gray-700/60 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-200 py-2 px-4 rounded-lg font-medium opacity-80">
-              <Chrome size={20} />
+              <GoogleIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
               <span>Đang kiểm tra Google OAuth...</span>
             </div>
           ) : (

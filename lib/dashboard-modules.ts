@@ -52,11 +52,11 @@ export const dashboardModules: DashboardModule[] = [
     description: 'Quản lý văn bản',
     icon: 'FileText',
     href: '/dashboard/documents',
-    roles: ['ADMIN', 'TEACHER', 'SUPER_ADMIN', 'BGH', 'BAN_TT', 'TRUONG_TONG', 'QUAN_NHIEM', 'TRUONG_HANH_CHINH', 'TAI_CHINH', 'Y_TE'],
+    roles: ['ADMIN', 'TEACHER', 'SUPER_ADMIN', 'BGH', 'BAN_TT', 'TRUONG_TONG', 'QUAN_NHIEM', 'TRUONG_HANH_CHINH', 'TAI_CHINH', 'Y_TE', 'DOAN_TN', 'DANG_BO'],
     order: 4,
     category: 'management',
   },
-  
+
   // Module cho Admin và quản lý
   {
     id: 'spaces',
@@ -64,7 +64,7 @@ export const dashboardModules: DashboardModule[] = [
     description: 'Quản lý không gian làm việc',
     icon: 'Building2',
     href: '/dashboard/spaces',
-    roles: ['ADMIN', 'TEACHER', 'SUPER_ADMIN', 'BGH', 'TRUONG_TONG', 'QUAN_NHIEM'],
+    roles: ['ADMIN', 'TEACHER', 'SUPER_ADMIN', 'BGH', 'TRUONG_TONG', 'QUAN_NHIEM', 'DOAN_TN', 'DANG_BO'],
     order: 5,
     category: 'management',
   },
@@ -88,7 +88,7 @@ export const dashboardModules: DashboardModule[] = [
     order: 7,
     category: 'management',
   },
-  
+
   // Module cho Ban Giám Hiệu
   {
     id: 'reports',
@@ -100,7 +100,7 @@ export const dashboardModules: DashboardModule[] = [
     order: 8,
     category: 'reports',
   },
-  
+
   // Module cho Admin Panel
   {
     id: 'admin',
@@ -112,7 +112,7 @@ export const dashboardModules: DashboardModule[] = [
     order: 9,
     category: 'settings',
   },
-  
+
   // Module chung
   {
     id: 'premium',

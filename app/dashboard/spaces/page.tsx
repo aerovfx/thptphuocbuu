@@ -29,27 +29,13 @@ async function getSpaces() {
 
 export default async function SpacesPage() {
   const session = await getServerSession(authOptions)
-  if (!session) {
-    redirect('/login')
-  }
-
-  // Chỉ ADMIN, BGH, TRUONG_TONG, QUAN_NHIEM mới được truy cập
-  if (
-    session.user.role !== 'ADMIN' &&
-    session.user.role !== 'SUPER_ADMIN' &&
-    session.user.role !== 'BGH' &&
-    session.user.role !== 'TRUONG_TONG' &&
-    session.user.role !== 'QUAN_NHIEM'
-  ) {
-    // STUDENT và các role khác redirect về dashboard
-    redirect('/dashboard')
-  }
+  // Open access for everyone
 
   const spaces = await getSpaces()
   const canCreate =
-    session.user.role === 'ADMIN' ||
-    session.user.role === 'SUPER_ADMIN' ||
-    session.user.role === 'BGH'
+    session?.user?.role === 'ADMIN' ||
+    session?.user?.role === 'SUPER_ADMIN' ||
+    session?.user?.role === 'BGH'
 
   return (
     <SharedLayout title="Quản lý Spaces">

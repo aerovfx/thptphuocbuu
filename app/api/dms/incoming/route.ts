@@ -100,8 +100,8 @@ export async function POST(request: Request) {
     const dataToValidate = {
       title: (title || '').trim(),
       sender: sender && sender.trim() ? sender.trim() : undefined,
-      type: type && type.trim() && ['DIRECTIVE', 'RECORD', 'REPORT', 'REQUEST', 'OTHER'].includes(type.trim()) 
-        ? type.trim() 
+      type: type && type.trim() && ['DIRECTIVE', 'RECORD', 'REPORT', 'REQUEST', 'OTHER'].includes(type.trim())
+        ? type.trim()
         : undefined,
       priority: priority && ['URGENT', 'HIGH', 'NORMAL', 'LOW'].includes(priority) ? priority : 'NORMAL',
       deadline: deadline && deadline.trim() ? deadline.trim() : undefined,
@@ -220,6 +220,7 @@ export async function POST(request: Request) {
         status: 'PENDING',
         createdById: currentUserId,
         tags: tagsJson || null,
+        receivedDate: new Date(), // Set to current system time per user request
       },
     })
 
@@ -244,7 +245,11 @@ export async function POST(request: Request) {
     }
     console.error('Error creating incoming document:', error)
     return NextResponse.json(
-      { error: 'Đã xảy ra lỗi khi tạo văn bản đến' },
+      {
+        error: 'Đã xảy ra lỗi khi tạo văn bản đến',
+        details: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     )
   }
@@ -297,26 +302,12 @@ export async function GET(request: Request) {
       ]
     }
 
-    // Role-based filtering
+    // Role-based filtering removed to allow all users to view documents
+    /* 
     if (session.user.role === 'STUDENT' || session.user.role === 'PARENT') {
-      // Students and parents can only see documents assigned to them
-      const assignmentFilter = {
-        some: {
-          assignedToId: session.user.id,
-        },
-      }
-      
-      // If there's already an OR clause from search, we need to combine them
-      if (where.OR) {
-        where.AND = [
-          { assignments: assignmentFilter },
-          { OR: where.OR },
-        ]
-        delete where.OR
-      } else {
-        where.assignments = assignmentFilter
-      }
+      // ...
     }
+    */
 
     const [documents, total] = await Promise.all([
       prisma.incomingDocument.findMany({

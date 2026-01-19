@@ -91,14 +91,14 @@ export async function GET(
       console.error('Prisma error:', prismaError)
       console.error('Prisma error code:', prismaError?.code)
       console.error('Prisma error message:', prismaError?.message)
-      
+
       // Check if it's a known Prisma error
       if (prismaError?.code === 'P2025') {
         return NextResponse.json({ error: 'Văn bản không tồn tại' }, { status: 404 })
       }
-      
+
       return NextResponse.json(
-        { 
+        {
           error: 'Lỗi khi truy vấn database',
           details: process.env.NODE_ENV === 'development' ? prismaError?.message : undefined
         },
@@ -110,15 +110,8 @@ export async function GET(
       return NextResponse.json({ error: 'Văn bản không tồn tại' }, { status: 404 })
     }
 
-    // Check access permission
-    if (session.user.role === 'STUDENT' || session.user.role === 'PARENT') {
-      const hasAccess = document.assignments.some(
-        (assignment) => assignment.assignedToId === session.user.id
-      )
-      if (!hasAccess) {
-        return NextResponse.json({ error: 'Bạn không có quyền xem văn bản này' }, { status: 403 })
-      }
-    }
+    // Access permission: all authenticated users can view documents
+    // Restriction logic removed as per user request to allow everyone to view
 
     return NextResponse.json(document)
   } catch (error: any) {
@@ -126,19 +119,19 @@ export async function GET(
     console.error('Error stack:', error?.stack)
     console.error('Error name:', error?.name)
     console.error('Error message:', error?.message)
-    
+
     // Return more detailed error in development
     const errorMessage = error?.message || 'Đã xảy ra lỗi khi lấy thông tin văn bản'
-    const errorDetails = process.env.NODE_ENV === 'development' 
-      ? { 
-          message: error?.message,
-          stack: error?.stack,
-          name: error?.name,
-        }
+    const errorDetails = process.env.NODE_ENV === 'development'
+      ? {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name,
+      }
       : undefined
 
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
         details: errorDetails,
       },
@@ -172,7 +165,7 @@ export async function PUT(
     const isAdmin = session.user.role === 'ADMIN'
     const isBGH = session.user.role === 'BGH'
     const isOwner = existingDoc.createdById === session.user.id
-    
+
     if (!isAdmin && !isBGH && !isOwner) {
       return NextResponse.json(
         { error: 'Bạn không có quyền cập nhật văn bản này' },
@@ -198,8 +191,8 @@ export async function PUT(
       console.error('Validation error:', validationError)
       if (validationError instanceof z.ZodError) {
         return NextResponse.json(
-          { 
-            error: 'Dữ liệu không hợp lệ', 
+          {
+            error: 'Dữ liệu không hợp lệ',
             details: validationError.errors,
             received: body, // Include received data for debugging
           },
@@ -274,14 +267,14 @@ export async function PUT(
       console.error('Prisma error code:', prismaError?.code)
       console.error('Prisma error message:', prismaError?.message)
       console.error('Update data:', updateData)
-      
+
       // Check if it's a known Prisma error
       if (prismaError?.code === 'P2025') {
         return NextResponse.json({ error: 'Văn bản không tồn tại' }, { status: 404 })
       }
-      
+
       return NextResponse.json(
-        { 
+        {
           error: 'Lỗi khi cập nhật database',
           details: process.env.NODE_ENV === 'development' ? prismaError?.message : undefined,
           updateData: process.env.NODE_ENV === 'development' ? updateData : undefined,
@@ -302,9 +295,9 @@ export async function PUT(
     console.error('Error stack:', error?.stack)
     console.error('Error name:', error?.name)
     console.error('Error message:', error?.message)
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Đã xảy ra lỗi khi cập nhật văn bản',
         details: process.env.NODE_ENV === 'development' ? {
           message: error?.message,

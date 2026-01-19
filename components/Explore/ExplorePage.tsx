@@ -16,6 +16,11 @@ import {
   Hash,
   Settings,
   Circle,
+  FileText,
+  Building2,
+  Briefcase,
+  Crown,
+  Download,
 } from 'lucide-react'
 import SocialFeed from '../Social/SocialFeed'
 import Avatar from '../Common/Avatar'
@@ -57,12 +62,29 @@ interface Post {
   }
 }
 
+interface Document {
+  id: string
+  title: string
+  type?: string
+  description?: string | null
+  fileSize: number
+  fileUrl: string
+  createdAt: string
+  uploadedBy: {
+    id: string
+    firstName: string
+    lastName: string
+    avatar?: string | null
+  }
+}
+
 interface ExplorePageProps {
   initialQuery: string
   initialTab: string
   trendingTopics: TrendingTopic[]
   users: UserResult[]
   posts: Post[]
+  documents?: Document[]
   session: any
 }
 
@@ -72,6 +94,7 @@ export default function ExplorePage({
   trendingTopics,
   users,
   posts,
+  documents = [],
   session,
 }: ExplorePageProps) {
   const { data: sessionData } = useSession()
@@ -89,6 +112,7 @@ export default function ExplorePage({
   const tabs = [
     { id: 'top', label: 'Hàng đầu' },
     { id: 'latest', label: 'Mới nhất' },
+    { id: 'documents', label: 'Văn bản' },
     { id: 'people', label: 'Mọi người' },
     { id: 'media', label: 'Phương tiện' },
     { id: 'lists', label: 'Danh sách' },
@@ -126,6 +150,10 @@ export default function ExplorePage({
     { name: 'Thông báo', href: '/notifications', icon: Bell, requireAuth: true },
     { name: 'Tin nhắn', href: '/messages', icon: Mail, requireAuth: true },
     { name: 'Dấu trang', href: '/bookmarks', icon: Bookmark, requireAuth: true },
+    { name: 'Văn bản', href: '/dashboard/documents', icon: FileText },
+    { name: 'Spaces', href: '/dashboard/spaces', icon: Building2 },
+    { name: 'Tổ chuyên môn', href: '/dashboard/departments', icon: Briefcase },
+    { name: 'Premium', href: '/dashboard/premium', icon: Crown },
     { name: 'Hồ sơ', href: currentUser ? '/dashboard' : '/login', icon: User },
   ]
 
@@ -148,9 +176,8 @@ export default function ExplorePage({
                   <Link
                     key={item.name}
                     href={isDisabled ? '/login' : item.href}
-                    className={`flex items-center space-x-4 px-4 py-3 rounded-full hover:bg-bluelock-light-2 dark:hover:bg-gray-900 transition-colors font-poppins ${
-                      isActive ? 'font-bold text-bluelock-green dark:text-white' : 'text-bluelock-dark dark:text-white'
-                    } ${isDisabled ? 'opacity-50' : ''}`}
+                    className={`flex items-center space-x-4 px-4 py-3 rounded-full hover:bg-bluelock-light-2 dark:hover:bg-gray-900 transition-colors font-poppins ${isActive ? 'font-bold text-bluelock-green dark:text-white' : 'text-bluelock-dark dark:text-white'
+                      } ${isDisabled ? 'opacity-50' : ''}`}
                   >
                     <item.icon size={24} />
                     <span className="font-poppins">{item.name}</span>
@@ -243,11 +270,10 @@ export default function ExplorePage({
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`flex-1 px-4 py-3 text-center font-poppins transition-colors relative ${
-                    activeTab === tab.id
-                      ? 'font-bold text-bluelock-green dark:text-white'
-                      : 'text-bluelock-dark/60 dark:text-gray-500 hover:bg-bluelock-light-2 dark:hover:bg-gray-900/50'
-                  }`}
+                  className={`flex-1 px-4 py-3 text-center font-poppins transition-colors relative ${activeTab === tab.id
+                    ? 'font-bold text-bluelock-green dark:text-white'
+                    : 'text-bluelock-dark/60 dark:text-gray-500 hover:bg-bluelock-light-2 dark:hover:bg-gray-900/50'
+                    }`}
                 >
                   {tab.label}
                   {activeTab === tab.id && (
@@ -383,6 +409,75 @@ export default function ExplorePage({
                   </div>
                 )}
               </div>
+            ) : activeTab === 'documents' ? (
+              <div className="divide-y divide-bluelock-blue/30 dark:divide-gray-800">
+                {documents.length > 0 ? (
+                  documents.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="px-4 py-4 hover:bg-bluelock-light-2 dark:hover:bg-gray-900/30 transition-colors"
+                    >
+                      <div className="flex items-start justify-between space-x-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium font-poppins ${doc.type === 'INCOMING' ? 'bg-blue-500/10 text-blue-500' :
+                                doc.type === 'OUTGOING' ? 'bg-green-500/10 text-green-500' :
+                                  'bg-bluelock-green/10 dark:bg-blue-500/10 text-bluelock-green dark:text-blue-500'
+                              }`}>
+                              {doc.type === 'INCOMING' ? 'Văn bản đến' :
+                                doc.type === 'OUTGOING' ? 'Văn bản đi' : 'Văn bản'}
+                            </span>
+                            <span className="text-bluelock-dark/60 dark:text-gray-500 text-xs font-poppins">
+                              • {formatDistanceToNow(new Date(doc.createdAt), {
+                                addSuffix: true,
+                                locale: vi,
+                              })}
+                            </span>
+                          </div>
+                          <h3 className="font-bold text-bluelock-dark dark:text-white mb-2 font-poppins hover:text-bluelock-green dark:hover:text-blue-500 transition-colors">
+                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                              {doc.title}
+                            </a>
+                          </h3>
+                          {doc.description && (
+                            <p className="text-bluelock-dark/70 dark:text-gray-400 text-sm mb-2 line-clamp-2 font-poppins">
+                              {doc.description}
+                            </p>
+                          )}
+                          <div className="flex items-center space-x-2">
+                            {doc.uploadedBy?.avatar && (
+                              <Avatar
+                                src={doc.uploadedBy.avatar}
+                                name={`${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName}`}
+                                size="xs"
+                              />
+                            )}
+                            <p className="text-xs text-bluelock-dark/60 dark:text-gray-500 font-poppins">
+                              Đăng bởi {doc.uploadedBy.firstName} {doc.uploadedBy.lastName}
+                            </p>
+                          </div>
+                        </div>
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 text-bluelock-dark/60 dark:text-gray-500 hover:text-bluelock-green dark:hover:text-blue-500 hover:bg-bluelock-green/10 dark:hover:bg-blue-500/10 rounded-full transition-colors"
+                          title="Tải xuống"
+                        >
+                          <Download size={20} />
+                        </a>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-12 text-center">
+                    <FileText className="mx-auto text-bluelock-dark/40 dark:text-gray-600 mb-4" size={48} />
+                    <p className="text-bluelock-dark/60 dark:text-gray-500 font-poppins">
+                      {query ? 'Không tìm thấy văn bản nào' : 'Chưa có văn bản công khai nào'}
+                    </p>
+                  </div>
+                )}
+              </div>
             ) : (
               <div>
                 {posts.length > 0 ? (
@@ -409,7 +504,7 @@ export default function ExplorePage({
             {/* Search Filters */}
             <div className="bg-bluelock-light-2 dark:bg-gray-900 rounded-2xl p-4 transition-colors duration-300">
               <h2 className="text-xl font-bold mb-4 font-poppins text-bluelock-dark dark:text-white">Bộ lọc tìm kiếm</h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold text-bluelock-dark dark:text-white mb-2 font-poppins">Mọi người</h3>

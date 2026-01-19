@@ -15,31 +15,31 @@ import {
   X,
   Crown,
   Shield,
+  Building2,
+  Briefcase,
+  BarChart3,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '../Common/Logo'
 import Avatar from '../Common/Avatar'
 import { useState } from 'react'
+import { getModulesByRole } from '@/lib/dashboard-modules'
+import type { UserRole } from '@prisma/client'
 
-type NavigationItem = {
-  name: string
-  href: string
-  icon: LucideIcon
-  adminOnly?: boolean
-  teacherOnly?: boolean
-  studentHidden?: boolean // Ẩn với học sinh
+// Icon mapping - map icon names to lucide-react components
+const iconMap: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  FileText,
+  MessageSquare,
+  Settings,
+  Crown,
+  Shield,
+  Building2,
+  Briefcase,
+  BarChart3,
 }
-
-const navigation: NavigationItem[] = [
-  { name: 'Trang chủ', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Lớp học', href: '/dashboard/classes', icon: BookOpen, adminOnly: true }, // Tạm ẩn, chỉ hiển thị với quản trị admin
-  { name: 'Mạng xã hội', href: '/dashboard/social', icon: MessageSquare },
-  { name: 'Văn bản', href: '/dashboard/documents', icon: FileText, studentHidden: true },
-  { name: 'Người dùng', href: '/dashboard/users', icon: Users, studentHidden: true },
-  { name: 'Premium', href: '/dashboard/premium', icon: Crown },
-  { name: 'Cài đặt', href: '/dashboard/settings', icon: Settings },
-  { name: 'Admin Panel', href: '/dashboard/admin', icon: Shield, adminOnly: true },
-]
 
 export default function DashboardLayout({
   children,
@@ -66,9 +66,8 @@ export default function DashboardLayout({
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-30 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 left-0 z-30 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-4 border-b">
@@ -82,38 +81,24 @@ export default function DashboardLayout({
           </div>
 
           <nav className="flex-1 p-4 space-y-2">
-            {navigation
-              .filter((item) => {
-                const userRole = session?.user?.role
-                // Only show admin-only items to ADMIN, SUPER_ADMIN, and BGH users
-                if (item.adminOnly && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && userRole !== 'BGH') {
-                  return false
-                }
-                // Hide items marked as studentHidden for STUDENT role
-                if (item.studentHidden && userRole === 'STUDENT') {
-                  return false
-                }
-                // Hide teacher-only items for non-teacher roles
-                if (item.teacherOnly && userRole !== 'TEACHER' && userRole !== 'ADMIN') {
-                  return false
-                }
-                return true
-              })
-              .map((item) => {
-                const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+            {getModulesByRole(session?.user?.role as UserRole)
+              .filter((module) => !module.underDevelopment) // Hide modules under development
+              .map((module) => {
+                const isActive = pathname === module.href || pathname?.startsWith(module.href + '/')
+                const Icon = iconMap[module.icon] || LayoutDashboard // Fallback to LayoutDashboard
+
                 return (
                   <Link
-                    key={item.name}
-                    href={item.href}
+                    key={module.id}
+                    href={module.href}
                     onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-primary-100 text-primary-700 font-medium'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                      ? 'bg-primary-100 text-primary-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
-                    <item.icon size={20} />
-                    <span>{item.name}</span>
+                    <Icon size={20} />
+                    <span>{module.title}</span>
                   </Link>
                 )
               })}

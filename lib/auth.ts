@@ -393,14 +393,19 @@ export const authOptions: NextAuthOptions = {
       // Initial sign in - handle both credentials and OAuth
       if (user) {
         token.role = user.role || 'STUDENT'
-        token.id = user.id
+        // If it's NOT google (e.g. credentials), use the user.id directly
+        // If it IS google, we shouldn't trust user.id as it might be the provider ID
+        if (account?.provider !== 'google') {
+          token.id = user.id
+        }
         token.email = user.email || undefined
         // Map avatar from user object (could be from credentials or OAuth)
         token.avatar = (user as any).avatar || (user as any).image || null
       }
 
-      // If OAuth sign in and user object doesn't have id, fetch from database
-      if (account?.provider === 'google' && !token.id && token.email) {
+      // If OAuth sign in (account.provider is google), ALWAYS fetch from database to get the internal DB ID
+      // The user.id coming from Google provider is the Google ID, not our DB ID
+      if (account?.provider === 'google' && token.email) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { email: token.email as string },

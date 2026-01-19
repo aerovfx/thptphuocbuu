@@ -16,11 +16,11 @@ async function getTrendingTopics() {
 
 async function searchUsers(query: string) {
   if (!query) return []
-  
+
   // SQLite doesn't support case-insensitive mode, use contains without mode
   // We'll filter case-insensitively in application code if needed
   const lowerQuery = query.toLowerCase()
-  
+
   const allUsers = await prisma.user.findMany({
     select: {
       id: true,
@@ -94,11 +94,11 @@ async function searchPosts(query: string, tab: string = 'top', userId?: string) 
   }
 
   if (!query) return []
-  
+
   // SQLite doesn't support case-insensitive mode
   // Get all recent posts and filter in application
   const lowerQuery = query.toLowerCase()
-  
+
   const allPosts = await prisma.post.findMany({
     include: {
       author: {
@@ -130,6 +130,71 @@ async function searchPosts(query: string, tab: string = 'top', userId?: string) 
       ...post,
       createdAt: new Date(post.createdAt),
     }))
+    .map((post: any) => ({
+      ...post,
+      createdAt: new Date(post.createdAt),
+    }))
+}
+
+async function getPublicDocuments(query: string) {
+  const whereCommon: any = query ? { title: { contains: query } } : {}
+
+  const [docs, incoming, outgoing] = await Promise.all([
+    // Generic Docs
+    prisma.document.findMany({
+      where: { access: { none: {} }, ...whereCommon },
+      include: { uploadedBy: { select: { id: true, firstName: true, lastName: true, avatar: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    }),
+    // Incoming
+    prisma.incomingDocument.findMany({
+      where: whereCommon,
+      include: { createdBy: { select: { id: true, firstName: true, lastName: true, avatar: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    }),
+    // Outgoing
+    prisma.outgoingDocument.findMany({
+      where: whereCommon,
+      include: { createdBy: { select: { id: true, firstName: true, lastName: true, avatar: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    })
+  ])
+
+  // Map and Merge
+  const mappedDocs = docs.map((d: any) => ({
+    ...d,
+    type: 'DOCUMENT',
+  }))
+
+  const mappedIncoming = incoming.map((d: any) => ({
+    id: d.id,
+    title: d.title,
+    type: 'INCOMING',
+    description: `Văn bản đến - Số: ${d.documentNumber || 'N/A'} - Từ: ${d.sender || 'N/A'}`,
+    createdAt: d.createdAt,
+    fileUrl: d.fileUrl || null,
+    fileSize: 0,
+    uploadedBy: d.createdBy
+  }))
+
+  const mappedOutgoing = outgoing.map((d: any) => ({
+    id: d.id,
+    title: d.title,
+    type: 'OUTGOING',
+    description: `Văn bản đi - Số: ${d.documentNumber || 'N/A'} - Đến: ${d.recipient || 'N/A'}`,
+    createdAt: d.createdAt,
+    fileUrl: d.fileUrl || null,
+    fileSize: 0,
+    uploadedBy: d.createdBy
+  }))
+
+  const all = [...mappedDocs, ...mappedIncoming, ...mappedOutgoing]
+  all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+  return all.slice(0, 20)
 }
 
 export default async function ExplorePageWrapper({
@@ -141,12 +206,13 @@ export default async function ExplorePageWrapper({
   const params = await searchParams
   const query = params.q || ''
   const tab = params.tab || 'top'
-  
-  const [trendingTopics, users, posts] = await Promise.all([
+
+  const [trendingTopics, users, posts, documents] = await Promise.all([
     getTrendingTopics(),
     tab === 'people' ? searchUsers(query) : [],
     // Use ranked feed for 'top' tab, search for others
     searchPosts(query, tab, session?.user?.id),
+    getPublicDocuments(query),
   ])
 
   return (
@@ -156,6 +222,7 @@ export default async function ExplorePageWrapper({
       trendingTopics={trendingTopics}
       users={users}
       posts={posts}
+      documents={documents as any[]} // Explicit cast if interface mismatch temporarily
       session={session}
     />
   )

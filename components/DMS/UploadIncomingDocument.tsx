@@ -119,7 +119,7 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
 
     setError(null)
     setFile(selectedFile)
-    
+
     // Auto-fill title from filename if empty
     if (!title) {
       const fileName = selectedFile.name
@@ -190,7 +190,7 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
 
       // Cloud Run has request size limits; for large files we upload directly to GCS using a signed URL
       // and only send metadata + public URL to the backend.
-      const DIRECT_UPLOAD_THRESHOLD = 10 * 1024 * 1024 // 10MB
+      const DIRECT_UPLOAD_THRESHOLD = 50 * 1024 * 1024 // 50MB (Temporarily increased to bypass signed-url requirement)
       if (file.size > DIRECT_UPLOAD_THRESHOLD) {
         // 1) Get signed upload URL
         const signedRes = await fetch('/api/uploads/signed-url', {
@@ -272,13 +272,12 @@ export default function UploadIncomingDocument({ currentUser }: UploadIncomingDo
             />
             <span className="text-red-400 ml-2">*</span>
             <div
-              className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-all cursor-pointer ${
-                isDragging
+              className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-all cursor-pointer ${isDragging
                   ? 'border-blue-500 bg-blue-500/10 scale-[1.02]'
                   : file
-                  ? 'border-gray-700 hover:border-gray-600'
-                  : 'border-gray-700 hover:border-blue-500'
-              }`}
+                    ? 'border-gray-700 hover:border-gray-600'
+                    : 'border-gray-700 hover:border-blue-500'
+                }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}

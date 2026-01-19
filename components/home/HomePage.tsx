@@ -16,6 +16,10 @@ import {
   Share2,
   Hash,
   TrendingUp,
+  FileText,
+  Building2,
+  Briefcase,
+  Crown,
 } from 'lucide-react'
 import SocialFeed from '../Social/SocialFeed'
 import CreatePost from '../Social/CreatePost'
@@ -89,7 +93,7 @@ export default function HomePage({ initialPosts, session }: HomePageProps) {
     const form = e.currentTarget as HTMLFormElement
     const input = form?.querySelector('input') || (e.target as HTMLInputElement)
     const query = input?.value?.trim()
-    
+
     if (query) {
       router.push(`/explore?q=${encodeURIComponent(query)}`)
     } else {
@@ -157,6 +161,10 @@ export default function HomePage({ initialPosts, session }: HomePageProps) {
     { name: 'Thông báo', href: '/notifications', icon: Bell, requireAuth: true },
     { name: 'Tin nhắn', href: '/messages', icon: Mail, requireAuth: true },
     { name: 'Dấu trang', href: '/bookmarks', icon: Bookmark, requireAuth: true },
+    { name: 'Văn bản', href: '/dashboard/documents', icon: FileText },
+    { name: 'Spaces', href: '/dashboard/spaces', icon: Building2 },
+    { name: 'Tổ chuyên môn', href: '/dashboard/departments', icon: Briefcase },
+    { name: 'Premium', href: '/dashboard/premium', icon: Crown },
     { name: 'Hồ sơ', href: currentUser ? '/dashboard' : '/login', icon: User },
   ]
 
@@ -200,9 +208,8 @@ export default function HomePage({ initialPosts, session }: HomePageProps) {
                   <Link
                     key={item.name}
                     href={isDisabled ? '/login' : item.href}
-                    className={`flex items-center space-x-4 px-4 py-3 rounded-full hover:bg-bluelock-light-2 dark:hover:bg-gray-900 transition-colors font-poppins ${
-                      isActive ? 'font-bold text-bluelock-green dark:text-white' : 'text-bluelock-dark dark:text-white'
-                    } ${isDisabled ? 'opacity-50' : ''}`}
+                    className={`flex items-center space-x-4 px-4 py-3 rounded-full hover:bg-bluelock-light-2 dark:hover:bg-gray-900 transition-colors font-poppins ${isActive ? 'font-bold text-bluelock-green dark:text-white' : 'text-bluelock-dark dark:text-white'
+                      } ${isDisabled ? 'opacity-50' : ''}`}
                   >
                     <item.icon size={24} />
                     <span>{item.name}</span>

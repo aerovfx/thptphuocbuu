@@ -22,7 +22,8 @@ export async function GET() {
       return NextResponse.json({ ...cached, cached: true })
     }
 
-    if (role === 'TEACHER' || role === 'ADMIN') {
+    const teacherRoles = ['TEACHER', 'ADMIN', 'SUPER_ADMIN', 'BGH', 'TRUONG_TONG', 'QUAN_NHIEM', 'BAN_TT', 'DOAN_TN', 'DANG_BO']
+    if (teacherRoles.includes(role)) {
       const now = new Date()
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
       const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)

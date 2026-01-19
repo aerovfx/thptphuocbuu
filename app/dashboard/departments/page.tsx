@@ -49,26 +49,13 @@ async function getDepartments() {
 
 export default async function DepartmentsPage() {
   const session = await getServerSession(authOptions)
-  if (!session) {
-    redirect('/login')
-  }
-
-  // Chỉ ADMIN, BGH, TRUONG_TONG mới được truy cập
-  if (
-    session.user.role !== 'ADMIN' &&
-    session.user.role !== 'SUPER_ADMIN' &&
-    session.user.role !== 'BGH' &&
-    session.user.role !== 'TRUONG_TONG'
-  ) {
-    // STUDENT và các role khác redirect về dashboard
-    redirect('/dashboard')
-  }
+  // Access open for everyone
 
   const departments = await getDepartments()
   const canCreate =
-    session.user.role === 'ADMIN' ||
-    session.user.role === 'SUPER_ADMIN' ||
-    session.user.role === 'BGH'
+    session?.user?.role === 'ADMIN' ||
+    session?.user?.role === 'SUPER_ADMIN' ||
+    session?.user?.role === 'BGH'
 
   return (
     <SharedLayout title="Tổ Chuyên Môn">

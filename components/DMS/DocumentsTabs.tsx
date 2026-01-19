@@ -24,6 +24,7 @@ interface Document {
   fileUrl: string
   createdAt: string
   uploadedBy: {
+    id?: string
     firstName: string
     lastName: string
   }
@@ -109,13 +110,18 @@ const documentTypeLabels: Record<string, string> = {
   OTHER: 'Khác',
 }
 
+import { useRouter } from 'next/navigation'
+
+// ... existing imports
+
 export default function DocumentsTabs({
   documents,
   incomingDocuments,
   outgoingDocuments,
   currentUser,
 }: DocumentsTabsProps) {
-  const [activeTab, setActiveTab] = useState<'all' | 'incoming' | 'outgoing'>('all')
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<'all' | 'incoming' | 'outgoing' | 'public'>('public')
   const [uploaders, setUploaders] = useState<UploaderUser[]>([])
   const [selectedUploaderId, setSelectedUploaderId] = useState<string | null>(null)
   const [loadingUploaders, setLoadingUploaders] = useState(false)
@@ -145,6 +151,7 @@ export default function DocumentsTabs({
   const getFilteredDocuments = () => {
     let filteredIncoming = [...incomingDocuments]
     let filteredOutgoing = [...outgoingDocuments]
+    let filteredPublic = [...documents]
 
     if (selectedUploaderId) {
       filteredIncoming = incomingDocuments.filter(
@@ -153,12 +160,15 @@ export default function DocumentsTabs({
       filteredOutgoing = outgoingDocuments.filter(
         (doc) => doc.createdBy?.id === selectedUploaderId
       )
+      filteredPublic = documents.filter(
+        (doc) => doc.uploadedBy?.id === selectedUploaderId
+      )
     }
 
-    return { filteredIncoming, filteredOutgoing }
+    return { filteredIncoming, filteredOutgoing, filteredPublic }
   }
 
-  const { filteredIncoming, filteredOutgoing } = getFilteredDocuments()
+  const { filteredIncoming, filteredOutgoing, filteredPublic } = getFilteredDocuments()
 
   const getRoleLabel = (role: string) => {
     const roleLabels: Record<string, string> = {
@@ -173,11 +183,11 @@ export default function DocumentsTabs({
 
   const handleDocumentClick = (documentId: string, type: 'incoming' | 'outgoing' | 'document') => {
     if (type === 'incoming') {
-      window.location.href = `/dashboard/dms/incoming/${documentId}`
+      router.push(`/dashboard/dms/incoming/${documentId}`)
     } else if (type === 'outgoing') {
-      window.location.href = `/dashboard/dms/outgoing/${documentId}`
+      router.push(`/dashboard/dms/outgoing/${documentId}`)
     } else if (type === 'document') {
-      window.location.href = `/dashboard/documents/${documentId}`
+      router.push(`/dashboard/documents/${documentId}`)
     }
   }
 
@@ -253,66 +263,125 @@ export default function DocumentsTabs({
         </div>
       </div>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-800">
-          <nav className="flex space-x-8" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`${
-                activeTab === 'all'
-                  ? 'border-blue-500 text-blue-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
+      {/* Tabs */}
+      <div className="border-b border-gray-800">
+        <nav className="flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`${activeTab === 'all'
+              ? 'border-blue-500 text-blue-400'
+              : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
               } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm font-poppins transition-colors`}
-            >
-              <div className="flex items-center gap-2">
-                <FileText size={18} />
-                <span>Tất cả</span>
-                <span className="bg-gray-700 text-gray-300 py-0.5 px-2 rounded-full text-xs">
-                  {selectedUploaderId 
-                    ? filteredIncoming.length + filteredOutgoing.length
-                    : incomingDocuments.length + outgoingDocuments.length}
-                </span>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('incoming')}
-              className={`${
-                activeTab === 'incoming'
-                  ? 'border-blue-500 text-blue-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
+          >
+            <div className="flex items-center gap-2">
+              <FileText size={18} />
+              <span>Tất cả</span>
+              <span className="bg-gray-700 text-gray-300 py-0.5 px-2 rounded-full text-xs">
+                {selectedUploaderId
+                  ? filteredIncoming.length + filteredOutgoing.length + filteredPublic.length
+                  : incomingDocuments.length + outgoingDocuments.length + documents.length}
+              </span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('public')}
+            className={`${activeTab === 'public'
+              ? 'border-blue-500 text-blue-400'
+              : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
               } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm font-poppins transition-colors`}
-            >
-              <div className="flex items-center gap-2">
-                <Inbox size={18} />
-                <span>Văn bản đến</span>
-                <span className="bg-gray-700 text-gray-300 py-0.5 px-2 rounded-full text-xs">
-                  {selectedUploaderId ? filteredIncoming.length : incomingDocuments.length}
-                </span>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('outgoing')}
-              className={`${
-                activeTab === 'outgoing'
-                  ? 'border-blue-500 text-blue-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
+          >
+            <div className="flex items-center gap-2">
+              <FileText size={18} />
+              <span>Tài liệu chung</span>
+              <span className="bg-gray-700 text-gray-300 py-0.5 px-2 rounded-full text-xs">
+                {selectedUploaderId ? filteredPublic.length : documents.length}
+              </span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('incoming')}
+            className={`${activeTab === 'incoming'
+              ? 'border-blue-500 text-blue-400'
+              : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
               } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm font-poppins transition-colors`}
-            >
-              <div className="flex items-center gap-2">
-                <Send size={18} />
-                <span>Văn bản đi</span>
-                <span className="bg-gray-700 text-gray-300 py-0.5 px-2 rounded-full text-xs">
-                  {selectedUploaderId ? filteredOutgoing.length : outgoingDocuments.length}
-                </span>
-              </div>
-            </button>
-          </nav>
-        </div>
+          >
+            <div className="flex items-center gap-2">
+              <Inbox size={18} />
+              <span>Văn bản đến</span>
+              <span className="bg-gray-700 text-gray-300 py-0.5 px-2 rounded-full text-xs">
+                {selectedUploaderId ? filteredIncoming.length : incomingDocuments.length}
+              </span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('outgoing')}
+            className={`${activeTab === 'outgoing'
+              ? 'border-blue-500 text-blue-400'
+              : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm font-poppins transition-colors`}
+          >
+            <div className="flex items-center gap-2">
+              <Send size={18} />
+              <span>Văn bản đi</span>
+              <span className="bg-gray-700 text-gray-300 py-0.5 px-2 rounded-full text-xs">
+                {selectedUploaderId ? filteredOutgoing.length : outgoingDocuments.length}
+              </span>
+            </div>
+          </button>
+        </nav>
+      </div>
 
       {/* Tab Content */}
       <div className="mt-6">
         {activeTab === 'all' && (
           <div className="space-y-6">
+            {/* Public Documents Section */}
+            {(selectedUploaderId ? filteredPublic : documents).length > 0 && (
+              <div>
+                <h2 className="text-lg font-semibold text-white mb-4 font-poppins flex items-center gap-2">
+                  <FileText size={20} />
+                  Tài liệu chung ({selectedUploaderId ? filteredPublic.length : documents.length})
+                </h2>
+                <div className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+                  <div className="divide-y divide-gray-800">
+                    {(selectedUploaderId ? filteredPublic : documents).map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="p-4 hover:bg-gray-800/50 transition-colors border-b border-gray-800 last:border-b-0"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-white mb-1">{doc.title}</h3>
+                            {doc.description && (
+                              <p className="text-sm text-gray-400 mb-2">{doc.description}</p>
+                            )}
+                            <p className="text-sm text-gray-500">
+                              Đăng bởi: {doc.uploadedBy.firstName} {doc.uploadedBy.lastName} •{' '}
+                              {formatDistanceToNow(new Date(doc.createdAt), {
+                                addSuffix: true,
+                                locale: vi,
+                              })} • {formatFileSize(doc.fileSize)}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={doc.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+                              title="Tải xuống"
+                            >
+                              <Download className="w-5 h-5" />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Incoming Documents Section */}
             {(selectedUploaderId ? filteredIncoming : incomingDocuments).length > 0 && (
               <div>
@@ -397,7 +466,7 @@ export default function DocumentsTabs({
               </div>
             )}
 
-            {(selectedUploaderId 
+            {(selectedUploaderId
               ? filteredIncoming.length === 0 && filteredOutgoing.length === 0
               : incomingDocuments.length === 0 && outgoingDocuments.length === 0) && (
                 <div className="bg-gray-900 rounded-lg p-12 text-center">
@@ -478,6 +547,64 @@ export default function DocumentsTabs({
                             locale: vi,
                           })}
                         </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'public' && (
+          <div className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+            {(selectedUploaderId ? filteredPublic : documents).length === 0 ? (
+              <div className="p-12 text-center">
+                <FileText className="mx-auto text-gray-400 mb-4" size={48} />
+                <p className="text-gray-400 text-lg font-poppins">
+                  {selectedUploaderId ? 'Không có tài liệu nào từ người này' : 'Chưa có tài liệu nào'}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-800">
+                {(selectedUploaderId ? filteredPublic : documents).map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="p-4 hover:bg-gray-800/50 transition-colors border-b border-gray-800 last:border-b-0"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400">
+                            {documentTypeLabels[doc.type] || doc.type}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-white mb-1 hover:text-blue-400 transition-colors">
+                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                            {doc.title}
+                          </a>
+                        </h3>
+                        {doc.description && (
+                          <p className="text-sm text-gray-400 mb-2">{doc.description}</p>
+                        )}
+                        <p className="text-sm text-gray-500">
+                          Đăng bởi: {doc.uploadedBy.firstName} {doc.uploadedBy.lastName} •{' '}
+                          {formatDistanceToNow(new Date(doc.createdAt), {
+                            addSuffix: true,
+                            locale: vi,
+                          })} • {formatFileSize(doc.fileSize)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
+                          title="Tải xuống"
+                        >
+                          <Download className="w-5 h-5" />
+                        </a>
                       </div>
                     </div>
                   </div>

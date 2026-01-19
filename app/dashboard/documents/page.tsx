@@ -11,6 +11,7 @@ async function getDocuments(userId: string, role: string) {
       include: {
         uploadedBy: {
           select: {
+            id: true,
             firstName: true,
             lastName: true,
           },
@@ -34,6 +35,7 @@ async function getDocuments(userId: string, role: string) {
       include: {
         uploadedBy: {
           select: {
+            id: true,
             firstName: true,
             lastName: true,
           },
@@ -53,16 +55,8 @@ async function getIncomingDocuments(userId: string, role: string) {
   const where: any = {}
 
   // Role-based filtering
-  if (role === 'ADMIN' || role === 'BGH') {
-    // ADMIN and BGH can see all incoming documents
-    // where remains empty to show all
-  } else if (role === 'STUDENT' || role === 'PARENT') {
-    where.assignments = {
-      some: {
-        assignedToId: userId,
-      },
-    }
-  }
+  // Role-based filtering removed to allow all users (including STUDENTS/PARENTS) to view all documents
+  // if (role === 'ADMIN' || role === 'BGH') { ... } 
 
   return await prisma.incomingDocument.findMany({
     where,
@@ -160,79 +154,119 @@ async function getOutgoingDocuments(userId: string, role: string) {
 
 export default async function DocumentsPage() {
   const session = await getServerSession(authOptions)
-  if (!session) {
-    redirect('/login')
+  // No redirect for guest access
+
+  try {
+    // Initialize user as Guest by default
+    let user: any = null
+
+    if (session?.user?.id) {
+      // Authenticated user: fetch from DB
+      user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+        },
+      })
+
+      // Fallback: If user not found by ID, try email
+      if (!user && session.user.email) {
+        console.warn(`DocumentsPage: User not found by ID ${session.user.id}, trying email ${session.user.email}`)
+        user = await prisma.user.findUnique({
+          where: { email: session.user.email },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        })
+      }
+
+      if (!user) {
+        console.error('DocumentsPage: User found in session but not in database', session.user.id)
+        return (
+          <SharedLayout title="Lỗi">
+            <div className="p-6 text-center text-red-500">
+              Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.
+            </div>
+          </SharedLayout>
+        )
+      }
+    } else {
+      // Unauthenticated: Guest user
+      user = {
+        id: '',
+        firstName: 'Khách',
+        lastName: '',
+        role: 'GUEST',
+      }
+    }
+
+    const [documents, incomingDocuments, outgoingDocuments] = await Promise.all([
+      getDocuments(user.id, user.role),
+      getIncomingDocuments(user.id, user.role),
+      getOutgoingDocuments(user.id, user.role),
+    ])
+
+    const trendingTopics = [
+      { category: 'Chủ đề nổi trội ở Việt Nam', name: 'Văn bản', posts: '856' },
+      { category: 'Chủ đề nổi trội ở Việt Nam', name: 'Tài liệu', posts: '642' },
+    ]
+
+    return (
+      <SharedLayout
+        title="Quản lý văn bản"
+      >
+        <DocumentsTabs
+          documents={documents.map(doc => ({
+            ...doc,
+            createdAt: doc.createdAt.toISOString(),
+            updatedAt: doc.updatedAt.toISOString(),
+          }))}
+          incomingDocuments={incomingDocuments.map(doc => ({
+            ...doc,
+            receivedDate: doc.receivedDate.toISOString(),
+            deadline: doc.deadline?.toISOString() || null,
+            createdAt: doc.createdAt.toISOString(),
+            createdBy: doc.createdBy ? {
+              id: doc.createdBy.id,
+              firstName: doc.createdBy.firstName,
+              lastName: doc.createdBy.lastName,
+              avatar: doc.createdBy.avatar,
+            } : undefined,
+            assignments: doc.assignments.map(assignment => ({
+              ...assignment,
+              deadline: assignment.deadline?.toISOString() || null,
+              assignedTo: {
+                id: assignment.assignedTo.id,
+                firstName: assignment.assignedTo.firstName,
+                lastName: assignment.assignedTo.lastName,
+              },
+            })),
+          }))}
+          outgoingDocuments={outgoingDocuments.map(doc => ({
+            ...doc,
+            createdAt: doc.createdAt.toISOString(),
+            updatedAt: doc.updatedAt.toISOString(),
+            sendDate: doc.sendDate?.toISOString() || null,
+          }))}
+          currentUser={user}
+        />
+      </SharedLayout>
+    )
+  } catch (error) {
+    console.error('Error loading documents page:', error)
+    return (
+      <SharedLayout title="Lỗi">
+        <div className="p-6 text-center text-red-500">
+          Đã xảy ra lỗi khi tải dữ liệu: {(error as Error).message}
+        </div>
+      </SharedLayout>
+    )
   }
-
-  // STUDENT không được truy cập trang documents, redirect về dashboard
-  if (session.user.role === 'STUDENT') {
-    redirect('/dashboard')
-  }
-
-  // Fetch user to get firstName and lastName
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      role: true,
-    },
-  })
-
-  if (!user) return null
-
-  const [documents, incomingDocuments, outgoingDocuments] = await Promise.all([
-    getDocuments(user.id, user.role),
-    getIncomingDocuments(user.id, user.role),
-    getOutgoingDocuments(user.id, user.role),
-  ])
-
-  const trendingTopics = [
-    { category: 'Chủ đề nổi trội ở Việt Nam', name: 'Văn bản', posts: '856' },
-    { category: 'Chủ đề nổi trội ở Việt Nam', name: 'Tài liệu', posts: '642' },
-  ]
-
-  return (
-    <SharedLayout
-      title="Quản lý văn bản"
-    >
-      <DocumentsTabs
-        documents={documents.map(doc => ({
-          ...doc,
-          createdAt: doc.createdAt.toISOString(),
-          updatedAt: doc.updatedAt.toISOString(),
-        }))}
-        incomingDocuments={incomingDocuments.map(doc => ({
-          ...doc,
-          receivedDate: doc.receivedDate.toISOString(),
-          deadline: doc.deadline?.toISOString() || null,
-          createdAt: doc.createdAt.toISOString(),
-          createdBy: doc.createdBy ? {
-            id: doc.createdBy.id,
-            firstName: doc.createdBy.firstName,
-            lastName: doc.createdBy.lastName,
-            avatar: doc.createdBy.avatar,
-          } : undefined,
-          assignments: doc.assignments.map(assignment => ({
-            ...assignment,
-            deadline: assignment.deadline?.toISOString() || null,
-            assignedTo: {
-              id: assignment.assignedTo.id,
-              firstName: assignment.assignedTo.firstName,
-              lastName: assignment.assignedTo.lastName,
-            },
-          })),
-        }))}
-        outgoingDocuments={outgoingDocuments.map(doc => ({
-          ...doc,
-          createdAt: doc.createdAt.toISOString(),
-          updatedAt: doc.updatedAt.toISOString(),
-          sendDate: doc.sendDate?.toISOString() || null,
-        }))}
-        currentUser={user}
-      />
-    </SharedLayout>
-  )
 }
 
