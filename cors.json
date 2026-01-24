@@ -1,7 +1,9 @@
 [
     {
         "origin": [
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "https://thptphuocbuu.edu.vn",
+            "https://thptphuocbuu360-1069154179448.asia-southeast1.run.app"
         ],
         "method": [
             "PUT",

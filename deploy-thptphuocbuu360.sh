@@ -76,7 +76,7 @@ NEXTAUTH_SECRET=$(openssl rand -base64 32)
 gcloud run services update ${SERVICE_NAME} \
   --region=${REGION} \
   --project=${PROJECT_ID} \
-  --update-env-vars "DATABASE_URL=prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza19lWWt0anpQSVBHWWxuQkZtZ2c4M20iLCJhcGlfa2V5IjoiMDFLQ1AxUDhFUU04WEYwUlMyQzZaTjlQREciLCJ0ZW5hbnRfaWQiOiIzYzE1ZTgwZjcwMTU1Njg1NjQwZWVmY2Q1YjFjMTQ4NWVjNzcwYzYyYThjNWRlZjU5YjkzNTIyN2FiNDI5ZWY4IiwiaW50ZXJuYWxfc2VjcmV0IjoiNTM4MTFiMDMtYmY2My00MjgyLTg0OTYtMjlmNDEzNTcyOTQ2In0.ZUNycMMaqGyeTjPDuzZrjbiNbZJ3qtPFBwIWa6J99jA,NEXTAUTH_URL=${SERVICE_URL},NEXTAUTH_SECRET=${NEXTAUTH_SECRET},GCS_BUCKET_NAME=thptphuocbuu360,GOOGLE_CLOUD_PROJECT_ID=in360project,NODE_ENV=production"
+  --update-env-vars "DATABASE_URL=postgresql://neondb_owner:npg_KenJcZdU58og@ep-delicate-snow-a1gm8l2y-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require,NEXTAUTH_URL=https://thptphuocbuu.edu.vn,NEXTAUTH_SECRET=${NEXTAUTH_SECRET},GCS_BUCKET_NAME=thptphuocbuu-dms,GOOGLE_CLOUD_PROJECT_ID=in360project,NODE_ENV=production"
 
 echo ""
 echo "✅ Deployment completed successfully!"
