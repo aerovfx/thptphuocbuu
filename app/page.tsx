@@ -36,7 +36,7 @@ async function getPublicPosts() {
   }
 
   try {
-    // Optimized: Use select instead of include, and limit fields
+    // Optimized: Use select instead of include; include images + reposts for feed UI
     const posts = await prisma.post.findMany({
       select: {
         id: true,
@@ -44,8 +44,12 @@ async function getPublicPosts() {
         createdAt: true,
         type: true,
         imageUrl: true,
+        images: true,
         videoUrl: true,
         linkUrl: true,
+        locationName: true,
+        latitude: true,
+        longitude: true,
         author: {
           select: {
             id: true,
@@ -58,6 +62,7 @@ async function getPublicPosts() {
           select: {
             likes: true,
             comments: true,
+            reposts: true,
           },
         },
       },
