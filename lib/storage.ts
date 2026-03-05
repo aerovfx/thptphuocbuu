@@ -75,18 +75,14 @@ export async function uploadFile(
   const file = bucket.file(filePath)
 
   // Upload buffer
+  // NOTE: Bucket uses uniform bucket-level access — per-object ACLs (makePublic / public:true) are disabled.
+  // Public read is granted at bucket level via IAM: allUsers = roles/storage.objectViewer
   await file.save(buffer, {
     metadata: {
       contentType: contentType || 'application/octet-stream',
       cacheControl,
     },
-    public: isPublic,
   })
-
-  // Make file publicly accessible if needed
-  if (isPublic) {
-    await file.makePublic()
-  }
 
   // Get public URL
   const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${filePath}`
@@ -180,9 +176,8 @@ export async function finalizeUploadedFile(params: {
     await file.setMetadata(metadata)
   }
 
-  if (params.public !== false) {
-    await file.makePublic()
-  }
+  // NOTE: Bucket uses uniform bucket-level access — makePublic() is disabled.
+  // Public access is handled at bucket IAM level.
 
   const publicUrl = `https://storage.googleapis.com/${BUCKET_NAME}/${cleanPath}`
   return { publicUrl, path: cleanPath }
