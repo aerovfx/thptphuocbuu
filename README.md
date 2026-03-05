@@ -1,152 +1,96 @@
-# Hệ thống LMS Trường học với Tính năng Mạng xã hội
+# 🌸 Hệ thống LMS & Mạng Xã Hội THPT Phước Bửu ✨
 
-Dự án website trường học dựa trên kiến trúc LMS (Learning Management System) với các tính năng mạng xã hội giống Facebook và quản lý văn bản.
+Chào mừng mấy bồ đến với **THPT Phước Bửu App** nhaaa! 👋🏻 Đâu chỉ là nơi học hành khô khan, trang web nhà mình còn là nguyên cái mạng xã hội cực "cháy" để mọi người tha hồ flex, chém gió và kết nối với nhau đó. Đỉnh chóp chưa nào?! 😎💖
 
-## Tính năng chính
+---
 
-### 1. Hệ thống LMS
-- **Quản lý lớp học**: Tạo và quản lý lớp học, môn học
-- **Đăng ký lớp**: Học sinh có thể đăng ký vào các lớp học
-- **Bài tập**: Giáo viên tạo bài tập, học sinh nộp bài
-- **Chấm điểm**: Giáo viên chấm điểm và đưa ra phản hồi
-- **Thông báo**: Thông báo lớp học và hệ thống
+## 📸 Giao diện siêu xinh lung linh của tụi mình nè:
 
-### 2. Mạng xã hội
-- **Đăng bài**: Tạo và chia sẻ bài viết
-- **Bình luận**: Bình luận trên các bài viết
-- **Thích**: Thích và bỏ thích bài viết
-- **Kết bạn**: Gửi và chấp nhận lời mời kết bạn
-- **Timeline**: Xem dòng thời gian hoạt động
+![Giao diện siêu ngầu nhaaa](screenshot.png)
+*(Lưu ngay ảnh tớ vừa gửi tên là `screenshot.png` vào thư mục này để Github hiện ra nha bồ ơi!)* 🍓
 
-### 3. Quản lý văn bản
-- **Tải lên**: Tải lên các loại văn bản (thông báo, chính sách, báo cáo, biểu mẫu)
-- **Phân loại**: Phân loại văn bản theo loại và danh mục
-- **Quyền truy cập**: Quản lý quyền xem và tải xuống
-- **Tìm kiếm**: Tìm kiếm văn bản theo tiêu đề, loại, người tải lên
+---
 
-### 4. Quản lý người dùng
-- **Đăng ký/Đăng nhập**: Hệ thống xác thực người dùng
-- **Vai trò**: Quản trị viên, Giáo viên, Học sinh, Phụ huynh
-- **Hồ sơ**: Quản lý thông tin cá nhân
+## 🌟 Chức Năng Chính "Xịn Sò" Kìa
 
-## Công nghệ sử dụng
+### 1. 📚 Hệ thống Học Tập (LMS) cực chill
+- **Quản lý lớp học:** Giáo viên tạo lớp nhanh như chớp, quản lý siêu dễ ⚡️
+- **Đăng ký môn học:** Học sinh click 1 phát là vào lớp liền nè 🎓
+- **Nộp & Chấm bài:** Quên deadline là xíu nữa khóc đó nha 😂 Giáo viên thả feedback thả ga!
+- **Bảng thông báo:** Có update gì mới là hệ thống báo "ting ting" liền 🔔
 
-### Frontend & Mobile
-- **Web App**: Next.js 14 (App Router), React 18, TypeScript
-- **Mobile App**: Flutter, Dart
-- **Styling**: Tailwind CSS (Web), Flutter Material Design (Mobile)
-- **State Management**: React Context/Hooks (Web), Provider/Riverpod (Mobile)
+### 2. 💬 Mạng xã hội 10 điểm không có nhưng
+- **Status & Bài đăng:** Tha hồ đăng bài sống ảo, flex ảnh góc nghiêng thần thánh ✨
+- **Thả comment & Rep:** Bình luận dạo mọi lúc mọi nơi 💬
+- **Thích "tới bến":** Rải tim ❤️ cho mấy post xịn
+- **Add friend:** Bấm kết bạn để mở rộng "vòng tròn xã hội" nhaaaa 👫
 
-### Backend & Database
-- **API Runtime**: Next.js API Routes (Serverless ready)
-- **Database**: PostgreSQL (via Prisma ORM) with Prisma Accelerate
-- **Authentication**: NextAuth.js (Web), JWT & Google OAuth (Mobile)
-- **Real-time**: WebSocket / Pusher
-- **AI Integration**: OpenAI API (GPT-4) cho xử lý văn bản và tự động hóa
+### 3. 🗂 Kho Văn Bản Thông Minh
+- **Kho tàng tài liệu:** Up sương sương đề cương, báo cáo đồ đó 📑
+- **Chia quyền:** Ai được coi, ai không được coi? Admin quản hết! 🔐
+- **Seach "thần tốc":** Gõ phát ra luôn, không lo mò mẫm 🔎
 
-### Infrastructure
-- **Cloud Platform**: Google Cloud Platform (GCP)
-- **Storage**: GCP Cloud Storage
-- **Deployment**: Google Cloud Run (Containerized)
-- **CI/CD**: Cloud Build / GitHub Actions
+### 4. 👑 Dành cho User
+- Lập tài khoản xịn, đăng nhập mượt mà 🦋
+- Phân vai đàng hoàng nha: **Admin, Giáo viên, Học sinh, Phụ huynh** 🎓
+- Lên đồ cho profile (avatar, cover, bio) cho thật slayyyy 💅🏻
 
-## Cài đặt nhanh
+---
 
-### 1. Web App (Next.js)
+## 💻 Đồ nghề công nghệ (Tech Stack) 🛠
+
+Team tui xài đồ xịn không đó nha 😎:
+- **Frontend cực mượt:** `Next.js 14` (App Router) + `React 18` + `Tailwind CSS` (Giao diện auto đẹp) 🎨
+- **Mobile Cực Đỉnh:** `Flutter` (App lướt mướt như crush rep inbox) 📱
+- **Backend vèo vèo:** `API Routes` của Next.js + `PostgreSQL` (+ `Prisma` để query nhanh gọn nhẹ) ⚡
+- **Bảo mật & Auth:** `NextAuth.js` đàng hoàng, login bằng Google cũng okay luôn 🔐
+- **Real-time:** `WebSocket/Pusher` chém gió real-time 💬
+- **Deployment:** Bay thẳng lên mây với `GCP Cloud Run` & `Cloud Storage` ☁️
+
+---
+
+## 🚀 Cài đặt máy nhà thế nào nè?
+
+Đọc kỹ hướng dẫn sử dụng trước khi dùng nha:
+
+### Lên đồ cho Web App (Next.js) 💻
 ```bash
+# Tải mấy ẻm dependencies về
 npm install
+
+# Đổi tên file env để xài
 cp .env.example .env.local
+
+# Generate database
 npm run db:generate
+
+# Lên lunn (chạy web)! 🚀
 npm run dev
 ```
 
-### 2. Mobile App (Flutter)
+### Lên đồ cho Mobile App (Flutter) 📱
 ```bash
+# Chui vô thư mục mobile
 cd mobile_app
+
+# Kéo thư viện nhe
 flutter pub get
+
+# Chạy thuiiiii
 flutter run
 ```
 
-## Kiến trúc hệ thống
+---
 
-Dự án được thiết kế theo kiến trúc hướng dịch vụ (Service-Oriented Architecture - SOA) hiện đại, đảm bảo tính mở rộng và bảo mật.
+## 🔮 Tương lai còn có gì hot? (Sắp ra mắt) 😉
+- [ ] Up file xịn sò cho bài tập 📂
+- [ ] Noti nảy liên tục kiểu thời gian thực 🔔
+- [ ] Inbox / chat riêng thả thính 💬
+- [ ] Gọi Video call nhóm trong lớp 🎥
+- [ ] App mobile bản chính thức lướt mượt 📱
 
-```mermaid
-graph TD
-    subgraph Client_Layer [Client Layer]
-        Web["Web App (Next.js)"]
-        Mobile["Mobile App (Flutter)"]
-        Admin["Admin Panel (Next.js)"]
-    end
+---
 
-    subgraph API_Gateway [API Gateway & Auth]
-        Gateway["API Gateway / NextAuth"]
-    end
+Cảm ơn mấy tình yêu đã đọc tới đây nha! 💖 Chúc mấy bồ xài web chill chill dzui dzẻ 😘 Nếu thấy xịn thì cho tui 1 sao (Star) trên Github lấp lánh lun nghen ⭐!
 
-    subgraph Service_Layer [Business Logic Layer]
-        LMS["LMS Module"]
-        Social["Social Module"]
-        DMS["DMS Module"]
-        Space["Space & Collab Module"]
-        AI["AI Service"]
-    end
-
-    subgraph Data_Layer [Data & Storage Layer]
-        DB[("PostgreSQL")]
-        GCS["GCP Cloud Storage"]
-    end
-
-    %% Connections
-    Web & Mobile & Admin --> Gateway
-    Gateway --> LMS & Social & DMS & Space
-    LMS & Social & DMS & Space --> DB
-    DMS & Space --> AI
-    DMS & Social --> GCS
-```
-
-## Cấu trúc dự án
-
-```
-├── app/                    # Next.js App Router (Frontend + API Routes)
-│   ├── api/               # API endpoints
-│   ├── dashboard/         # Trang dashboard chính
-│   ├── (auth)/            # Login, Register, Forgot Password
-│   └── ...                # Các module chức năng khác
-├── mobile_app/            # Flutter Mobile Application
-│   ├── lib/               # Mã nguồn Dart
-│   └── assets/            # Tài nguyên hình ảnh, font
-├── components/            # Thư viện React components chung
-├── lib/                   # Utilities, Prisma client, Auth config
-├── prisma/               # Database schema & migrations
-├── public/               # Static assets (Web)
-└── scripts/              # Scripts vận hành và deployment
-```
-
-## Database Schema
-
-### User Roles
-- `ADMIN`: Quản trị viên
-- `TEACHER`: Giáo viên
-- `STUDENT`: Học sinh
-- `PARENT`: Phụ huynh
-
-### Document Types
-- `ANNOUNCEMENT`: Thông báo
-- `POLICY`: Chính sách
-- `REPORT`: Báo cáo
-- `FORM`: Biểu mẫu
-- `OTHER`: Khác
-
-## Tính năng trong tương lai
-
-- [ ] Upload file cho bài tập và văn bản
-- [ ] Thông báo real-time
-- [ ] Chat trực tuyến
-- [ ] Video call cho lớp học
-- [ ] Báo cáo và thống kê chi tiết
-- [ ] Mobile app
-
-## License
-
-MIT
-
+*Made with love by THPT Phước Bửu Team 🍓✨*
