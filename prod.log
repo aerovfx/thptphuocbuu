@@ -1,0 +1,32 @@
+
+> school-lms-platform@1.0.0 start
+> npx next start
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3001
+- Network:       http://192.168.1.8:3001
+
+✓ Starting...
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+✓ Ready in 170ms
+[Auth Config] Env check:
+- NEXTAUTH_URL: http://localhost:3000
+- NEXTAUTH_URL_INTERNAL: undefined
+- NODE_ENV: production
+- VERCEL_URL: undefined
+- HOSTNAME: undefined
+- PORT: 3001
+[permissions/route.ts] Module loaded
+[Auth Config] Env check:
+- NEXTAUTH_URL: http://localhost:3000
+- NEXTAUTH_URL_INTERNAL: undefined
+- NODE_ENV: production
+- VERCEL_URL: undefined
+- HOSTNAME: undefined
+- PORT: 3001
+prisma:error Error in PostgreSQL connection: Error { kind: Closed, cause: None }
+prisma:error Error in PostgreSQL connection: Error { kind: Closed, cause: None }
+prisma:error Error in PostgreSQL connection: Error { kind: Closed, cause: None }
+prisma:error Error in PostgreSQL connection: Error { kind: Closed, cause: None }
+prisma:error Error in PostgreSQL connection: Error { kind: Closed, cause: None }
+prisma:error Error in PostgreSQL connection: Error { kind: Closed, cause: None }

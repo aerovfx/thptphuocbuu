@@ -1,0 +1,15 @@
+# Override Organization Policy tại PROJECT để cho phép thêm allUsers (Cloud Run public).
+# Constraint: Restrict allowed policy members in IAM allow policies (iam.managed.allowedPolicyMembers)
+#
+# LƯU Ý: gcloud set-policy với constraint này thường BÁO LỖI:
+#   INVALID_ARGUMENT: constraint must be of the form: constraints/[service].[constraint name]
+# Nguyên nhân: gcloud kiểm tra constraint chỉ 1 dấu chấm, constraint này có 2 dấu chấm.
+# → Cần override policy này bằng CONSOLE (Organization → policy → Add exception cho project).
+# Xem: docs/HUONG_DAN_THEM_EXCEPTION_ORG_POLICY.md
+#
+# Nếu muốn thử bằng gcloud (có thể vẫn lỗi):
+#   gcloud resource-manager org-policies set-policy org-policy-allow-all-members.yaml --project=gen-lang-client-0753799782
+
+constraint: constraints/iam.managed.allowedPolicyMembers
+listPolicy:
+  allValues: ALLOW

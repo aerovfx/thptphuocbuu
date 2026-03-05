@@ -1,0 +1,19 @@
+
+> school-lms-platform@1.0.0 start
+> npx next start
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3007
+- Network:       http://192.168.1.8:3007
+
+✓ Starting...
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+✓ Ready in 129ms
+[Auth Config] Env check:
+- NEXTAUTH_URL: http://localhost:3000
+- NEXTAUTH_URL_INTERNAL: undefined
+- NODE_ENV: production
+- VERCEL_URL: undefined
+- HOSTNAME: undefined
+- PORT: 3007
+[permissions/route.ts] Module loaded

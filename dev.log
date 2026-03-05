@@ -1,0 +1,24 @@
+
+> school-lms-platform@1.0.0 dev
+> npx next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.8:3000
+- Environments: .env.local
+- Experiments (use with caution):
+  ✓ optimizeCss
+  · optimizePackageImports
+
+✓ Starting...
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+✓ Ready in 906ms
+[Auth Config] Env check:
+- NEXTAUTH_URL: http://localhost:3000
+- NEXTAUTH_URL_INTERNAL: undefined
+- NODE_ENV: development
+- VERCEL_URL: undefined
+- HOSTNAME: undefined
+- PORT: 3000
+ GET / 200 in 3.7s (compile: 2.5s, render: 1236ms)
+[?25h
