@@ -24,26 +24,26 @@ export function hasRole(userRole: string, allowedRoles: AllowedRoles): boolean {
 export async function getCurrentSession() {
   // Store original console.error
   const originalConsoleError = console.error
-  
+
   // Temporarily override console.error to suppress NextAuth JWT errors
   let jwtErrorSuppressed = false
   const errorInterceptor = (...args: any[]) => {
     const errorMessage = args[0]?.toString() || ''
-    const isNextAuthJWTError = 
+    const isNextAuthJWTError =
       errorMessage.includes('[next-auth][error][JWT_SESSION_ERROR]') ||
       errorMessage.includes('decryption operation failed') ||
       (errorMessage.includes('JWT_SESSION_ERROR') && errorMessage.includes('next-auth'))
-    
+
     if (isNextAuthJWTError) {
       jwtErrorSuppressed = true
       // Suppress this specific error - we'll handle it gracefully
       return
     }
-    
+
     // Call original console.error for other errors
     originalConsoleError.apply(console, args)
   }
-  
+
   try {
     // Override console.error only for this call
     console.error = errorInterceptor
@@ -60,8 +60,8 @@ export async function getCurrentSession() {
         const dbUser = userId
           ? await prisma.user.findUnique({ where: { id: userId }, select: { status: true } })
           : email
-          ? await prisma.user.findUnique({ where: { email }, select: { status: true } })
-          : null
+            ? await prisma.user.findUnique({ where: { email }, select: { status: true } })
+            : null
         if (dbUser && dbUser.status !== 'ACTIVE') {
           return null
         }
@@ -77,20 +77,20 @@ export async function getCurrentSession() {
   } catch (error: any) {
     // Restore original console.error
     console.error = originalConsoleError
-    
+
     // Handle JWT decryption errors gracefully
     // This can happen when:
     // 1. NEXTAUTH_SECRET was changed
     // 2. Old session cookies exist from previous deployment
     // 3. Cookie is corrupted
-    const isJWTError = 
+    const isJWTError =
       jwtErrorSuppressed ||
-      error?.message?.includes('decryption') || 
+      error?.message?.includes('decryption') ||
       error?.code === 'JWT_SESSION_ERROR' ||
       error?.message?.includes('JWT') ||
       error?.name === 'JWTDecodeError' ||
       error?.message?.includes('JWT_SESSION_ERROR')
-    
+
     if (isJWTError) {
       // Silently handle JWT errors - user will need to login again
       // Don't log as error to avoid noise in production
@@ -99,7 +99,21 @@ export async function getCurrentSession() {
       }
       return null
     }
-    
+
+    // Ignore Prisma database connection errors (P1001, timeout, etc.) to gracefully downgrade
+    const errCode = error?.code || error?.name
+    if (
+      errCode === 'P1001' ||
+      errCode === 'P2024' ||
+      errCode === 'PrismaClientInitializationError' ||
+      error?.message?.includes('connection')
+    ) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[Auth] Database connection failed during session check. Treating as no session.')
+      }
+      return null
+    }
+
     // Re-throw other errors
     throw error
   } finally {
@@ -124,11 +138,11 @@ export async function requireAuth() {
  */
 export async function requireRole(allowedRoles: AllowedRoles) {
   const session = await requireAuth()
-  
+
   if (!hasRole(session.user.role, allowedRoles)) {
     throw new Error('Forbidden: Insufficient permissions')
   }
-  
+
   return session
 }
 

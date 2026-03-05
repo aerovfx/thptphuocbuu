@@ -59,6 +59,9 @@ const nextConfig = {
   
   // Turbopack configuration (empty config to silence warning)
   turbopack: {},
+
+  // Ensure Prisma runs in Node context so process.env.DATABASE_URL is available (fixes localhost:5432 with Turbopack)
+  serverExternalPackages: ['@prisma/client', 'prisma'],
   
   // Headers for caching
   async headers() {

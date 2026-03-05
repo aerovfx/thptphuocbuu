@@ -1,40 +1,82 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
+# Dependencies
+node_modules/
 /.pnp
 .pnp.js
 
-# testing
-/coverage
+# Testing
+/coverage/
 
-# next.js
+# Next.js
 /.next/
 /out/
 
-# production
-/build
+# Production
+/build/
 
-# misc
+# Misc
 .DS_Store
 *.pem
 
-# debug
+# Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
-# local env files
-.env*.local
+# Local Env files
 .env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# vercel
-.vercel
+# Allow example env files
+!.env.example
+!.env.local.example
 
-# typescript
+# Vercel
+.vercel/
+
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
 
-# prisma
-/prisma/migrations
+# Mobile App (React Native/Expo)
+mobile_app/node_modules/
+mobile_app/.expo/
+mobile_app/android/.gradle/
+mobile_app/android/app/build/
+mobile_app/android/build/
+mobile_app/ios/Pods/
+mobile_app/ios/build/
+mobile_app/ios/Index/
 
+# Editors & IDEs
+.idea/
+.vscode/
+.cursor/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# MacOS Defaults
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk

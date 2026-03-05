@@ -3,7 +3,7 @@ import { getCurrentSession } from '@/lib/auth-helpers'
 import dynamic from 'next/dynamic'
 
 // Lazy load HomePage to reduce initial bundle size
-const HomePage = dynamic(() => import('@/components/Home/HomePage'), {
+const HomePage = dynamic(() => import('@/components/home/HomePage'), {
   ssr: true,
   loading: () => (
     <div className="flex items-center justify-center min-h-screen">
@@ -13,9 +13,9 @@ const HomePage = dynamic(() => import('@/components/Home/HomePage'), {
 })
 
 async function getPublicPosts() {
-  // Auto-publish scheduled posts that are due
   const now = new Date()
   try {
+    // Auto-publish scheduled posts that are due
     await prisma.post.updateMany({
       where: {
         AND: [
@@ -27,50 +27,63 @@ async function getPublicPosts() {
         scheduledAt: null,
       },
     })
-  } catch (error: any) {
-    // Silently fail if there's an error (e.g., field doesn't exist yet)
-    if (error?.code !== 'P2009' && error?.code !== 'P2011') {
+  } catch (error: unknown) {
+    // Silently fail if schema/validation error; log others except connection issues
+    const err = error as { code?: string }
+    if (err?.code !== 'P2009' && err?.code !== 'P2011' && err?.code !== 'P1001') {
       console.error('Error publishing scheduled posts:', error)
     }
   }
 
-  // Optimized: Use select instead of include, and limit fields
-  const posts = await prisma.post.findMany({
-    select: {
-      id: true,
-      content: true,
-      createdAt: true,
-      type: true,
-      imageUrl: true,
-      videoUrl: true,
-      linkUrl: true,
-      author: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          avatar: true,
+  try {
+    // Optimized: Use select instead of include, and limit fields
+    const posts = await prisma.post.findMany({
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        type: true,
+        imageUrl: true,
+        videoUrl: true,
+        linkUrl: true,
+        author: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+          },
+        },
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
         },
       },
-      _count: {
-        select: {
-          likes: true,
-          comments: true,
-        },
+      where: {
+        OR: [
+          { scheduledAt: null },
+          { scheduledAt: { lte: now } },
+        ],
       },
-    },
-    where: {
-      OR: [
-        { scheduledAt: null },
-        { scheduledAt: { lte: now } },
-      ],
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  })
-
-  // Posts are already filtered in the query, no need for additional filtering
-  return posts
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    })
+    return posts
+  } catch (error: unknown) {
+    // DB unreachable (e.g. PostgreSQL not running, wrong DATABASE_URL) — render page with empty posts
+    const err = error as { code?: string; name?: string }
+    const isConnectionError =
+      err?.code === 'P1001' ||
+      err?.name === 'PrismaClientInitializationError'
+    if (isConnectionError && process.env.NODE_ENV === 'development') {
+      console.warn(
+        '[Home] Database unreachable. Start PostgreSQL or set DATABASE_URL in .env.local. Showing empty posts.'
+      )
+    }
+    return []
+  }
 }
 
 export default async function Home() {

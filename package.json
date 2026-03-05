@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
+    "dev": "npx next dev",
+    "build": "npx next build",
+    "start": "npx next start",
+    "lint": "npx next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
@@ -19,7 +19,7 @@
     "check-env": "tsx scripts/check-environment.ts",
     "scaffold:module": "tsx scripts/scaffold-module.ts",
     "update-spaces-overview": "tsx app/scripts/update-spaces-overview.ts",
-    "analyze": "ANALYZE=true next build",
+    "analyze": "ANALYZE=true npx next build",
     "deploy": "./deploy.sh",
     "docker:build": "docker build -t gcr.io/in360project/phuocbuu:latest .",
     "docker:push": "docker push gcr.io/in360project/phuocbuu:latest"

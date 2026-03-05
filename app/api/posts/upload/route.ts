@@ -10,14 +10,7 @@ export const runtime = 'nodejs'
 // Allow longer execution time for large video uploads
 export const maxDuration = 300 // 5 minutes timeout
 
-// Increase body size limit for video uploads (100MB for premium, 50MB for normal users)
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '100mb',
-    },
-  },
-}
+// Body size limit for App Router: set in next.config.js if needed (experimental.serverActions.bodySizeLimit)
 
 export async function POST(request: Request) {
   try {
