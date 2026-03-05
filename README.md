@@ -6,8 +6,7 @@ Chào mừng mấy bồ đến với **THPT Phước Bửu App** nhaaa! 👋🏻
 
 ## 📸 Giao diện siêu xinh lung linh của tụi mình nè:
 
-![Giao diện siêu ngầu nhaaa](screenshot.png)
-*(Lưu ngay ảnh tớ vừa gửi tên là `screenshot.png` vào thư mục này để Github hiện ra nha bồ ơi!)* 🍓
+![Giao diện siêu ngầu nhaaa](public/screenshot.png)
 
 ---
 
