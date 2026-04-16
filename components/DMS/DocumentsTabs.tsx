@@ -121,7 +121,7 @@ export default function DocumentsTabs({
   currentUser,
 }: DocumentsTabsProps) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'all' | 'incoming' | 'outgoing' | 'public'>('public')
+  const [activeTab, setActiveTab] = useState<'all' | 'incoming' | 'outgoing' | 'public'>('all')
   const [uploaders, setUploaders] = useState<UploaderUser[]>([])
   const [selectedUploaderId, setSelectedUploaderId] = useState<string | null>(null)
   const [loadingUploaders, setLoadingUploaders] = useState(false)
@@ -335,53 +335,6 @@ export default function DocumentsTabs({
       <div className="mt-6">
         {activeTab === 'all' && (
           <div className="space-y-6">
-            {/* Public Documents Section */}
-            {(selectedUploaderId ? filteredPublic : documents).length > 0 && (
-              <div>
-                <h2 className="text-lg font-semibold text-white mb-4 font-poppins flex items-center gap-2">
-                  <FileText size={20} />
-                  Tài liệu chung ({selectedUploaderId ? filteredPublic.length : documents.length})
-                </h2>
-                <div className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
-                  <div className="divide-y divide-gray-800">
-                    {(selectedUploaderId ? filteredPublic : documents).map((doc) => (
-                      <div
-                        key={doc.id}
-                        className="p-4 hover:bg-gray-800/50 transition-colors border-b border-gray-800 last:border-b-0"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-white mb-1">{doc.title}</h3>
-                            {doc.description && (
-                              <p className="text-sm text-gray-400 mb-2">{doc.description}</p>
-                            )}
-                            <p className="text-sm text-gray-500">
-                              Đăng bởi: {doc.uploadedBy.firstName} {doc.uploadedBy.lastName} •{' '}
-                              {formatDistanceToNow(new Date(doc.createdAt), {
-                                addSuffix: true,
-                                locale: vi,
-                              })} • {formatFileSize(doc.fileSize)}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={doc.fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors"
-                              title="Tải xuống"
-                            >
-                              <Download className="w-5 h-5" />
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Incoming Documents Section */}
             {(selectedUploaderId ? filteredIncoming : incomingDocuments).length > 0 && (
               <div>

@@ -5,19 +5,19 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/thptphuocbuu360:$BUILD_ID'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/thptphuocbuu:$BUILD_ID'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/thptphuocbuu360:latest'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/thptphuocbuu:latest'
       - '.'
     timeout: '1200s'
 
-  # Push the container image to Container Registry
+  # Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-image'
     args:
       - 'push'
       - '--all-tags'
-      - 'gcr.io/$PROJECT_ID/thptphuocbuu360'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/thptphuocbuu'
     timeout: '600s'
 
   # Deploy container image to Cloud Run
@@ -27,9 +27,9 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'thptphuocbuu360'
+      - 'thptphuocbuu'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/thptphuocbuu360:$BUILD_ID'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/thptphuocbuu:$BUILD_ID'
       - '--region'
       - 'asia-southeast1'
       - '--platform'
@@ -48,18 +48,17 @@ steps:
       - '--timeout'
       - '300'
       - '--set-env-vars'
-      - 'NODE_ENV=production,NEXTAUTH_URL=https://thptphuocbuu.edu.vn,GCP_PROJECT_ID=in360project,GCS_BUCKET_NAME=thptphuocbuu360'
+      - 'NODE_ENV=production,NEXTAUTH_URL=https://thptphuocbuu.edu.vn,GCP_PROJECT_ID=gen-lang-client-0753799782,GOOGLE_CLOUD_PROJECT_ID=gen-lang-client-0753799782,GCS_BUCKET_NAME=gen-lang-client-0753799782_cloudbuild'
       - '--update-secrets'
       - 'NEXTAUTH_SECRET=nextauth-secret:latest,DATABASE_URL=database-url:latest,GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest'
     timeout: '600s'
 
 images:
-  - 'gcr.io/$PROJECT_ID/thptphuocbuu360:$BUILD_ID'
-  - 'gcr.io/$PROJECT_ID/thptphuocbuu360:latest'
+  - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/thptphuocbuu:$BUILD_ID'
+  - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/thptphuocbuu:latest'
 
 options:
   machineType: 'E2_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY
 
 timeout: '1800s'
-

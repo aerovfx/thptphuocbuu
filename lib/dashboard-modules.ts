@@ -52,7 +52,7 @@ export const dashboardModules: DashboardModule[] = [
     description: 'Quản lý văn bản',
     icon: 'FileText',
     href: '/dashboard/documents',
-    roles: ['ADMIN', 'TEACHER', 'SUPER_ADMIN', 'BGH', 'BAN_TT', 'TRUONG_TONG', 'QUAN_NHIEM', 'TRUONG_HANH_CHINH', 'TAI_CHINH', 'Y_TE', 'DOAN_TN', 'DANG_BO'],
+    roles: ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'SUPER_ADMIN', 'BGH', 'BAN_TT', 'TRUONG_TONG', 'QUAN_NHIEM', 'TRUONG_HANH_CHINH', 'BAO_VE', 'LAO_CONG', 'DOAN_TN', 'DANG_BO', 'TAI_CHINH', 'Y_TE'],
     order: 4,
     category: 'management',
   },

@@ -432,3 +432,11 @@ body {
   color: inherit;
 }
 
+/* Marquee animation cho tiêu đề văn bản dài (kiểu đèn LED) */
+@keyframes marquee {
+  0%   { transform: translateX(0%); }
+  10%  { transform: translateX(0%); }
+  90%  { transform: translateX(-60%); }
+  100% { transform: translateX(0%); }
+}
+

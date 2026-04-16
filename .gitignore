@@ -36,6 +36,25 @@ yarn-error.log*
 !.env.example
 !.env.local.example
 
+# GCP / Cloud credentials & config
+cors.json
+*.json.key
+*service-account*.json
+*credentials*.json
+*keyfile*.json
+gcloud-key*.json
+
+# Deploy scripts (contain project IDs)
+deploy.sh
+
+# SSL / Certificates
+*.crt
+*.cert
+*.p12
+*.pfx
+*.p8
+*.jks
+
 # Vercel
 .vercel/
 

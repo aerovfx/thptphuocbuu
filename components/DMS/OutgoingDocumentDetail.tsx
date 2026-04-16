@@ -17,6 +17,9 @@ import {
   UserCheck,
   PenTool,
   File,
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Avatar from '@/components/Common/Avatar'
@@ -24,9 +27,16 @@ import SubmitApprovalModal from './SubmitApprovalModal'
 import PDFViewer from './PDFViewer'
 import DigitalSignatureModal from './DigitalSignatureModal'
 
+interface AdjacentDoc {
+  id: string
+  title: string
+}
+
 interface OutgoingDocumentDetailProps {
   document: any
   currentUser: any
+  prevDoc?: AdjacentDoc | null
+  nextDoc?: AdjacentDoc | null
 }
 
 const statusLabels: Record<string, { label: string; color: string; icon: any }> = {
@@ -48,6 +58,8 @@ const priorityLabels: Record<string, { label: string; color: string }> = {
 export default function OutgoingDocumentDetail({
   document,
   currentUser,
+  prevDoc,
+  nextDoc,
 }: OutgoingDocumentDetailProps) {
   const router = useRouter()
   const [showSubmitModal, setShowSubmitModal] = useState(false)
@@ -116,6 +128,37 @@ export default function OutgoingDocumentDetail({
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
+      {/* Navigation Bar */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={() => router.push('/dashboard/documents')}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-poppins bg-bluelock-light-3 dark:bg-gray-800 hover:bg-bluelock-light dark:hover:bg-gray-700 text-bluelock-dark dark:text-gray-300 transition-colors"
+        >
+          <ArrowLeft size={16} />
+          Danh sách văn bản
+        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => prevDoc && router.push(`/dashboard/dms/outgoing/${prevDoc.id}`)}
+            disabled={!prevDoc}
+            title={prevDoc?.title}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-poppins bg-bluelock-light-3 dark:bg-gray-800 hover:bg-bluelock-light dark:hover:bg-gray-700 text-bluelock-dark dark:text-gray-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft size={16} />
+            Trước
+          </button>
+          <button
+            onClick={() => nextDoc && router.push(`/dashboard/dms/outgoing/${nextDoc.id}`)}
+            disabled={!nextDoc}
+            title={nextDoc?.title}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-poppins bg-bluelock-light-3 dark:bg-gray-800 hover:bg-bluelock-light dark:hover:bg-gray-700 text-bluelock-dark dark:text-gray-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Sau
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="bg-bluelock-light-2 dark:bg-gray-900 rounded-lg p-6 border border-bluelock-blue/30 dark:border-gray-800 mb-6 transition-colors duration-300">
         <div className="flex items-start justify-between mb-4">
@@ -343,6 +386,58 @@ export default function OutgoingDocumentDetail({
           }
         `}</style>
       </div>
+
+      {/* Inline PDF / File Viewer */}
+      {document.fileUrl && (
+        <div className="bg-bluelock-light-2 dark:bg-gray-900 rounded-lg border border-bluelock-blue/30 dark:border-gray-800 mb-6 overflow-hidden transition-colors duration-300">
+          <div className="flex items-center justify-between px-4 py-3 bg-bluelock-light dark:bg-gray-800 border-b border-bluelock-blue/30 dark:border-gray-700">
+            <div className="flex items-center gap-2 text-sm font-poppins text-bluelock-dark dark:text-gray-300">
+              <File size={16} className="text-blue-500" />
+              <span className="truncate max-w-xs">{document.title}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={document.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-3 py-1 text-xs font-poppins bg-bluelock-light-3 dark:bg-gray-700 hover:bg-bluelock-light dark:hover:bg-gray-600 text-bluelock-dark dark:text-gray-300 hover:text-bluelock-blue dark:hover:text-white rounded-lg transition-colors"
+              >
+                <Eye size={14} />
+                Mở tab mới
+              </a>
+              <a
+                href={document.fileUrl}
+                download
+                className="flex items-center gap-1 px-3 py-1 text-xs font-poppins bg-bluelock-light-3 dark:bg-gray-700 hover:bg-bluelock-light dark:hover:bg-gray-600 text-bluelock-dark dark:text-gray-300 hover:text-bluelock-blue dark:hover:text-white rounded-lg transition-colors"
+              >
+                <Download size={14} />
+                Tải xuống
+              </a>
+            </div>
+          </div>
+          {isPDF ? (
+            <iframe
+              src={`https://docs.google.com/viewer?url=${encodeURIComponent(document.fileUrl)}&embedded=true`}
+              title={document.title}
+              className="w-full border-0"
+              style={{ height: '80vh', minHeight: '600px' }}
+            />
+          ) : (
+            <div className="p-8 text-center text-bluelock-dark/60 dark:text-gray-400 font-poppins">
+              <File size={48} className="mx-auto mb-3 opacity-30" />
+              <p className="mb-3">Không thể xem trực tiếp định dạng này.</p>
+              <a
+                href={document.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+              >
+                <Eye size={16} /> Mở file
+              </a>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Approvals */}
       {document.approvals.length > 0 && (

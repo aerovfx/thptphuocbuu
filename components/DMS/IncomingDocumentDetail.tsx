@@ -18,6 +18,9 @@ import {
   Edit,
   Trash2,
   File,
+  ChevronLeft,
+  ChevronRight,
+  ArrowLeft,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Avatar from '@/components/Common/Avatar'
@@ -25,9 +28,16 @@ import AssignUserModal from './AssignUserModal'
 import ScrumBoard from './ScrumBoard'
 import PDFViewer from './PDFViewer'
 
+interface AdjacentDoc {
+  id: string
+  title: string
+}
+
 interface IncomingDocumentDetailProps {
   document: any
   currentUser: any
+  prevDoc?: AdjacentDoc | null
+  nextDoc?: AdjacentDoc | null
 }
 
 const statusLabels: Record<string, { label: string; color: string; icon: any }> = {
@@ -57,6 +67,8 @@ const typeLabels: Record<string, string> = {
 export default function IncomingDocumentDetail({
   document: initialDocument,
   currentUser,
+  prevDoc,
+  nextDoc,
 }: IncomingDocumentDetailProps) {
   const router = useRouter()
   const [showAssignModal, setShowAssignModal] = useState(false)
@@ -252,6 +264,49 @@ export default function IncomingDocumentDetail({
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
+      {/* Navigation Bar — Quay lại + Prev/Next */}
+      <div className="flex items-center justify-between mb-4">
+        {/* Nút quay lại danh sách */}
+        <button
+          onClick={() => router.push('/dashboard/documents')}
+          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft size={16} />
+          <span className="font-poppins">Danh sách văn bản</span>
+        </button>
+
+        {/* Prev / Next */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => prevDoc && router.push(`/dashboard/dms/incoming/${prevDoc.id}`)}
+            disabled={!prevDoc}
+            title={prevDoc ? prevDoc.title : 'Không có văn bản trước'}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-poppins border transition-all ${
+              prevDoc
+                ? 'border-gray-700 text-gray-300 hover:border-blue-500 hover:text-white hover:bg-blue-500/10'
+                : 'border-gray-800 text-gray-600 cursor-not-allowed'
+            }`}
+          >
+            <ChevronLeft size={16} />
+            <span>Trước</span>
+          </button>
+
+          <button
+            onClick={() => nextDoc && router.push(`/dashboard/dms/incoming/${nextDoc.id}`)}
+            disabled={!nextDoc}
+            title={nextDoc ? nextDoc.title : 'Không có văn bản sau'}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-poppins border transition-all ${
+              nextDoc
+                ? 'border-gray-700 text-gray-300 hover:border-blue-500 hover:text-white hover:bg-blue-500/10'
+                : 'border-gray-800 text-gray-600 cursor-not-allowed'
+            }`}
+          >
+            <span>Sau</span>
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
       {/* Error Message */}
       {error && (
         <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center space-x-2 text-red-400">
@@ -427,6 +482,58 @@ export default function IncomingDocumentDetail({
           </div>
         )}
       </div>
+
+      {/* Inline PDF / File Viewer */}
+      {document.fileUrl && (
+        <div className="bg-gray-900 rounded-lg border border-gray-800 mb-6 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 bg-gray-800 border-b border-gray-700">
+            <div className="flex items-center gap-2 text-sm font-poppins text-gray-300">
+              <File size={16} className="text-blue-400" />
+              <span className="truncate max-w-xs">{document.fileName || document.title}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={document.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-3 py-1 text-xs font-poppins bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white rounded-lg transition-colors"
+              >
+                <Eye size={14} />
+                Mở tab mới
+              </a>
+              <a
+                href={document.fileUrl}
+                download
+                className="flex items-center gap-1 px-3 py-1 text-xs font-poppins bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white rounded-lg transition-colors"
+              >
+                <Download size={14} />
+                Tải xuống
+              </a>
+            </div>
+          </div>
+          {isPDF ? (
+            <iframe
+              src={`https://docs.google.com/viewer?url=${encodeURIComponent(document.fileUrl)}&embedded=true`}
+              title={document.title}
+              className="w-full border-0"
+              style={{ height: '80vh', minHeight: '600px' }}
+            />
+          ) : (
+            <div className="p-8 text-center text-gray-400 font-poppins">
+              <File size={48} className="mx-auto mb-3 text-gray-600" />
+              <p className="mb-3">Không thể xem trực tiếp định dạng này.</p>
+              <a
+                href={document.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+              >
+                <Eye size={16} /> Mở file
+              </a>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Scrum Board */}
       {document.assignments.length > 0 && (

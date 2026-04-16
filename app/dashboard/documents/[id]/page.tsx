@@ -1,11 +1,11 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { redirect } from 'next/navigation'
 import SharedLayout from '@/components/Layout/SharedLayout'
 import DocumentDetail from '@/components/DMS/DocumentDetail'
 
-async function getDocument(id: string, userId: string, role: string) {
+async function getDocument(id: string) {
+  // Văn bản công khai — không lọc theo quyền truy cập
   const document = await prisma.document.findUnique({
     where: { id },
     include: {
@@ -43,21 +43,7 @@ async function getDocument(id: string, userId: string, role: string) {
     },
   })
 
-  if (!document) {
-    return null
-  }
-
-  // Check access permission
-  if (role !== 'ADMIN' && role !== 'TEACHER') {
-    const hasAccess = document.access.some(
-      (access) => access.userId === userId
-    )
-    if (!hasAccess && document.access.length > 0) {
-      return null
-    }
-  }
-
-  return document
+  return document || null
 }
 
 export default async function DocumentDetailPage({
@@ -65,43 +51,49 @@ export default async function DocumentDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  // Không bắt buộc đăng nhập — văn bản là công khai
   const session = await getServerSession(authOptions)
-  if (!session) {
-    redirect('/login')
-  }
 
   const { id } = await params
-  
-  // Get user info for firstName and lastName
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      firstName: true,
-      lastName: true,
-    },
-  })
-  
-  const document = await getDocument(id, session.user.id, session.user.role)
+
+  // Lấy thông tin user nếu đã đăng nhập
+  let user: { firstName: string; lastName: string } | null = null
+  if (session?.user?.id) {
+    user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { firstName: true, lastName: true },
+    })
+  }
+
+  const document = await getDocument(id)
 
   if (!document) {
     return (
       <SharedLayout title="Tài liệu không tồn tại">
         <div className="p-6 text-center text-gray-400">
-          <p className="font-poppins">Không tìm thấy tài liệu này hoặc bạn không có quyền truy cập.</p>
+          <p className="font-poppins">Không tìm thấy tài liệu này.</p>
         </div>
       </SharedLayout>
     )
   }
 
-  const trendingTopics = [
-    { category: 'Chủ đề nổi trội', name: 'Tài liệu', posts: '856' },
-    { category: 'Chủ đề nổi trội', name: 'Quản lý văn bản', posts: '642' },
-  ]
+  // Xây dựng currentUser: nếu chưa đăng nhập thì là GUEST
+  const currentUser = session?.user
+    ? {
+        id: session.user.id,
+        role: session.user.role,
+        firstName: user?.firstName || '',
+        lastName: user?.lastName || '',
+      }
+    : {
+        id: '',
+        role: 'GUEST',
+        firstName: 'Khách',
+        lastName: '',
+      }
 
   return (
-    <SharedLayout
-      title={document.title}
-    >
+    <SharedLayout title={document.title}>
       <DocumentDetail
         document={{
           ...document,
@@ -111,12 +103,7 @@ export default async function DocumentDetailPage({
             timestamp: sig.timestamp?.toISOString() || new Date().toISOString(),
           })),
         }}
-        currentUser={{
-          id: session.user.id,
-          role: session.user.role,
-          firstName: user?.firstName || '',
-          lastName: user?.lastName || '',
-        }}
+        currentUser={currentUser}
       />
     </SharedLayout>
   )

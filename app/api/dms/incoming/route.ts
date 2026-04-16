@@ -184,7 +184,7 @@ export async function POST(request: Request) {
       }
 
       // Ensure URL is to our GCS bucket to avoid arbitrary URL injection
-      const bucketName = process.env.GCS_BUCKET_NAME || 'thptphuocbuu360'
+      const bucketName = process.env.GCS_BUCKET_NAME || 'gen-lang-client-0753799782_cloudbuild'
       const allowedPrefix = `https://storage.googleapis.com/${bucketName}/`
       if (!fileUrl.startsWith(allowedPrefix)) {
         return NextResponse.json(

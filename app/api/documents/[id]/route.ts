@@ -8,10 +8,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Văn bản được công khai — không yêu cầu đăng nhập để xem chi tiết
+    // Vẫn lấy session nếu có để hiển thị thêm thông tin cho user đã đăng nhập
     const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     const { id } = await params
 
@@ -56,15 +55,7 @@ export async function GET(
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
 
-    // Check access permission
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'TEACHER') {
-      const hasAccess = document.access.some(
-        (access) => access.userId === session.user.id
-      )
-      if (!hasAccess && document.access.length > 0) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-      }
-    }
+    // Văn bản công khai: tất cả đều có thể xem, không giới hạn quyền đọc
 
     return NextResponse.json({
       ...document,

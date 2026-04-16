@@ -10,9 +10,9 @@ export const maxDuration = 60 // 1 minute for generating signed URL
 
 // Initialize Storage with explicit project ID
 const storage = new Storage({
-  projectId: process.env.GCP_PROJECT_ID || 'in360project',
+  projectId: process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT_ID || 'gen-lang-client-0753799782',
 })
-const bucketName = process.env.GCS_BUCKET_NAME || 'thptphuocbuu360'
+const bucketName = process.env.GCS_BUCKET_NAME || 'gen-lang-client-0753799782_cloudbuild'
 
 /**
  * Generate signed URL for direct upload to Google Cloud Storage

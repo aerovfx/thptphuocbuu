@@ -393,7 +393,23 @@ async function getStats(userId: string, role: string) {
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
-  if (!session) return null
+
+  // Guest: hiển thị trang chủ với các module công khai, không cần đăng nhập
+  if (!session) {
+    const guestModules = getModulesByRole('STUDENT' as UserRole)
+    return (
+      <DashboardContent
+        statCards={[]}
+        trendingTopics={[
+          { category: 'Chủ đề nổi trội', name: 'Văn bản', posts: '' },
+          { category: 'Chủ đề nổi trội', name: 'Tài liệu', posts: '' },
+        ]}
+        currentUser={null}
+        stats={null}
+        modules={guestModules}
+      />
+    )
+  }
 
   const stats = await getStats(session.user.id, session.user.role)
 

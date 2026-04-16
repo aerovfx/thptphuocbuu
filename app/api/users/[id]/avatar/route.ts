@@ -148,7 +148,7 @@ export async function POST(
       try {
       // Extract path from GCS URL
       const urlParts = currentUser.avatar.split('/')
-      const pathIndex = urlParts.findIndex(part => part === 'thptphuocbuu360')
+      const pathIndex = urlParts.findIndex(part => part === (process.env.GCS_BUCKET_NAME || 'gen-lang-client-0753799782_cloudbuild'))
       if (pathIndex !== -1) {
         const oldPath = urlParts.slice(pathIndex + 1).join('/')
         await deleteFile(oldPath)

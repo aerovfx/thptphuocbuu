@@ -3,14 +3,14 @@ import { Readable } from 'stream'
 
 // Initialize Google Cloud Storage client
 const storage = new Storage({
-  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || 'in360project',
-  // Use service account key if provided, otherwise use default credentials
+  projectId: process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT_ID || 'gen-lang-client-0753799782',
+  // Use service account key if provided, otherwise use default credentials (ADC on Cloud Run)
   ...(process.env.GOOGLE_APPLICATION_CREDENTIALS && {
     keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
   }),
 })
 
-const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'thptphuocbuu-dms'
+const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'gen-lang-client-0753799782_cloudbuild'
 const bucket = storage.bucket(BUCKET_NAME)
 
 // Ensure bucket exists and is accessible

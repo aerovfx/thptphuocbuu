@@ -1,11 +1,10 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { redirect } from 'next/navigation'
 import SharedLayout from '@/components/Layout/SharedLayout'
 import IncomingDocumentDetail from '@/components/DMS/IncomingDocumentDetail'
 
-async function getDocument(id: string, userId: string, role: string) {
+async function getDocument(id: string) {
   const document = await prisma.incomingDocument.findUnique({
     where: { id },
     include: {
@@ -51,25 +50,23 @@ async function getDocument(id: string, userId: string, role: string) {
       },
     },
   })
+  return document || null
+}
 
-  if (!document) {
-    return null
-  }
-
-  // Check access permission
-  if (role === 'ADMIN' || role === 'BGH') {
-    // ADMIN and BGH can access all documents
-    // No restriction
-  } else if (role === 'STUDENT' || role === 'PARENT') {
-    const hasAccess = document.assignments.some(
-      (assignment) => assignment.assignedToId === userId
-    )
-    if (!hasAccess) {
-      return null
-    }
-  }
-
-  return document
+async function getAdjacentIds(id: string, receivedDate: Date) {
+  // Lấy văn bản liền trước (nhận sau)
+  const next = await prisma.incomingDocument.findFirst({
+    where: { receivedDate: { gt: receivedDate } },
+    orderBy: { receivedDate: 'asc' },
+    select: { id: true, title: true },
+  })
+  // Lấy văn bản liền sau (nhận trước)
+  const prev = await prisma.incomingDocument.findFirst({
+    where: { receivedDate: { lt: receivedDate } },
+    orderBy: { receivedDate: 'desc' },
+    select: { id: true, title: true },
+  })
+  return { prev, next }
 }
 
 export default async function IncomingDocumentDetailPage({
@@ -78,34 +75,34 @@ export default async function IncomingDocumentDetailPage({
   params: Promise<{ id: string }>
 }) {
   const session = await getServerSession(authOptions)
-  if (!session) {
-    redirect('/login')
-  }
-
   const { id } = await params
-  const document = await getDocument(id, session.user.id, session.user.role)
+  const document = await getDocument(id)
 
   if (!document) {
     return (
       <SharedLayout title="Văn bản không tồn tại">
         <div className="p-6 text-center text-gray-400">
-          <p className="font-poppins">Không tìm thấy văn bản này hoặc bạn không có quyền truy cập.</p>
+          <p className="font-poppins">Không tìm thấy văn bản này.</p>
         </div>
       </SharedLayout>
     )
   }
 
-  const trendingTopics = [
-    { category: 'Chủ đề nổi trội', name: 'Văn bản đến', posts: '856' },
-    { category: 'Chủ đề nổi trội', name: 'Quản lý tài liệu', posts: '642' },
-  ]
+  const { prev, next } = await getAdjacentIds(id, document.receivedDate)
+
+  const currentUser = session ?? {
+    user: { id: '', role: 'GUEST', name: 'Khách', email: '' },
+    expires: '',
+  }
 
   return (
-    <SharedLayout
-      title={document.title}
-    >
-      <IncomingDocumentDetail document={document} currentUser={session} />
+    <SharedLayout title={document.title}>
+      <IncomingDocumentDetail
+        document={document}
+        currentUser={currentUser}
+        prevDoc={prev ? { id: prev.id, title: prev.title } : null}
+        nextDoc={next ? { id: next.id, title: next.title } : null}
+      />
     </SharedLayout>
   )
 }
-

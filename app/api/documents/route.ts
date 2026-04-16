@@ -77,50 +77,23 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Try JWT authentication first (for mobile app)
+    // Văn bản được công khai — không yêu cầu đăng nhập để đọc
+    // Vẫn thử lấy thông tin user nếu có (cho mobile app hoặc user đã đăng nhập)
     const jwtUser = await authenticateRequest(request)
     const session = !jwtUser ? await getServerSession(authOptions) : null
 
-    if (!jwtUser && !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const currentUser = jwtUser || session!.user
-    const userRole = currentUser.role
-    const userId = currentUser.id
-
-    let documents
-    if (userRole === 'ADMIN' || userRole === 'BGH' || userRole === 'TEACHER') {
-      documents = await prisma.document.findMany({
-        include: {
-          uploadedBy: {
-            select: {
-              firstName: true,
-              lastName: true,
-            },
+    // Mọi người đều có thể xem danh sách văn bản (công khai)
+    const documents = await prisma.document.findMany({
+      include: {
+        uploadedBy: {
+          select: {
+            firstName: true,
+            lastName: true,
           },
         },
-        orderBy: { createdAt: 'desc' },
-      })
-    } else {
-      documents = await prisma.document.findMany({
-        where: {
-          OR: [
-            { access: { some: { userId: userId } } },
-            { access: { none: {} } }, // Public documents
-          ],
-        },
-        include: {
-          uploadedBy: {
-            select: {
-              firstName: true,
-              lastName: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      })
-    }
+      },
+      orderBy: { createdAt: 'desc' },
+    })
 
     return NextResponse.json(documents)
   } catch (error) {

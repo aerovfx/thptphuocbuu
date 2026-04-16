@@ -6,49 +6,24 @@ import SharedLayout from '@/components/Layout/SharedLayout'
 import DocumentsTabs from '@/components/DMS/DocumentsTabs'
 
 async function getDocuments(userId: string, role: string) {
-  if (role === 'ADMIN' || role === 'BGH' || role === 'TEACHER') {
-    return await prisma.document.findMany({
-      include: {
-        uploadedBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        _count: {
-          select: {
-            access: true,
-          },
+  // Mọi người (kể cả GUEST chưa đăng nhập) đều được xem tất cả văn bản
+  return await prisma.document.findMany({
+    include: {
+      uploadedBy: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
         },
       },
-      orderBy: { createdAt: 'desc' },
-    })
-  } else {
-    return await prisma.document.findMany({
-      where: {
-        OR: [
-          { access: { some: { userId } } },
-          { access: { none: {} } }, // Public documents
-        ],
-      },
-      include: {
-        uploadedBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        _count: {
-          select: {
-            access: true,
-          },
+      _count: {
+        select: {
+          access: true,
         },
       },
-      orderBy: { createdAt: 'desc' },
-    })
-  }
+    },
+    orderBy: { createdAt: 'desc' },
+  })
 }
 
 async function getIncomingDocuments(userId: string, role: string) {
@@ -115,18 +90,13 @@ async function getIncomingDocuments(userId: string, role: string) {
 async function getOutgoingDocuments(userId: string, role: string) {
   const where: any = {}
 
-  // Role-based filtering
-  if (role === 'ADMIN' || role === 'BGH') {
-    // ADMIN and BGH can see all outgoing documents
-    // where remains empty to show all
-  } else if (role === 'STUDENT' || role === 'PARENT') {
-    where.approvals = {
-      some: {
-        approverId: userId,
-      },
+  // GUEST và mọi người đều thấy văn bản đi (chế độ công khai)
+  // Các role nội bộ có thể thấy nhiều hơn, nhưng GUEST vẫn xem được tất cả
+  if (role !== 'ADMIN' && role !== 'BGH' && role !== 'GUEST' && role !== 'SUPER_ADMIN') {
+    if (role === 'TEACHER') {
+      where.createdById = userId
     }
-  } else if (role === 'TEACHER') {
-    where.createdById = userId
+    // STUDENT/PARENT/... có thể xem tất cả văn bản đi công khai
   }
 
   return await prisma.outgoingDocument.findMany({

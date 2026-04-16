@@ -17,6 +17,11 @@ import {
   X,
   Lock,
   Crown,
+  FileCheck,
+  FileClock,
+  FileX,
+  FileArchive,
+  Inbox,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Avatar from '@/components/Common/Avatar'
@@ -83,6 +88,47 @@ const typeLabels: Record<string, string> = {
   REPORT: 'Tờ trình',
   REQUEST: 'Đề nghị',
   OTHER: 'Khác',
+}
+
+// Thumbnail cho loại văn bản dựa theo documentTypeCode hoặc type
+const docTypeThumbnail: Record<string, { label: string; bg: string; text: string }> = {
+  CV:  { label: 'CV',  bg: 'bg-blue-600',    text: 'text-white' },
+  QD:  { label: 'QĐ',  bg: 'bg-orange-500',  text: 'text-white' },
+  TB:  { label: 'TB',  bg: 'bg-green-600',   text: 'text-white' },
+  KH:  { label: 'KH',  bg: 'bg-purple-600',  text: 'text-white' },
+  BC:  { label: 'BC',  bg: 'bg-cyan-600',    text: 'text-white' },
+  BB:  { label: 'BB',  bg: 'bg-yellow-600',  text: 'text-white' },
+  HD:  { label: 'HĐ',  bg: 'bg-red-600',     text: 'text-white' },
+  CT:  { label: 'CT',  bg: 'bg-pink-600',    text: 'text-white' },
+  DX:  { label: 'ĐX',  bg: 'bg-teal-600',   text: 'text-white' },
+  TT:  { label: 'TT',  bg: 'bg-indigo-600',  text: 'text-white' },
+  NQ:  { label: 'NQ',  bg: 'bg-rose-600',    text: 'text-white' },
+  DIRECTIVE: { label: 'CĐ', bg: 'bg-orange-600', text: 'text-white' },
+  REPORT:    { label: 'BC', bg: 'bg-cyan-600',   text: 'text-white' },
+  REQUEST:   { label: 'ĐN', bg: 'bg-teal-600',  text: 'text-white' },
+  RECORD:    { label: 'HS', bg: 'bg-gray-600',   text: 'text-white' },
+}
+
+function getDocThumbnail(doc: IncomingDocument) {
+  const code = (doc as any).documentTypeCode || doc.type
+  return docTypeThumbnail[code] || { label: 'VB', bg: 'bg-gray-600', text: 'text-white' }
+}
+
+function getFileExt(fileUrl?: string | null): string | null {
+  if (!fileUrl) return null
+  const match = fileUrl.split('?')[0].split('.').pop()?.toUpperCase()
+  if (!match || match.length > 5) return null
+  return match
+}
+
+const fileExtColor: Record<string, string> = {
+  PDF:  'bg-red-500',
+  DOC:  'bg-blue-500',
+  DOCX: 'bg-blue-500',
+  XLS:  'bg-green-600',
+  XLSX: 'bg-green-600',
+  PPT:  'bg-orange-500',
+  PPTX: 'bg-orange-500',
 }
 
 export default function IncomingDocumentsList({
@@ -353,80 +399,82 @@ export default function IncomingDocumentsList({
               <div
                 key={doc.id}
                 onClick={() => router.push(`/dashboard/dms/incoming/${doc.id}`)}
-                className="bg-gray-900 rounded-lg p-4 border border-gray-800 hover:border-blue-500/50 transition-all cursor-pointer"
+                className="bg-gray-900 rounded-xl border border-gray-800 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/5 transition-all cursor-pointer overflow-hidden"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    {/* Status and Priority Tags */}
+                <div className="flex items-stretch gap-0">
+                  {/* LEFT — Document type thumbnail */}
+                  {(() => {
+                    const thumb = getDocThumbnail(doc)
+                    const ext = getFileExt((doc as any).fileUrl)
+                    return (
+                      <div className={`${thumb.bg} w-16 flex-shrink-0 flex flex-col items-center justify-center gap-1 relative`}>
+                        <span className={`text-xl font-black ${thumb.text} tracking-tight leading-none`}>
+                          {thumb.label}
+                        </span>
+                        {ext && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${fileExtColor[ext] || 'bg-gray-600'} text-white`}>
+                            {ext}
+                          </span>
+                        )}
+                        {/* Decorative dots */}
+                        <div className="absolute bottom-2 flex gap-0.5">
+                          <div className="w-1 h-1 rounded-full bg-white/20" />
+                          <div className="w-1 h-1 rounded-full bg-white/20" />
+                          <div className="w-1 h-1 rounded-full bg-white/20" />
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* CENTER — Content */}
+                  <div className="flex-1 min-w-0 p-3">
+                    {/* Status + Priority */}
                     <div className="flex items-center space-x-2 mb-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${statusInfo.color} font-poppins flex items-center space-x-1`}>
-                        <StatusIcon size={12} />
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${statusInfo.color} font-poppins flex items-center space-x-1`}>
+                        <StatusIcon size={11} />
                         <span>{statusInfo.label}</span>
                       </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${priorityInfo.color} font-poppins`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${priorityInfo.color} font-poppins`}>
                         {priorityInfo.label}
                       </span>
                     </div>
 
-                    {/* Title */}
-                    <h3 className="text-base font-semibold text-white font-poppins mb-2 line-clamp-1">
-                      {doc.title}
-                    </h3>
+                    {/* Title — marquee khi dài */}
+                    <div className="overflow-hidden mb-1">
+                      <h3
+                        className="text-sm font-semibold text-white font-poppins whitespace-nowrap"
+                        style={{
+                          display: 'inline-block',
+                          animation: doc.title.length > 50 ? 'marquee 10s linear infinite' : undefined,
+                        }}
+                      >
+                        {doc.title}
+                      </h3>
+                    </div>
 
-                    {/* Metadata - Compact */}
-                    <div className="space-y-1 mb-3">
-                      {doc.sender && (
-                        <div className="flex items-center space-x-2 text-xs text-gray-400 font-poppins">
-                          <span>{doc.sender}</span>
-                        </div>
+                    {/* Summary preview nếu có */}
+                    {(doc as any).summary && (
+                      <p className="text-xs text-gray-400 font-poppins line-clamp-2 mb-2 leading-relaxed">
+                        {(doc as any).summary}
+                      </p>
+                    )}
+
+                    {/* Metadata */}
+                    <div className="flex items-center gap-3 text-xs text-gray-500 font-poppins mb-2">
+                      {doc.sender && <span className="text-gray-400 truncate max-w-[120px]">{doc.sender}</span>}
+                      <span>Nhận: {new Date(doc.receivedDate).toLocaleDateString('vi-VN')}</span>
+                      {doc.deadline && (
+                        <span className={new Date(doc.deadline) < new Date() ? 'text-red-400 font-medium' : ''}>
+                          Hạn: {new Date(doc.deadline).toLocaleDateString('vi-VN')}
+                        </span>
                       )}
-                      <div className="flex items-center space-x-4 text-xs text-gray-500 font-poppins">
-                        <span>Nhận: {new Date(doc.receivedDate).toLocaleDateString('vi-VN')}</span>
-                        {doc.deadline && (
-                          <span className={new Date(doc.deadline) < new Date() ? 'text-red-400' : ''}>
-                            Hạn: {new Date(doc.deadline).toLocaleDateString('vi-VN')}
-                          </span>
-                        )}
-                      </div>
-                      {/* Tags */}
-                      {doc.tags && (() => {
-                        try {
-                          const tagsArray = typeof doc.tags === 'string' ? JSON.parse(doc.tags) : doc.tags
-                          if (Array.isArray(tagsArray) && tagsArray.length > 0) {
-                            return (
-                              <div className="flex items-center flex-wrap gap-1.5 mt-2">
-                                {tagsArray.slice(0, 3).map((tag: string, index: number) => (
-                                  <span
-                                    key={index}
-                                    className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/50 font-poppins"
-                                  >
-                                    #{tag}
-                                  </span>
-                                ))}
-                                {tagsArray.length > 3 && (
-                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-400 font-poppins">
-                                    +{tagsArray.length - 3}
-                                  </span>
-                                )}
-                              </div>
-                            )
-                          }
-                        } catch (e) {
-                          // Invalid JSON, ignore
-                        }
-                        return null
-                      })()}
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="mb-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-400 font-poppins">Tiến độ</span>
-                        <span className="text-xs font-semibold text-white font-poppins">{progress}%</span>
-                      </div>
-                      <div className="w-full bg-gray-800 rounded-full h-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-gray-800 rounded-full h-1">
                         <div
-                          className={`h-1.5 rounded-full transition-all ${
+                          className={`h-1 rounded-full transition-all ${
                             progress === 100 ? 'bg-green-500' :
                             progress >= 66 ? 'bg-blue-500' :
                             progress >= 33 ? 'bg-yellow-500' :
@@ -435,11 +483,12 @@ export default function IncomingDocumentsList({
                           style={{ width: `${progress}%` }}
                         />
                       </div>
+                      <span className="text-[10px] font-semibold text-gray-400 w-7 text-right">{progress}%</span>
                     </div>
                   </div>
 
-                  {/* Right Side - Avatar and Actions */}
-                  <div className="flex flex-col items-end gap-3 flex-shrink-0">
+                  {/* RIGHT — Avatar + Actions */}
+                  <div className="flex flex-col items-center justify-between gap-2 p-3 flex-shrink-0">
                     {/* Primary Assignee Avatar */}
                     {primaryAssignee ? (
                       <div className="relative group">
@@ -448,11 +497,11 @@ export default function IncomingDocumentsList({
                           name={`${primaryAssignee.firstName} ${primaryAssignee.lastName}`}
                           size="md"
                         />
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-gray-900"></div>
+                        <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-gray-900" />
                       </div>
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center">
-                        <span className="text-xs text-gray-400">?</span>
+                      <div className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center">
+                        <Inbox size={16} className="text-gray-500" />
                       </div>
                     )}
 

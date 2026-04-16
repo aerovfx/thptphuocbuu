@@ -6,12 +6,20 @@ export default withAuth(
     const token = req.nextauth.token
     const path = req.nextUrl.pathname
 
+    // Danh sách các trang công khai (không cần đăng nhập)
+    const publicDashboardPaths = [
+      '/dashboard/documents',
+      '/dashboard/dms',
+      '/dashboard/spaces',
+      '/dashboard/departments',
+    ]
+    // Trang chủ dashboard (chính xác /dashboard) cũng công khai
+    const isPublicDashboardPath =
+      path === '/dashboard' ||
+      publicDashboardPaths.some(p => path.startsWith(p))
+
     // Role-based access control
     if (path.startsWith('/dashboard')) {
-      // Allow guest access to specific public modules
-      const publicDashboardPaths = ['/dashboard/documents', '/dashboard/spaces', '/dashboard/departments']
-      const isPublicDashboardPath = publicDashboardPaths.some(p => path.startsWith(p))
-
       // All authenticated users can access dashboard (and guests for public paths)
       if (!token && !isPublicDashboardPath) {
         return NextResponse.redirect(new URL('/login', req.url))
@@ -36,7 +44,12 @@ export default withAuth(
       }
     }
 
-    return NextResponse.next()
+    // Gắn header x-is-public-path để layout biết đây là trang công khai (không cần session)
+    const response = NextResponse.next()
+    if (isPublicDashboardPath) {
+      response.headers.set('x-is-public-path', '1')
+    }
+    return response
   },
   {
     callbacks: {
@@ -57,10 +70,15 @@ export default withAuth(
           // Allow guest access to specific public modules
           const publicDashboardPaths = [
             '/dashboard/documents',
+            '/dashboard/dms',
             '/dashboard/spaces',
-            '/dashboard/departments'
+            '/dashboard/departments',
           ]
-          if (publicDashboardPaths.some(path => req.nextUrl.pathname.startsWith(path))) {
+          // Trang chủ dashboard cũng công khai
+          if (
+            req.nextUrl.pathname === '/dashboard' ||
+            publicDashboardPaths.some(p => req.nextUrl.pathname.startsWith(p))
+          ) {
             return true
           }
           return !!token
